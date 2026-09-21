@@ -1,0 +1,203 @@
+// CyGPUInspectorDecompiler — SPIR-V to HLSL, with the Direct3D bindings put back.
+//
+// Copyright (C) 2026 Cyberalien. Licensed under the GNU AGPL v3 or later.
+#include "SpirvToHlsl.hpp"
+
+#include <spirv_hlsl.hpp>
+
+#include <algorithm>
+#include <map>
+
+namespace cygi
+{
+	namespace
+	{
+		// Which Direct3D register file a binding lives in: b, t, u or s.
+		enum class RegisterFile
+		{
+			cbv,
+			srv,
+			uav,
+			sampler
+		};
+
+		RegisterFile FileOf(BindingKind kind)
+		{
+			switch (kind)
+			{
+			case BindingKind::constant_buffer:
+				return RegisterFile::cbv;
+			case BindingKind::sampler:
+				return RegisterFile::sampler;
+			case BindingKind::unordered_access:
+			case BindingKind::append_buffer:
+			case BindingKind::consume_buffer:
+				return RegisterFile::uav;
+			default:
+				return RegisterFile::srv;
+			}
+		}
+
+		// Both converters map a Direct3D binding onto a Vulkan one by identity: descriptor set =
+		// register space, binding = register index. So a SPIR-V resource can be matched back to
+		// the Direct3D binding it came from, which gives us two things the intermediate module
+		// does not carry: the original register, and the name.
+		void RestoreBindings(spirv_cross::CompilerHLSL &compiler, spv::ExecutionModel stage,
+		                     const ReflectionResult *reflection)
+		{
+			const spirv_cross::ShaderResources resources = compiler.get_shader_resources();
+
+			const auto key = [](uint32_t space, uint32_t reg) {
+				return (static_cast<uint64_t>(space) << 32) | reg;
+			};
+
+			std::map<uint64_t, const ShaderBinding *> by_file[4];
+			if (reflection != nullptr && reflection->ok)
+				for (const ShaderBinding &binding : reflection->bindings)
+					by_file[static_cast<size_t>(FileOf(binding.kind))]
+						[key(binding.space, binding.bind_point)] = &binding;
+
+			// `is_block` distinguishes the resources HLSL declares as a buffer block, whose name
+			// comes from the type rather than from the variable.
+			const auto restore = [&](const spirv_cross::SmallVector<spirv_cross::Resource> &list,
+			                         RegisterFile file, bool is_block) {
+				for (const spirv_cross::Resource &resource : list)
+				{
+					const uint32_t space = compiler.get_decoration(resource.id, spv::DecorationDescriptorSet);
+					const uint32_t reg = compiler.get_decoration(resource.id, spv::DecorationBinding);
+
+					spirv_cross::HLSLResourceBinding binding = {};
+					binding.stage = stage;
+					binding.desc_set = space;
+					binding.binding = reg;
+
+					spirv_cross::HLSLResourceBinding::Binding *target = &binding.srv;
+					switch (file)
+					{
+					case RegisterFile::cbv: target = &binding.cbv; break;
+					case RegisterFile::srv: target = &binding.srv; break;
+					case RegisterFile::uav: target = &binding.uav; break;
+					case RegisterFile::sampler: target = &binding.sampler; break;
+					}
+					target->register_space = space;
+					target->register_binding = reg;
+					compiler.add_hlsl_resource_binding(binding);
+
+					const auto &map = by_file[static_cast<size_t>(file)];
+					auto named = map.find(key(space, reg));
+					// A read-only buffer is a `t` register in Direct3D but a storage buffer in
+					// SPIR-V, so the UAV file is searched first and the SRV file second.
+					if (named == map.end() && file == RegisterFile::uav)
+					{
+						const auto &srvs = by_file[static_cast<size_t>(RegisterFile::srv)];
+						named = srvs.find(key(space, reg));
+						if (named == srvs.end())
+							continue;
+						if (named->second->name.empty())
+							continue;
+						compiler.set_name(resource.id, named->second->name);
+						if (is_block)
+							compiler.set_name(resource.base_type_id, named->second->name);
+						continue;
+					}
+					if (named == map.end() || named->second->name.empty())
+						continue;
+
+					compiler.set_name(resource.id, named->second->name);
+					if (is_block)
+						compiler.set_name(resource.base_type_id, named->second->name);
+				}
+			};
+
+			restore(resources.uniform_buffers, RegisterFile::cbv, true);
+			restore(resources.separate_images, RegisterFile::srv, false);
+			restore(resources.sampled_images, RegisterFile::srv, false);
+			restore(resources.separate_samplers, RegisterFile::sampler, false);
+			restore(resources.storage_images, RegisterFile::uav, false);
+			restore(resources.storage_buffers, RegisterFile::uav, true);
+			restore(resources.acceleration_structures, RegisterFile::srv, false);
+		}
+
+		// A vertex input is a numbered location in the intermediate module. The Direct3D
+		// reflection still has the semantic, and both converters assign locations by input row,
+		// so the two line up and the declaration can read `POSITION` again.
+		void RestoreVertexSemantics(spirv_cross::CompilerHLSL &compiler, const ReflectionResult *reflection)
+		{
+			if (reflection == nullptr || !reflection->ok)
+				return;
+
+			for (const SignatureElement &input : reflection->inputs)
+			{
+				// System values are generated by the backend itself, not declared by us.
+				if (input.semantic_name.compare(0, 3, "SV_") == 0)
+					continue;
+				compiler.add_vertex_attribute_remap(
+					{ input.register_index, input.semantic_name + std::to_string(input.semantic_index) });
+			}
+		}
+	}
+
+	SpirvToHlslResult SpirvToHlsl(const SpirvToHlslRequest &request)
+	{
+		SpirvToHlslResult result;
+		if (request.words == nullptr || request.words->empty())
+		{
+			result.error = "no SPIR-V was produced";
+			return result;
+		}
+
+		// SPIRV-Cross reports every problem by throwing, including ones nothing can be done
+		// about, such as a SPIR-V capability with no HLSL equivalent.
+		try
+		{
+			spirv_cross::CompilerHLSL compiler(*request.words);
+
+			spirv_cross::CompilerGLSL::Options common = compiler.get_common_options();
+			common.emit_line_directives = false;
+			common.vertex.fixup_clipspace = false;
+			common.vertex.flip_vert_y = false;
+			compiler.set_common_options(common);
+
+			spirv_cross::CompilerHLSL::Options hlsl = compiler.get_hlsl_options();
+			// The target model is the one the shader was compiled for, so that a Shader Model 5.0
+			// reconstruction recompiles as ps_5_0. It is only raised to 5.1 when the shader uses a
+			// register space other than 0, which nothing below 5.1 can even express.
+			uint32_t model = request.shader_model;
+			if (request.reflection != nullptr && request.reflection->ok)
+				for (const ShaderBinding &binding : request.reflection->bindings)
+					if (binding.space != 0)
+						model = std::max<uint32_t>(model, 51);
+			hlsl.shader_model = std::max<uint32_t>(40, model);
+			hlsl.point_size_compat = true;
+			hlsl.point_coord_compat = true;
+			hlsl.preserve_structured_buffers = true;
+			// The entry point is emitted as `main` rather than under its real name, because that
+			// is what validation by recompilation assumes. Backends report the real name in their
+			// notes, so it is not lost.
+			hlsl.use_entry_point_name = false;
+			compiler.set_hlsl_options(hlsl);
+
+			const auto stage = static_cast<spv::ExecutionModel>(request.execution_model);
+			RestoreBindings(compiler, stage, request.reflection);
+			if (request.restore_vertex_semantics)
+				RestoreVertexSemantics(compiler, request.reflection);
+
+			result.hlsl = compiler.compile();
+		}
+		catch (const std::exception &error)
+		{
+			result.error = std::string("SPIRV-Cross could not emit HLSL from the translated "
+			                           "SPIR-V: ") + error.what();
+			return result;
+		}
+
+		if (result.hlsl.empty())
+		{
+			result.error = "SPIRV-Cross produced no HLSL";
+			return result;
+		}
+
+		result.ok = true;
+		return result;
+	}
+}

@@ -1,0 +1,39 @@
+{
+	"FileVersion": 3,
+	"Version": 1,
+	"VersionName": "0.1.0",
+	"FriendlyName": "CyGPUInspector",
+	"Description": "Frame captures of the editor and of Development and DebugGame builds with CyGPUInspector: loads ReShade and the CyGPUInspectorRS add-on before the renderer starts, and triggers captures from the toolbar, the console or Blueprints.",
+	"Category": "Rendering",
+	"CreatedBy": "Cyberalien",
+	"CreatedByURL": "",
+	"DocsURL": "",
+	"MarketplaceURL": "",
+	"SupportURL": "",
+	"EngineVersion": "",
+	"CanContainContent": false,
+	"IsBetaVersion": true,
+	"IsExperimentalVersion": false,
+	"Installed": false,
+	"Modules": [
+		{
+			"Name": "CyGPUInspectorLoader",
+			"Type": "Runtime",
+			"LoadingPhase": "PostConfigInit",
+			"PlatformAllowList": [ "Win64" ],
+			"TargetConfigurationDenyList": [ "Shipping" ],
+			"TargetDenyList": [ "Server" ]
+		},
+		{
+			"Name": "CyGPUInspector",
+			"Type": "Runtime",
+			"LoadingPhase": "Default"
+		},
+		{
+			"Name": "CyGPUInspectorEditor",
+			"Type": "Editor",
+			"LoadingPhase": "PostEngineInit",
+			"PlatformAllowList": [ "Win64" ]
+		}
+	]
+}

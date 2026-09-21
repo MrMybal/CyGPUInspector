@@ -1,0 +1,120 @@
+CyGPUInspector 0.1.0
+====================
+
+(Français : voir COMMENCER-ICI.txt)
+
+Everything is portable: nothing to install, nothing in the registry. Captures, saved images, mods,
+the shader database and your preferences are written next to the executable.
+
+The interface starts in English. To change it: View > Language (French is included).
+
+
+1. TRY IT WITH NO GAME AT ALL  (fastest, start here)
+-----------------------------------------------------
+
+    Double-click   TestWithoutAGame\Demo.cmd
+
+That starts a fake session (a synthetic producer, with no game) and then the application, already
+connected. You land straight on the frame timeline, with a frame of about 2000 commands to explore:
+shaders, resources, events, frame graph, timeline, deep capture, mod export.
+
+Close both windows when you are done (the fake session runs in the background; closing its console
+window stops it).
+
+
+2. WITH A REAL GAME
+--------------------
+
+You need ReShade in its build WITH FULL ADD-ON SUPPORT (reshade.me). CyGPUInspector injects
+nothing itself: ReShade is what loads the add-on. A game that refuses ReShade is unsupported, and
+nothing here tries to work around that.
+
+  a) Install ReShade (full add-on build) on the game, as usual.
+
+  b) Copy         Addons\CyGPUInspectorRS.addon64
+     next to the game executable (or into ReShade's AddonPath folder).
+
+  c) Start the game, then start  App\CyGPUInspectorApp.exe
+     The game appears under "Connections". Click "Connect".
+     Or start it with  --connect  to attach by itself to the only session there is,
+     and  --level=pass-timing  to ask for GPU timings straight away.
+
+A good tracking level to start with is "Pass Timing". It is what gives the timeline bars a length.
+"Full Draw Timing" can halve the frame rate: it is a diagnostic mode, not a playing mode.
+
+A deep capture ("Deep capture" panel > "Capture now") saves the frame's final image and, with
+"Save the buffers", every texture the frame wrote to, as PNG and DDS, in App\Images\.
+
+
+3. IN UNREAL ENGINE (editor, Development and DebugGame builds)
+---------------------------------------------------------------
+
+  a) Copy   Unreal\UE5.8\CyGPUInspector   (or UE5.3 for Unreal 5.3 to 5.7)
+     into the  Plugins\  folder of your project. ReShade and the add-on are already inside.
+
+  b) Open the project. Project Settings > Plugins > CyGPUInspector: set the path of
+     App\CyGPUInspectorApp.exe (the standalone that saves the captures).
+
+  c) Press "Capture" in the level editor toolbar, or type  CyGPUInspector.Capture  in the console.
+     Only the 3D render of the main viewport is captured, not the editor around it.
+
+Details: Docs\UnrealPlugin.md.
+
+
+4. APPLYING A MOD ON SOMEONE ELSE'S MACHINE
+--------------------------------------------
+
+In the application: replace or disable shaders, then the "Mod export" panel > "Export package".
+You get a .cygimod folder.
+
+To replay it, with no application at all:
+
+  a) Copy   Addons\CyGPUInjector.addon64   next to the game (a ReShade add-on, as above).
+  b) Create a  CyGPUInjector\  folder next to the game executable.
+  c) Put the .cygimod folder inside it.
+  d) Start the game. The CyGPUInjector tab in the ReShade overlay says what loaded.
+
+Careful: a shader replacement applies when the game creates its pipeline, so usually at load time.
+Draw suppressions, on the other hand, are immediate.
+
+
+5. WHAT IS IN THIS FOLDER
+--------------------------
+
+  App\
+    CyGPUInspectorApp.exe          the analysis application
+    CyGPUInspectorMCP.exe          MCP server (to connect an AI agent), read only by default
+    dxcompiler.dll, dxil.dll       Microsoft DirectX Shader Compiler, needed for Shader Model 6
+    Lang\                          French translation, and the template for adding a language
+
+  Addons\
+    CyGPUInspectorRS.addon64       the capture agent, goes next to the game
+    CyGPUInjector.addon64          applies an exported mod, without the rest of the tool
+
+  Unreal\UE5.8\, Unreal\UE5.3\     the Unreal plugin, ready to copy into a project
+
+  TestWithoutAGame\
+    Demo.cmd                       starts the fake session + the application
+    RunTests.cmd                   runs the three test suites
+    CyGPUInspectorFakeSession.exe  the synthetic producer
+
+  Docs\                            the full documentation (Docs\fr\ for French)
+  Licenses\                        licences of the third-party binaries shipped here
+  THIRD-PARTY.md                   third-party components and their licences
+  LICENSE                          GNU Affero General Public License v3 or later
+
+
+6. WHAT IT DOES NOT DO
+-----------------------
+
+Read before reporting a bug: Docs\Limitations.md
+
+  - It does not replay the frame. The real frame is observed through the official ReShade add-on
+    API, so it reports what happened rather than re-executing it.
+
+  - Pass names are derived, not read from the game: no graphics API exposes an application's debug
+    markers to a ReShade add-on. Resource names are read when the game gives them (Unreal does, in
+    the editor and in Development builds).
+
+  - The HLSL shown is never the original source: that does not exist in a compiled shader.
+    Everything is a reconstruction, labelled with the backend that produced it.

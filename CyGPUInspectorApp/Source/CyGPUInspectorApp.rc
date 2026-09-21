@@ -1,0 +1,37 @@
+#include <winres.h>
+#include <CyGPUInspectorCore/Version.hpp>
+#include "Resource.h"
+
+// The logo, as the executable's icon in every size Windows asks for, and as a PNG the interface
+// draws. Generated from Assets/cygpuinspector-logo.png; see Assets/README.md.
+IDI_CYGPUINSPECTOR ICON   "../../Assets/cygpuinspector.ico"
+IDR_LOGO_PNG       RCDATA "../../Assets/cygpuinspector-logo-256.png"
+
+VS_VERSION_INFO VERSIONINFO
+ FILEVERSION    CYGI_VERSION_MAJOR,CYGI_VERSION_MINOR,CYGI_VERSION_PATCH,0
+ PRODUCTVERSION CYGI_VERSION_MAJOR,CYGI_VERSION_MINOR,CYGI_VERSION_PATCH,0
+ FILEFLAGSMASK  VS_FFI_FILEFLAGSMASK
+ FILEFLAGS      0x0L
+ FILEOS         VOS_NT_WINDOWS32
+ FILETYPE       VFT_APP
+ FILESUBTYPE    VFT2_UNKNOWN
+BEGIN
+    BLOCK "StringFileInfo"
+    BEGIN
+        BLOCK "040904b0"
+        BEGIN
+            VALUE "CompanyName",      "CyGPUInspector"
+            VALUE "FileDescription",  "CyGPUInspectorApp - GPU frame, shader and resource inspector"
+            VALUE "FileVersion",      CYGI_VERSION_STRING
+            VALUE "InternalName",     "CyGPUInspectorApp"
+            VALUE "LegalCopyright",   "Copyright (C) 2026 Cyberalien - GNU AGPL v3 or later"
+            VALUE "OriginalFilename", "CyGPUInspectorApp.exe"
+            VALUE "ProductName",      "CyGPUInspector"
+            VALUE "ProductVersion",   CYGI_VERSION_STRING
+        END
+    END
+    BLOCK "VarFileInfo"
+    BEGIN
+        VALUE "Translation", 0x409, 1200
+    END
+END

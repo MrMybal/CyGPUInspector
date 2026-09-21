@@ -8,8 +8,9 @@ Takes:
   --plugin-builds DIR          RunUAT BuildPlugin outputs, one per engine: DIR/UE5.8/CyGPUInspector,
                                DIR/UE5.3/CyGPUInspector. Build them from a neutral folder: Unreal
                                writes the build folder's path into the DLLs.
-  --dxc DIR                    dxcompiler.dll, dxil.dll and the licence files that come with them.
-                               Without it, the package has no Shader Model 6 support.
+  --dxc DIR                    an official DirectXShaderCompiler release zip, extracted (or a folder
+                               with dxcompiler.dll and dxil.dll), with the licence files that come
+                               with it. Without it, the package has no Shader Model 6 support.
   Lang/, Docs/, Packaging/     translations, documentation, start-here notes and demo scripts
   ThirdParty/                  the licences of what is compiled into the binaries
 
@@ -88,12 +89,16 @@ def main():
     copy(os.path.join(BIN, 'CyGPUInspectorRS.addon64'), os.path.join(stage, 'TestWithoutAGame', 'CyGPUInspectorRS.addon64'))
     copy_tree(os.path.join(ROOT, 'Packaging', 'TestWithoutAGame'), os.path.join(stage, 'TestWithoutAGame'))
 
-    # The DirectX Shader Compiler, when given, with the licences that come with it.
+    # The DirectX Shader Compiler, when given, with the licences that come with it. --dxc is either
+    # the folder of the two DLLs or the root of an official release zip, extracted (bin/x64/).
     if args.dxc:
+        dlls = os.path.join(args.dxc, 'bin', 'x64')
+        if not os.path.isdir(dlls):
+            dlls = args.dxc
         for dll in ('dxcompiler.dll', 'dxil.dll'):
-            copy(os.path.join(args.dxc, dll), os.path.join(stage, 'App', dll))
+            copy(os.path.join(dlls, dll), os.path.join(stage, 'App', dll))
         for entry in os.listdir(args.dxc):
-            if re.match(r'(?i)(license|licence|notice|third)', entry) and os.path.isfile(os.path.join(args.dxc, entry)):
+            if re.match(r'(?i)(license|licence|notice|third|origin)', entry) and os.path.isfile(os.path.join(args.dxc, entry)):
                 copy(os.path.join(args.dxc, entry), os.path.join(stage, 'Licenses', 'DirectXShaderCompiler', entry))
     else:
         print('Warning: no --dxc: the package has no Shader Model 6 support.')
@@ -175,9 +180,10 @@ def main():
                 data = open(path, 'rb').read().lower()
                 # Paths of the machine that built it, as ASCII or UTF-16 strings. The Unreal DLLs keep
                 # the neutral folder they were built from (C:\CyGPUInspectorBuild), which says nothing
-                # about anyone. ReShade64.dll is the official build and is not ours to check.
+                # about anyone. ReShade64.dll and the DXC DLLs are official builds, not ours to check.
                 for text in ('\\users\\', '\\_project\\', '\\appdata\\', '\\desktop\\', '\\documents\\'):
-                    if file != 'ReShade64.dll' and (text.encode() in data or text.encode('utf-16-le') in data):
+                    if file not in ('ReShade64.dll', 'dxcompiler.dll', 'dxil.dll') and \
+                       (text.encode() in data or text.encode('utf-16-le') in data):
                         problems.append('{} contains a path with "{}"'.format(relative, text))
     if problems:
         print('\n'.join(problems))

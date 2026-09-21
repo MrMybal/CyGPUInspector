@@ -91,11 +91,22 @@ These are not vendored in the sources: they are loaded from the system or the Wi
 present, and their absence is reported in the application rather than being fatal.
 
 `dxcompiler.dll` and `dxil.dll` **are** copied next to the application in a binary distribution,
-because without them Shader Model 6 cannot be disassembled, reflected or compiled at all. They come
-from the Windows SDK, carry the University of Illinois / NCSA open source licence, and Microsoft
-permits their redistribution with an application.
+because without them Shader Model 6 cannot be disassembled, reflected or compiled at all. They are
+taken unmodified from an official release of Microsoft's DirectXShaderCompiler on GitHub, and the
+release zip carries its licence files in `Licenses/DirectXShaderCompiler/`, with `ORIGIN.txt` giving
+the version and the checksum of the archive. The two files do not have the same licence:
+
+* `dxcompiler.dll` is open source, under the University of Illinois / NCSA licence (LLVM) and MIT;
+* `dxil.dll`, which validates and signs DXIL, is **not** open source: it is under the Microsoft
+  Software License Terms of the DirectX Shader Compiler (`LICENSE-MS.txt`), which allow it to be
+  redistributed with an application. It is a separate component, not covered by the GNU AGPL of
+  CyGPUInspector, and whoever redistributes it does so under those terms. The application never
+  loads it itself: `dxcompiler.dll` does, when it is present. A distribution that leaves it out
+  keeps disassembly and reflection; it loses the validation and signing of recompiled shaders,
+  which D3D12 needs to accept them outside developer mode.
 
 | Tool | Licence | Used for |
 |---|---|---|
 | `d3dcompiler_47.dll` | Microsoft, part of Windows | DXBC disassembly, reflection and compilation |
-| `dxcompiler.dll` / `dxil.dll` | University of Illinois / NCSA | DXIL disassembly, reflection and compilation |
+| `dxcompiler.dll` | University of Illinois / NCSA, MIT | DXIL disassembly, reflection and compilation |
+| `dxil.dll` | Microsoft Software License Terms | DXIL validation and signing |

@@ -65,7 +65,26 @@ PNG et en DDS, dans App\Images\.
 Détails : Docs\fr\UnrealPlugin.md.
 
 
-4. APPLIQUER UN MOD CHEZ QUELQU'UN D'AUTRE
+4. L'ASSISTANT IA ET L'ÉDITEUR HLSL
+------------------------------------
+
+Affichage > Assistant IA, onglet Connexion : choisissez Codex ou Claude Code (ils utilisent la
+connexion que leur CLI a déjà : lancez une fois "codex login" ou "claude auth login"), ou une API
+compatible OpenAI, locale (Ollama, LM Studio...) ou distante. Cliquez sur Connecter, puis posez
+votre question dans l'onglet Tchat, par exemple « quelle partie du rendu semble produire le
+bloom ? ». L'assistant lit lui-même la frame avec les outils. Options > Mode d'autorisation décide
+de ce qu'il peut faire dans le jeu sans demander.
+
+Dans le panneau Shader code, l'onglet HLSL affiche chaque reconstruction colorée en HLSL, prête à
+être modifiée, compilée et injectée. « Ouvrir dans une fenêtre » donne l'éditeur complet dans sa
+propre fenêtre : rechercher et remplacer, erreurs du compilateur marquées sur leurs lignes,
+compilation de test pour n'importe quel profil (F7), Compiler et injecter (F5). L'onglet Analyse IA
+nettoie, classifie ou explique le shader sélectionné.
+
+Détails : Docs\fr\AI.md et Docs\fr\StandaloneApp.md.
+
+
+5. APPLIQUER UN MOD CHEZ QUELQU'UN D'AUTRE
 -------------------------------------------
 
 Dans l'application : remplacez ou désactivez des shaders, puis panneau "Export de mod" >
@@ -82,7 +101,7 @@ Attention : un remplacement de shader s'applique quand le jeu crée son pipeline
 chargement. Les suppressions de draws, elles, sont immédiates.
 
 
-5. CE QU'IL Y A DANS CE DOSSIER
+6. CE QU'IL Y A DANS CE DOSSIER
 --------------------------------
 
   App\
@@ -99,7 +118,7 @@ chargement. Les suppressions de draws, elles, sont immédiates.
 
   TestWithoutAGame\
     Demo.cmd                       lance la fausse session + l'application
-    RunTests.cmd                   lance les trois suites de tests
+    RunTests.cmd                   lance les quatre suites de tests
     CyGPUInspectorFakeSession.exe  le producteur synthétique
 
   Docs\                            la documentation complète (Docs\fr\ en français)
@@ -108,7 +127,7 @@ chargement. Les suppressions de draws, elles, sont immédiates.
   LICENSE                          GNU Affero General Public License v3 ou ultérieure
 
 
-6. CE QU'IL NE FAIT PAS
+7. CE QU'IL NE FAIT PAS
 ------------------------
 
 À lire avant de signaler un bug : Docs\fr\Limitations.md

@@ -1,9 +1,9 @@
 @echo off
-rem Runs the three test suites and leaves the results on screen.
+rem Runs the four test suites and leaves the results on screen.
 setlocal
 cd /d "%~dp0"
 
-for %%T in (CyGPUInspectorCoreTests CyGPUInspectorShaderTests CyGPUInspectorIpcTests) do (
+for %%T in (CyGPUInspectorCoreTests CyGPUInspectorAssistantTests CyGPUInspectorShaderTests CyGPUInspectorIpcTests) do (
     echo ============================================================
     echo   %%T
     echo ============================================================

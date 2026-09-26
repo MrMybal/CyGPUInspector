@@ -22,7 +22,17 @@ Coût accepté : les widgets riches (éditeur de code, graphe) sont à écrire n
 ```
 CyGPUInspectorApp/Source
 ├── Main.cpp            fenêtre Win32, device D3D11, boucle ImGui (docking + viewports)
-├── App/Application      panneaux, sélection, actions
+├── App/
+│   ├── Application       panneaux, sélection, actions
+│   ├── AssistantPanel    le panneau Assistant IA et l'onglet Analyse IA
+│   └── HlslEditorPanel   l'onglet HLSL coloré et la fenêtre de l'éditeur HLSL
+├── Assistant/
+│   ├── AssistantProvider   CLI Codex, CLI Claude Code, API compatibles OpenAI et locales
+│   ├── AssistantAgent      la boucle d'outils bornée et les tâches sur les shaders
+│   └── Assistant           connexion, conversation, autorisations, threads de travail
+├── Editor/
+│   ├── HlslEditor          ImGuiColorTextEdit avec coloration HLSL et marques d'erreurs
+│   └── CompilerMessages    messages de FXC et DXC rapportés aux lignes du source
 ├── Analysis/
 │   ├── FrameGraph              clustering, dépendances, classification des passes
 │   └── ShaderAnalysisService   désassemblage et réflexion sur un thread de fond, avec cache
@@ -49,7 +59,9 @@ CyGPUInspectorApp/Source
 | Resources | id, type, dimensions, format, mips, écritures/frame, usage ; filtre « render targets seulement » |
 | Frame events | la frame complète, virtualisée ; les événements du shader sélectionné sont surlignés, et trois filtres réduisent la liste aux dessins, aux commandes d'un shader ou à celles d'une passe |
 | Preview | image GPU partagée, canal RGB/R/G/B/A, profondeur linéarisée, plage, mip, slice |
-| Shader code | onglets Disassembly / Bindings / HLSL / AI Analysis / Tools |
+| Shader code | onglets Disassembly / Bindings / HLSL / AI Analysis / Tools. L'onglet HLSL affiche la reconstruction de chaque décompilateur colorée en HLSL, modifiable, avec Compiler, Compiler et injecter et Ouvrir dans une fenêtre |
+| Assistant IA | connexion au fournisseur, tchat avec l'assistant qui lit la frame avec les outils de CyGPUInspector, mode d'autorisation. Voir [AI.md](AI.md) |
+| Éditeur HLSL | une fenêtre à part (Affichage > Éditeur HLSL) : l'éditeur complet, voir ci-dessous |
 | Mod export | ce qui a été remplacé ou désactivé, et le paquet vers lequel cela s'exporte |
 | Captures | enregistrement, réouverture et comparaison des captures hors ligne |
 | MCP | niveau de permission et journal de chaque appel |
@@ -61,6 +73,30 @@ sélectionne son shader et sa render target. C'est la boucle de navigation deman
 fonctionne aussi dans l'autre sens : choisir une passe, dans les barres ou dans la liste, fait
 défiler Frame events jusqu'à sa première commande au lieu de laisser la liste où elle était, et
 les ressources et les shaders affichés à côté des barres sont eux-mêmes la sélection.
+
+## Éditeur HLSL
+
+Le HLSL du shader sélectionné est un seul document, affiché soit dans l'onglet HLSL, soit dans une
+fenêtre à part (**Ouvrir dans une fenêtre**, ou Affichage > Éditeur HLSL). Cette fenêtre est une
+vraie fenêtre Windows, avec la barre de titre du système : elle peut aller sur un autre écran et être
+agrandie. Elle offre
+
+* la coloration syntaxique, les numéros de ligne, les parenthèses appariées, annuler et rétablir,
+  rechercher et remplacer (Ctrl+F), le retour à la ligne, l'affichage des espaces et une minimap
+  (ImGuiColorTextEdit, MIT) ;
+* **Charger une reconstruction** : la sortie de n'importe quel décompilateur pour ce shader, ou
+  n'importe lequel de ses nettoyages IA ;
+* un point d'entrée et un profil pour **tester la compilation** (F7), préremplis avec le profil du
+  shader ; FXC pour le Shader Model 5, DXC pour le Shader Model 6 ;
+* les erreurs et avertissements du compilateur **marqués sur leurs lignes**, avec le message en
+  info-bulle, et listés sous l'éditeur : un clic amène à la ligne ;
+* **Compiler et injecter** (F5) dans le jeu en cours, avec le profil propre au shader, et
+  **Restaurer l'original** ;
+* l'ouverture et l'enregistrement de fichiers `.hlsl` (Ctrl+O, Ctrl+S).
+
+Le document appartient à un shader. Sélectionner un autre shader charge sa reconstruction, sauf si le
+document contient des modifications : elles sont conservées, et l'onglet HLSL propose de charger le
+nouveau shader à la place.
 
 Un premier lancement ouvre sur une disposition construite plutôt que sur une pile de fenêtres dans
 un coin : à gauche ce à quoi vous êtes connecté et ce parmi quoi choisir, au centre la frame, en

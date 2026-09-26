@@ -121,8 +121,14 @@ the documentation, rather than taken for bugs.
 
 ## AI and MCP limits (milestones 9 and 10)
 
-* The standalone **calls no AI API**: the implemented path is MCP, where an external agent does the
-  reasoning. Assisted jobs with an API key are still to do.
+* The AI assistant answers **once its work is done**, without streaming. With a CLI, each step of
+  its loop starts the CLI again, which takes a few seconds; an API is quicker.
+* An API provider must accept the JSON mode (`response_format: {"type":"json_object"}`). A local
+  server that does not is not supported.
+* The assistant keeps its conversation in memory only: it is gone when the application closes.
+  The results of the shader jobs are kept, as annotations of the shader.
+* What the assistant says about the role of a pass or a shader is a hypothesis, however sure it
+  sounds: the confidence it gives is its own estimate, not a measurement.
 * The MCP server accepts **one proxy at a time**.
 * A tool that needs long work starts it and answers "ask again in a moment" rather than blocking
   the interface.

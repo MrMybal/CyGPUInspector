@@ -57,10 +57,10 @@ namespace cygi
 	}
 
 	// ------------------------------------------------------------------------------------
-	// Language preference
+	// Preferences
 	//
-	// Small enough to live here rather than in a settings subsystem nobody else would use: one
-	// key, next to the executable, beside the layout ImGui already writes there.
+	// Small enough to live here rather than in a settings subsystem: one file next to the
+	// executable, beside the layout ImGui already writes there, with a key per part.
 	// ------------------------------------------------------------------------------------
 
 	namespace
@@ -77,31 +77,39 @@ namespace cygi
 		}
 	}
 
-	std::string Application::LoadPreferredLanguage() const
+	Json Application::LoadPreferences()
 	{
 		std::ifstream file(PreferencesPath(), std::ios::binary);
 		if (!file)
-			return "en";
+			return Json::Object();
 
 		const std::string text((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
 		Json root;
-		if (!Json::Parse(text, root))
-			return "en";
-
-		const std::string code = root["language"].AsString();
-		return code.empty() ? "en" : code;
+		if (!Json::Parse(text, root) || !root.IsObject())
+			return Json::Object();
+		return root;
 	}
 
-	void Application::SavePreferredLanguage(const std::string &code) const
+	void Application::SavePreferences(const Json &root)
 	{
-		Json root = Json::Object();
-		root["language"] = Json(code);
-
 		std::ofstream file(PreferencesPath(), std::ios::binary | std::ios::trunc);
 		if (!file)
 			return;
 		const std::string text = root.Write(2);
 		file.write(text.data(), static_cast<std::streamsize>(text.size()));
+	}
+
+	std::string Application::LoadPreferredLanguage() const
+	{
+		const std::string code = LoadPreferences()["language"].AsString();
+		return code.empty() ? "en" : code;
+	}
+
+	void Application::SavePreferredLanguage(const std::string &code) const
+	{
+		Json root = LoadPreferences();
+		root["language"] = Json(code);
+		SavePreferences(root);
 	}
 
 	void Application::WriteTranslationTemplate()

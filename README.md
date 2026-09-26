@@ -57,11 +57,15 @@ Game (D3D11 / D3D12)
        frame as a PNG to look at and a DDS with the data, listed in capture.json
      · DXBC and DXIL disassembly, binding reflection, persistent cache by signature
      · decompilation to HLSL by four backends, validated by recompilation
-     · HLSL editing, compilation and injection into the game, magenta highlight
+     · HLSL editor: syntax colouring, errors marked on their lines, test compilation for any
+       profile, injection into the game — in the HLSL tab or a window of its own; magenta highlight
      · GPU time per command, per pass and per shader
      · persistent tags, names and annotations by signature, each labelled with its origin
      · offline captures: save, reopen without the game, compare two frames
      · mod export: what you replaced or disabled, written into a .cygimod folder
+     · AI assistant: Codex CLI, Claude Code CLI, an OpenAI-compatible or local API; it reads the
+       frame with the tools, under a permission mode you choose — and cleans up, classifies or
+       explains a shader, each result labelled with its model
      · AI analysis snapshot: everything a model needs to read, in a readable directory
      · local MCP server, read only by default, every call logged
      · measured cost of the tool itself (add-on CPU, IPC throughput, losses)
@@ -85,10 +89,17 @@ renderer starts, the way Unreal's RenderDoc plugin loads RenderDoc, starts the s
 needed, and the captured buffers carry the names Unreal gives its render targets. See
 [Docs/UnrealPlugin.md](Docs/UnrealPlugin.md).
 
-Not there yet: AI jobs wired to an API (MCP covers the main path), SQLite for metadata, per-game
-profiles, Vulkan and OpenGL.
+Not there yet: SQLite for metadata, per-game profiles, Vulkan and OpenGL.
 
-## Connecting an AI agent
+## The AI assistant
+
+`View > AI assistant`. Choose a provider in **Connection** — Codex or Claude Code with the login
+their CLI already has, or an OpenAI-compatible API, local or remote — then ask in **Chat**: *which
+part of the rendering seems to produce the bloom?* The assistant reads the frame graph, the
+resources, the shaders and the timings itself with CyGPUInspector's tools, within a budget, and asks
+before touching the game if you choose **Ask each time**. See [Docs/AI.md](Docs/AI.md).
+
+## Connecting an external AI agent
 
 Point an MCP client at `bin/Release/CyGPUInspectorMCP.exe`. It speaks MCP over stdio and forwards
 everything to the standalone. The permission level is set **in the standalone**, never in the

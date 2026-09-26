@@ -11,8 +11,13 @@ set(CYGI_IMGUI_SOURCES
     ${CYGI_THIRDPARTY}/imgui/imgui_demo.cpp
     ${CYGI_THIRDPARTY}/imgui/backends/imgui_impl_dx11.cpp
     ${CYGI_THIRDPARTY}/imgui/backends/imgui_impl_win32.cpp)
-# Dear ImGui is third party code: do not fail our /W4 build on its warnings.
+# The HLSL editor widget (MIT). See ThirdParty/ImGuiColorTextEdit/ORIGIN.md.
+set(CYGI_TEXTEDITOR_SOURCES
+    ${CYGI_THIRDPARTY}/ImGuiColorTextEdit/TextEditor.cpp)
+# Dear ImGui and the editor are third party code: do not fail our /W4 build on their warnings.
 set_source_files_properties(${CYGI_IMGUI_SOURCES} PROPERTIES COMPILE_OPTIONS "/W1")
+# The editor needs a few C++20 library calls; the rest of the project stays C++17.
+set_source_files_properties(${CYGI_TEXTEDITOR_SOURCES} PROPERTIES COMPILE_OPTIONS "/W1;/std:c++20")
 
 set(CYGI_APP_SOURCES
     Source/Main.cpp
@@ -24,6 +29,20 @@ set(CYGI_APP_SOURCES
     Source/App/TimelineDrawing.hpp
     Source/App/ModExportPanel.cpp
     Source/App/CaptureFiles.cpp
+    Source/App/AssistantPanel.cpp
+    Source/App/HlslEditorPanel.cpp
+    Source/Assistant/AssistantText.hpp
+    Source/Assistant/AssistantText.cpp
+    Source/Assistant/AssistantProvider.hpp
+    Source/Assistant/AssistantProvider.cpp
+    Source/Assistant/AssistantAgent.hpp
+    Source/Assistant/AssistantAgent.cpp
+    Source/Assistant/Assistant.hpp
+    Source/Assistant/Assistant.cpp
+    Source/Editor/CompilerMessages.hpp
+    Source/Editor/CompilerMessages.cpp
+    Source/Editor/HlslEditor.hpp
+    Source/Editor/HlslEditor.cpp
     Source/Mod/ModRecorder.hpp
     Source/Mod/ModRecorder.cpp
     Source/Analysis/FrameGraph.hpp
@@ -49,21 +68,23 @@ set(CYGI_APP_SOURCES
     Source/Session/SessionClient.hpp
     Source/Session/SessionClient.cpp)
 
-add_executable(CyGPUInspectorApp WIN32 ${CYGI_APP_SOURCES} ${CYGI_IMGUI_SOURCES})
+add_executable(CyGPUInspectorApp WIN32 ${CYGI_APP_SOURCES} ${CYGI_IMGUI_SOURCES} ${CYGI_TEXTEDITOR_SOURCES})
 
 source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR}/Source PREFIX "Source" FILES ${CYGI_APP_SOURCES})
 source_group("ThirdParty\\imgui" FILES ${CYGI_IMGUI_SOURCES})
+source_group("ThirdParty\\ImGuiColorTextEdit" FILES ${CYGI_TEXTEDITOR_SOURCES})
 
 target_include_directories(CyGPUInspectorApp PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/Source
     ${CMAKE_SOURCE_DIR}/CyGPUInspectorCore/Include
     ${CYGI_THIRDPARTY}/imgui
-    ${CYGI_THIRDPARTY}/imgui/backends)
+    ${CYGI_THIRDPARTY}/imgui/backends
+    ${CYGI_THIRDPARTY}/ImGuiColorTextEdit)
 
 target_compile_definitions(CyGPUInspectorApp PRIVATE WIN32_LEAN_AND_MEAN UNICODE _UNICODE)
 
 target_link_libraries(CyGPUInspectorApp PRIVATE CyGPUInspectorCore CyGPUInspectorDecompiler CyGPUInspectorDatabase
-    d3d11 dxgi dxguid user32 gdi32 shell32 advapi32 ole32 windowscodecs)
+    d3d11 dxgi dxguid user32 gdi32 shell32 advapi32 ole32 windowscodecs winhttp comdlg32)
 
 set_target_properties(CyGPUInspectorApp PROPERTIES
     RUNTIME_OUTPUT_DIRECTORY "${CYGI_OUTPUT_DIR}"

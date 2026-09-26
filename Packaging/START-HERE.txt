@@ -61,7 +61,24 @@ A deep capture ("Deep capture" panel > "Capture now") saves the frame's final im
 Details: Docs\UnrealPlugin.md.
 
 
-4. APPLYING A MOD ON SOMEONE ELSE'S MACHINE
+4. THE AI ASSISTANT AND THE HLSL EDITOR
+----------------------------------------
+
+View > AI assistant, Connection tab: choose Codex or Claude Code (they use the login their CLI
+already has: run "codex login" or "claude auth login" once), or an OpenAI-compatible API, local
+(Ollama, LM Studio...) or remote. Click Connect, then ask in the Chat tab, for example "which part
+of the rendering seems to produce the bloom?". The assistant reads the frame itself with the tools.
+Options > Permission mode decides what it may do in the game without asking.
+
+In the Shader code panel, the HLSL tab shows each reconstruction coloured as HLSL, ready to edit,
+compile and inject. "Open in a window" gives the full editor in its own window: find and replace,
+compiler errors marked on their lines, test compilation for any profile (F7), Compile & Inject (F5).
+The AI Analysis tab cleans up, classifies or explains the selected shader.
+
+Details: Docs\AI.md and Docs\StandaloneApp.md.
+
+
+5. APPLYING A MOD ON SOMEONE ELSE'S MACHINE
 --------------------------------------------
 
 In the application: replace or disable shaders, then the "Mod export" panel > "Export package".
@@ -78,7 +95,7 @@ Careful: a shader replacement applies when the game creates its pipeline, so usu
 Draw suppressions, on the other hand, are immediate.
 
 
-5. WHAT IS IN THIS FOLDER
+6. WHAT IS IN THIS FOLDER
 --------------------------
 
   App\
@@ -95,7 +112,7 @@ Draw suppressions, on the other hand, are immediate.
 
   TestWithoutAGame\
     Demo.cmd                       starts the fake session + the application
-    RunTests.cmd                   runs the three test suites
+    RunTests.cmd                   runs the four test suites
     CyGPUInspectorFakeSession.exe  the synthetic producer
 
   Docs\                            the full documentation (Docs\fr\ for French)
@@ -104,7 +121,7 @@ Draw suppressions, on the other hand, are immediate.
   LICENSE                          GNU Affero General Public License v3 or later
 
 
-6. WHAT IT DOES NOT DO
+7. WHAT IT DOES NOT DO
 -----------------------
 
 Read before reporting a bug: Docs\Limitations.md

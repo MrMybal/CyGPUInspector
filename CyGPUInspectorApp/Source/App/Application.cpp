@@ -90,6 +90,7 @@ namespace cygi
 		// from a run has to reflect what was actually shown.
 		i18n::ScanLanguages();
 		i18n::SetLanguage(LoadPreferredLanguage());
+		LoadAssistantPreferences();
 
 		m_directory.Open();
 		RefreshSessions();
@@ -428,6 +429,8 @@ namespace cygi
 
 		// One MCP tool call is answered per pump, on this thread, with everything it needs at hand.
 		m_mcp.Pump([this](const Json &request) { return HandleMcpRequest(request); });
+		// The assistant's tools are answered the same way, by the same handler.
+		UpdateAssistant(delta_seconds);
 
 		// Rebuilding a graph of tens of thousands of events every frame would be wasteful; four
 		// times a second is well under what the eye notices and keeps the UI thread free.
@@ -502,11 +505,15 @@ namespace cygi
 		DrawEventsPanel();
 		DrawDeepCapturePanel();
 		DrawStatusBar();
+		if (pick_tabs)
+			ImGui::SetNextWindowFocus();
 		DrawDetailsPanel();
+		DrawAssistantPanel();
 		if (pick_tabs)
 			ImGui::SetNextWindowFocus();
 		DrawShaderCodePanel();
 		DrawModExportPanel();
+		DrawHlslEditorWindow();
 
 		if (m_show_demo)
 			ImGui::ShowDemoWindow(&m_show_demo);
@@ -570,6 +577,7 @@ namespace cygi
 
 		// Right: everything about whatever is selected.
 		ImGui::DockBuilderDockWindow("Details", right_top);
+		ImGui::DockBuilderDockWindow("AI assistant", right_top);
 		ImGui::DockBuilderDockWindow("Shader code", right_bottom);
 		ImGui::DockBuilderDockWindow("Mod export", right_bottom);
 
@@ -657,6 +665,14 @@ namespace cygi
 					WriteTranslationTemplate();
 				ImGui::EndMenu();
 			}
+			if (ImGui::MenuItem(TrId("AI assistant")))
+				m_assistant_focus = true;
+			if (ImGui::MenuItem(TrId("HLSL editor"), nullptr, m_hlsl_window))
+			{
+				m_hlsl_window = true;
+				m_hlsl_window_focus = true;
+			}
+			ImGui::Separator();
 			if (ImGui::MenuItem(TrId("Reset the layout")))
 			{
 				m_reset_layout = true;
@@ -1606,7 +1622,7 @@ namespace cygi
 	}
 
 	void Application::InjectHlsl(uint32_t shader_id, const std::string &hlsl, const char *origin,
-	                             bool exportable)
+	                             bool exportable, const std::string &entry_point)
 	{
 		if (!m_client || shader_id == 0 || hlsl.empty())
 			return;
@@ -1618,7 +1634,7 @@ namespace cygi
 			return;
 		}
 
-		const CompileResult compiled = CompileHlsl(hlsl, "main", profile, "replacement.hlsl");
+		const CompileResult compiled = CompileHlsl(hlsl, entry_point, profile, "replacement.hlsl");
 		if (!compiled.ok)
 		{
 			m_inject_message = "compilation failed: " +
@@ -1752,8 +1768,8 @@ namespace cygi
 		m_selected_pass = 0;
 		m_disassembly_shader = 0;
 		m_disassembly_lines.clear();
-		m_editor_shader = 0;
-		m_editor_text.clear();
+		// The HLSL document is kept: edits are work, and they can still be compiled or saved.
+		m_hlsl_shader = 0;
 		m_analysis.Clear();
 		m_preview.Close();
 		m_preview_resource = 0;
@@ -3356,126 +3372,13 @@ namespace cygi
 
 			if (ImGui::BeginTabItem(TrId("HLSL")))
 			{
-				if (!has_analysis)
-				{
-					ImGui::TextDisabled(Tr("Waiting for the disassembly of shader #%u..."), m_selected_shader);
-				}
-				else if (analysis.decompilations.empty())
-				{
-					ImGui::TextWrapped(Tr("Nothing shown here will ever be the original source: that does "
-					                      "not exist in the compiled shader. Every backend that can handle "
-					                      "this shader produces its own reconstruction, and they are kept "
-					                      "side by side so they can be compared."));
-					ImGui::Spacing();
-					if (m_analysis.IsPending(m_selected_shader))
-						ImGui::TextDisabled(Tr("Decompiling..."));
-					else if (ImGui::Button(TrId("Decompile")))
-						m_analysis.RequestDecompilation(m_selected_shader);
-
-					ImGui::Spacing();
-					ImGui::TextDisabled(Tr("Available backends:"));
-					for (const DecompilerBackend *backend : DecompilerRegistry::Instance().All())
-						ImGui::BulletText(Tr("%s %s (%s)"), backend->Info().name.c_str(),
-							backend->Info().version.c_str(), backend->Info().license.c_str());
-				}
-				else
-				{
-					if (m_selected_backend >= static_cast<int>(analysis.decompilations.size()))
-						m_selected_backend = 0;
-
-					// One tab per backend: no result is ever merged into or hidden by another.
-					if (ImGui::BeginTabBar("backends"))
-					{
-						for (size_t i = 0; i < analysis.decompilations.size(); ++i)
-						{
-							const DecompilationResult &result = analysis.decompilations[i];
-							if (!ImGui::BeginTabItem(result.backend_id.c_str()))
-								continue;
-
-							m_selected_backend = static_cast<int>(i);
-
-							ImVec4 colour(0.9f, 0.6f, 0.3f, 1.0f);
-							if (result.verdict == ValidationVerdict::equivalent_disassembly)
-								colour = ImVec4(0.55f, 0.9f, 0.55f, 1.0f);
-							else if (result.verdict == ValidationVerdict::compiles)
-								colour = ImVec4(0.9f, 0.85f, 0.5f, 1.0f);
-
-							ImGui::TextColored(colour, "%s", ValidationVerdictName(result.verdict));
-							ImGui::SameLine();
-							ImGui::TextDisabled(Tr("(%s)"), result.validation_messages.c_str());
-							ImGui::SameLine();
-							if (ImGui::SmallButton(TrId("Copy")))
-								ImGui::SetClipboardText(result.hlsl.c_str());
-
-							ImGui::TextDisabled(Tr("AI reconstruction: none. This is a decompiler output, "
-							                       "version %s, in %.1f ms."), result.backend_version.c_str(),
-								result.milliseconds);
-							if (!result.notes.empty())
-								ImGui::TextWrapped("%s", result.notes.c_str());
-
-							// Edit, compile and inject: the point of a reconstruction is to change it.
-							if (m_editor_shader != m_selected_shader || m_editor_text.empty())
-							{
-								m_editor_text = result.hlsl;
-								m_editor_shader = m_selected_shader;
-							}
-
-							if (ImGui::SmallButton(TrId("Reset to backend output")))
-								m_editor_text = result.hlsl;
-							ImGui::SameLine();
-							if (ImGui::SmallButton(TrId("Compile")))
-							{
-								const std::string profile = ProfileOf(m_selected_shader);
-								const CompileResult check = CompileHlsl(m_editor_text, "main", profile,
-									"edited.hlsl");
-								m_inject_message = check.ok
-									? "compiles as " + profile
-									: "compilation failed: " + (check.messages.empty() ? check.error
-										: check.messages);
-							}
-							ImGui::SameLine();
-							ImGui::BeginDisabled(!IsLive());
-							if (ImGui::SmallButton(TrId("Compile & Inject")))
-								InjectHlsl(m_selected_shader, m_editor_text);
-							ImGui::SameLine();
-							if (ImGui::SmallButton(TrId("Restore original")))
-							{
-								m_client->SendShaderCommand(ShaderCommand::restore, m_selected_shader);
-								m_inject_message = "the original shader is back";
-							}
-							ImGui::EndDisabled();
-
-							if (!m_inject_message.empty())
-								ImGui::TextWrapped("%s", m_inject_message.c_str());
-
-							ImGui::Separator();
-							ImGui::InputTextMultiline("##hlsl", &m_editor_text[0], m_editor_text.size() + 1,
-								ImVec2(-1.0f, -1.0f), ImGuiInputTextFlags_AllowTabInput |
-								ImGuiInputTextFlags_CallbackResize, [](ImGuiInputTextCallbackData *data) {
-									if (data->EventFlag == ImGuiInputTextFlags_CallbackResize)
-									{
-										std::string *text = static_cast<std::string *>(data->UserData);
-										text->resize(static_cast<size_t>(data->BufTextLen));
-										data->Buf = &(*text)[0];
-									}
-									return 0;
-								}, &m_editor_text);
-
-							ImGui::EndTabItem();
-						}
-						ImGui::EndTabBar();
-					}
-				}
+				DrawHlslTab(analysis, has_analysis);
 				ImGui::EndTabItem();
 			}
 
 			if (ImGui::BeginTabItem(TrId("AI Analysis")))
 			{
-				ImGui::TextDisabled(Tr("AI assistance arrives with milestone 9."));
-				ImGui::Spacing();
-				ImGui::TextWrapped(Tr("It will work on the disassembly and the reconstructed HLSL, never "
-				                      "instead of them, and every result will be labelled as an AI "
-				                      "reconstruction with its confidence."));
+				DrawAiAnalysisTab();
 				ImGui::EndTabItem();
 			}
 

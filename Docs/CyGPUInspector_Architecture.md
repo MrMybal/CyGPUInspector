@@ -360,11 +360,14 @@ Three levels, `Read Only` by default, changeable only in the App's interface. Th
 
 ## 13. AI (§30, §31, §40, §56)
 
-The App embeds no model. Two paths:
+The App embeds no model. Two paths, over the same tools and the same handler:
 
-1. **An external agent over MCP** — the main path: the AI walks the data itself.
-2. **Assisted jobs** — HLSL clean-up, classification, explanation, started from the interface with
-   an API key the user supplies, run in the background, results cached.
+1. **The built-in AI assistant** — a panel of the App, designed like CyRSAssistant's: a provider
+   (Codex CLI, Claude Code CLI, an OpenAI-compatible or local API), a bounded loop in which the model
+   calls CyGPUInspector's tools one at a time, three permission modes, approvals in the chat. Its
+   shader jobs (HLSL clean-up, classification, explanation) store their results as annotations.
+   Provider calls run on worker threads; tools run on the UI thread, like MCP calls.
+2. **An external agent over MCP** — the agent walks the data itself from its own application.
 
 Non-negotiable rules:
 
@@ -426,7 +429,7 @@ session), resources and GPU time.
 | 6 | Multi-backend decompilation + validation | done (4 backends shipped) |
 | 7 | Runtime control (disable / highlight / replace / restore) | done |
 | 8 | GPU profiling (pass → shader → draw → full) | done |
-| 9 | AI (labelling, tags, annotations, snapshot) | done; API jobs still to do |
+| 9 | AI (labelling, tags, annotations, snapshot, built-in assistant, shader jobs) | done |
 | 10 | MCP server (read only, then debug, then modification) | done |
 | 11 | Offline captures, opening, comparison | done |
 | 12 | The two captures: runtime timeline and deep capture | done |

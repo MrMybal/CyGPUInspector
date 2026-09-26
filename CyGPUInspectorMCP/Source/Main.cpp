@@ -10,6 +10,7 @@
 // Copyright (C) 2026 Cyberalien. Licensed under the GNU AGPL v3 or later.
 #include <CyGPUInspectorCore/ControlPipe.hpp>
 #include <CyGPUInspectorCore/Json.hpp>
+#include <CyGPUInspectorCore/McpTools.hpp>
 #include <CyGPUInspectorCore/Protocol.hpp>
 #include <CyGPUInspectorCore/Version.hpp>
 
@@ -25,76 +26,8 @@
 
 namespace
 {
-	struct ToolDefinition
-	{
-		const char *name;
-		const char *description;
-		const char *arguments;   // JSON schema properties, or "" for none
-	};
-
-	// Section 49 of the brief. The descriptions matter: they are what an agent reads to decide
-	// what to call, so they say what the data means and what it does not.
-	const ToolDefinition kTools[] = {
-		{ "get_session", "What CyGPUInspector is currently looking at: the connected game or the open capture.", "" },
-		{ "get_current_frame", "Counters of the frame currently held: draws, dispatches, events, CPU and GPU time.", "" },
-
-		{ "list_shaders", "Every shader seen. Optional: query (text filter), used_this_frame (bool), limit.",
-		  "\"query\":{\"type\":\"string\"},\"used_this_frame\":{\"type\":\"boolean\"},\"limit\":{\"type\":\"integer\"}" },
-		{ "search_shaders", "Shaders used in the current frame matching a text query on stage, format or signature.",
-		  "\"query\":{\"type\":\"string\"},\"limit\":{\"type\":\"integer\"}" },
-		{ "inspect_shader", "Everything known about one shader, including its reflected bindings when analysed.",
-		  "\"shader_id\":{\"type\":\"integer\"}" },
-		{ "get_shader_disassembly", "The DXBC or DXIL disassembly of a shader. Starts the work if needed.",
-		  "\"shader_id\":{\"type\":\"integer\"}" },
-		{ "get_shader_decompiled_hlsl", "HLSL reconstructions of a shader, one per backend, each with its validation verdict. These are reconstructions, never the original source.",
-		  "\"shader_id\":{\"type\":\"integer\"}" },
-		{ "decompile_shader", "Runs every decompiler backend on a shader and returns all of their outputs.",
-		  "\"shader_id\":{\"type\":\"integer\"}" },
-		{ "get_shader_draw_calls", "The indices of the draws and dispatches that ran a shader in the current frame.",
-		  "\"shader_id\":{\"type\":\"integer\"},\"limit\":{\"type\":\"integer\"}" },
-		{ "get_shader_timing", "GPU time attributed to a shader. Needs a profiling tracking level.",
-		  "\"shader_id\":{\"type\":\"integer\"}" },
-
-		{ "list_resources", "Every resource seen. Optional: query, render_targets_only, limit.",
-		  "\"query\":{\"type\":\"string\"},\"render_targets_only\":{\"type\":\"boolean\"},\"limit\":{\"type\":\"integer\"}" },
-		{ "search_resources", "Resources matching a text query on kind, format or usage.",
-		  "\"query\":{\"type\":\"string\"},\"limit\":{\"type\":\"integer\"}" },
-		{ "inspect_resource", "Everything known about one resource, including its lifetime and per frame access counts.",
-		  "\"resource_id\":{\"type\":\"integer\"}" },
-		{ "get_resource_writers", "The passes that wrote a resource in the analysed frame.",
-		  "\"resource_id\":{\"type\":\"integer\"}" },
-		{ "get_resource_readers", "The passes that read a resource in the analysed frame.",
-		  "\"resource_id\":{\"type\":\"integer\"}" },
-
-		{ "get_frame_graph", "The reconstructed passes and the dependencies between them. No game names its passes: every name is derived and carries its confidence.", "" },
-		{ "get_passes", "The reconstructed passes alone, without the dependency edges.", "" },
-		{ "inspect_draw", "One command of the frame: its pipeline, shaders, targets, counts and GPU time.",
-		  "\"event_index\":{\"type\":\"integer\"}" },
-		{ "inspect_dispatch", "Same as inspect_draw, for a compute dispatch.",
-		  "\"event_index\":{\"type\":\"integer\"}" },
-
-		{ "disable_shader", "Makes the game skip every draw that uses this shader. Needs Debug Control.",
-		  "\"shader_id\":{\"type\":\"integer\"}" },
-		{ "enable_shader", "Undoes disable_shader. Needs Debug Control.",
-		  "\"shader_id\":{\"type\":\"integer\"}" },
-		{ "highlight_shader", "Replaces a shader with a generated one that writes magenta. Needs Debug Control.",
-		  "\"shader_id\":{\"type\":\"integer\"}" },
-		{ "capture_frame", "Saves the current frame as a capture on disk. Needs Debug Control.", "" },
-		{ "start_deep_capture", "Arms the expensive one shot capture in the game: every descriptor bound to every command, the pipeline state and the barriers, for a few frames. buffers (default true) also saves every texture the last captured frame wrote to, as PNG and DDS, in the capture's folder. Needs Debug Control.",
-		  "\"frames\":{\"type\":\"integer\"},\"bindings\":{\"type\":\"boolean\"},\"barriers\":{\"type\":\"boolean\"},\"per_draw_timing\":{\"type\":\"boolean\"},\"buffers\":{\"type\":\"boolean\"}" },
-		{ "get_capture_state", "Where the deep capture has got to, how much it recorded, the folder it was saved to and each saved buffer with its files.", "" },
-		{ "get_frame_timeline", "The passes of the analysed frame in order, each with where it starts on the GPU, how long it lasts, its share of the frame, and whether that length was measured or placed between two measurements. This is the runtime capture, which costs the game almost nothing. include_measurements adds every raw timestamp.",
-		  "\"include_measurements\":{\"type\":\"boolean\"}" },
-		{ "get_command_state", "What one command was given: every descriptor on every slot, the viewport, the scissor and the fixed function state of its pipeline. Needs a deep capture to have run.",
-		  "\"event_index\":{\"type\":\"integer\"}" },
-
-		{ "compile_shader", "Compiles HLSL for the profile of a shader without injecting it. Needs Shader Modification.",
-		  "\"shader_id\":{\"type\":\"integer\"},\"hlsl\":{\"type\":\"string\"}" },
-		{ "replace_shader", "Compiles HLSL and injects it in place of a shader, live. Needs Shader Modification.",
-		  "\"shader_id\":{\"type\":\"integer\"},\"hlsl\":{\"type\":\"string\"}" },
-		{ "restore_shader", "Puts the original shader back. Needs Debug Control.",
-		  "\"shader_id\":{\"type\":\"integer\"}" },
-	};
+	using ToolDefinition = cygi::McpToolDefinition;
+	constexpr const auto &kTools = cygi::kMcpTools;
 
 	void WriteMessage(const cygi::Json &message)
 	{

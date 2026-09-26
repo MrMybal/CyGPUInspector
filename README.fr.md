@@ -57,10 +57,15 @@ Jeu (D3D11 / D3D12)
        buffer de la frame en PNG à regarder et en DDS avec les données, listés dans capture.json
      · désassemblage DXBC et DXIL, réflexion des bindings, cache persistant par signature
      · décompilation en HLSL par quatre backends, validée par recompilation
-     · édition du HLSL, compilation et injection dans le jeu, highlight magenta
+     · éditeur HLSL : coloration syntaxique, erreurs marquées sur leurs lignes, compilation de test
+       pour n'importe quel profil, injection dans le jeu — dans l'onglet HLSL ou une fenêtre à
+       part ; highlight magenta
      · temps GPU par commande, par passe et par shader
      · tags, noms et annotations persistants par signature, chacun étiqueté par son origine
      · captures offline : sauvegarde, réouverture sans le jeu, comparaison de deux frames
+     · assistant IA : CLI Codex, CLI Claude Code, API compatible OpenAI ou locale ; il lit la frame
+       avec les outils, selon le mode d'autorisation choisi — et nettoie, classifie ou explique un
+       shader, chaque résultat étiqueté avec son modèle
      · snapshot d'analyse IA : tout ce qu'un modèle doit lire, dans un répertoire lisible
      · export d'un mod : ce qu'on a remplacé ou désactivé, écrit dans un dossier .cygimod
      · serveur MCP local, lecture seule par défaut, chaque appel journalisé
@@ -86,8 +91,16 @@ que le moteur de rendu démarre, comme le plugin RenderDoc d'Unreal charge Rende
 standalone si besoin, et les buffers capturés portent les noms qu'Unreal donne à ses render
 targets. Voir [Docs/fr/UnrealPlugin.md](Docs/fr/UnrealPlugin.md).
 
-Ce qui n'y est pas encore : les jobs IA connectés à une API (le MCP couvre le chemin principal),
-SQLite pour les métadonnées, les profils par jeu, Vulkan et OpenGL.
+Ce qui n'y est pas encore : SQLite pour les métadonnées, les profils par jeu, Vulkan et OpenGL.
+
+## L'assistant IA
+
+`Affichage > Assistant IA`. Choisissez un fournisseur dans **Connexion** — Codex ou Claude Code avec
+la connexion que leur CLI a déjà, ou une API compatible OpenAI, locale ou distante — puis posez votre
+question dans **Tchat** : *quelle partie du rendu semble produire le bloom ?* L'assistant lit
+lui-même le frame graph, les ressources, les shaders et les timings avec les outils de
+CyGPUInspector, dans un budget, et demande avant de toucher au jeu si vous choisissez **À la
+demande**. Voir [Docs/fr/AI.md](Docs/fr/AI.md).
 
 ## Langue
 
@@ -100,7 +113,7 @@ Le français est fourni (`Lang/fr.json`). Ajouter une langue consiste à copier 
 le remplir et le déposer dans `Lang/` ; aucune recompilation. Voir
 [Docs/fr/Translating.md](Docs/fr/Translating.md).
 
-## Brancher un agent IA
+## Brancher un agent IA externe
 
 Pointer un client MCP sur `bin/Release/CyGPUInspectorMCP.exe`. Il parle MCP sur stdio et relaie
 tout vers le standalone. Le niveau de permission se règle **dans le standalone**, jamais dans le

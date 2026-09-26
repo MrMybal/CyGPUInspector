@@ -4,6 +4,8 @@
 #pragma once
 
 #include "Analysis/FrameGraph.hpp"
+#include "Assistant/Assistant.hpp"
+#include "Editor/HlslEditor.hpp"
 #include "Analysis/FrameTimeline.hpp"
 #include "Analysis/FrameTrack.hpp"
 #include "Mcp/McpBridge.hpp"
@@ -107,6 +109,10 @@ namespace cygi
 		// Interface language. English is the base; a catalogue in Lang/ translates it.
 		std::string LoadPreferredLanguage() const;
 		void SavePreferredLanguage(const std::string &code) const;
+		// CyGPUInspectorApp.settings.json beside the executable: one object, each part of the
+		// interface owning a key of it. Saving reads the file again, so no part erases another.
+		static Json LoadPreferences();
+		static void SavePreferences(const Json &root);
 		void WriteTranslationTemplate();
 		void DrawMcpPanel();
 		void DrawDetailsPanel();
@@ -123,7 +129,8 @@ namespace cygi
 		// Runtime shader control: both go through the same replacement mechanism.
 		void HighlightShader(uint32_t shader_id);
 		void InjectHlsl(uint32_t shader_id, const std::string &hlsl,
-		                const char *origin = "edited HLSL", bool exportable = true);
+		                const char *origin = "edited HLSL", bool exportable = true,
+		                const std::string &entry_point = "main");
 		std::string ProfileOf(uint32_t shader_id) const;
 
 		// The model the panels read: a live session, or an opened capture. Null when neither.
@@ -139,6 +146,29 @@ namespace cygi
 		void CreateAnalysisSnapshot();
 		// Answers one MCP tool call, on the UI thread, with the model lock held inside.
 		Json HandleMcpRequest(const Json &request);
+
+		// The AI assistant: its panel, and the AI Analysis tab. Defined in AssistantPanel.cpp.
+		void DrawAssistantPanel();
+		void DrawAssistantChat(bool ready);
+		void DrawAiAnalysisTab();
+		void UpdateAssistant(double delta_seconds);
+		void ConnectAssistant();
+		void LoadAssistantPreferences();
+		void SaveAssistantPreferences();
+		Json AssistantSelection() const;
+		void RequestShaderJob(assistant::JobKind kind, uint32_t shader_id);
+		bool GatherShaderData(uint32_t shader_id, Json &out, Sha256Digest &signature, std::string &error, bool &wait);
+		void StoreJobOutcome(const assistant::JobOutcome &outcome);
+
+		// HLSL: the coloured tab and the editor window. Defined in HlslEditorPanel.cpp.
+		void DrawHlslTab(const ShaderAnalysis &analysis, bool has_analysis);
+		void DrawHlslEditorWindow();
+		void OpenHlslEditor(uint32_t shader_id, const std::string &text, const std::string &origin, bool open_window);
+		bool HlslModified() const;
+		void CompileEditorHlsl();
+		void InjectEditorHlsl();
+		void OpenHlslFile();
+		void SaveHlslFile();
 
 		// Tags and annotations, kept per signature so they survive everything.
 		void LoadNotesFor(uint32_t shader_id);
@@ -229,9 +259,43 @@ namespace cygi
 		char m_disassembly_filter[128] = {};
 		bool m_disassembly_wrap = false;
 		int m_selected_backend = 0;
-		std::string m_editor_text;
-		uint32_t m_editor_shader = 0;
 		std::string m_inject_message;
+
+		// The HLSL document of the HLSL tab and of the editor window, and the shader it belongs to.
+		HlslEditor m_hlsl_editor;
+		uint32_t m_hlsl_shader = 0;
+		std::string m_hlsl_origin;            // "cygi-dxbc 0.1", "AI clean-up (model)", "file x.hlsl"
+		std::string m_hlsl_file;
+		std::string m_hlsl_status;
+		std::vector<CompilerMessage> m_hlsl_messages;
+		char m_hlsl_entry[64] = "main";
+		char m_hlsl_profile[32] = {};
+		bool m_hlsl_window = false;
+		bool m_hlsl_window_focus = false;
+
+		// The AI assistant, and what its panel and the AI Analysis tab keep between frames.
+		assistant::Assistant m_assistant;
+		int m_assistant_provider = 0;
+		char m_assistant_model[160] = {};
+		char m_assistant_endpoint[1024] = {};
+		char m_assistant_key[512] = {};       // in memory only, never saved
+		char m_assistant_input[4096] = {};
+		uint64_t m_assistant_seen_version = 0;
+		bool m_assistant_focus = false;
+		bool m_assistant_refocus = false;
+		// A shader job waits here until the disassembly and the decompilation it sends are ready.
+		struct AiRequest
+		{
+			bool active = false;
+			assistant::JobKind kind = assistant::JobKind::explanation;
+			uint32_t shader_id = 0;
+			double waited = 0.0;
+			double since_try = 0.0;
+		};
+		AiRequest m_ai_request;
+		assistant::Text m_ai_notice;
+		HlslEditor m_ai_preview;              // read-only view of an AI clean-up
+		int m_ai_preview_index = -1;
 
 		// Deep capture controls and what came back.
 		int m_deep_frames = 1;

@@ -169,9 +169,28 @@ namespace cygi
 							return Fail("truncated \\u escape");
 						const std::string digits = m_text.substr(m_cursor, 4);
 						m_cursor += 4;
-						const unsigned int code = static_cast<unsigned int>(
+						unsigned int code = static_cast<unsigned int>(
 							std::strtoul(digits.c_str(), nullptr, 16));
-						// Enough for the ASCII and Latin-1 range these files actually contain.
+						// A character outside the basic plane comes as a pair of escapes. Model
+						// replies use them for emoji: joined here, they become one 4-byte UTF-8
+						// sequence instead of two invalid 3-byte ones.
+						if (code >= 0xD800 && code <= 0xDBFF && m_cursor + 6 <= m_text.size() &&
+						    m_text[m_cursor] == '\\' && m_text[m_cursor + 1] == 'u')
+						{
+							const unsigned int low = static_cast<unsigned int>(
+								std::strtoul(m_text.substr(m_cursor + 2, 4).c_str(), nullptr, 16));
+							if (low >= 0xDC00 && low <= 0xDFFF)
+							{
+								m_cursor += 6;
+								code = 0x10000 + ((code - 0xD800) << 10) + (low - 0xDC00);
+								out += static_cast<char>(0xF0 | (code >> 18));
+								out += static_cast<char>(0x80 | ((code >> 12) & 0x3F));
+								out += static_cast<char>(0x80 | ((code >> 6) & 0x3F));
+								out += static_cast<char>(0x80 | (code & 0x3F));
+								break;
+							}
+						}
+						// Otherwise the ASCII, Latin-1 and basic plane range.
 						if (code < 0x80)
 						{
 							out += static_cast<char>(code);

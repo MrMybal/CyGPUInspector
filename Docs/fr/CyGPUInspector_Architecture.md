@@ -369,9 +369,15 @@ Chaque appel d'un niveau élevé est journalisé et visible dans l'App.
 
 L'App n'embarque aucun modèle. Deux chemins :
 
-1. **Agent externe via MCP** — le chemin principal : l'IA navigue elle-même dans les données.
-2. **Jobs assistés** — nettoyage de HLSL, classification, explication, déclenchés depuis l'UI avec
-   une clé API fournie par l'utilisateur, exécutés en tâche de fond, résultats mis en cache.
+1. **L'assistant IA intégré** — un panneau de l'App, conçu comme celui de CyRSAssistant : un
+   fournisseur (CLI Codex, CLI Claude Code, API compatible OpenAI ou locale), une boucle bornée où le
+   modèle appelle les outils de CyGPUInspector un par un, trois modes d'autorisation, des
+   autorisations dans le tchat. Ses tâches sur les shaders (nettoyage de HLSL, classification,
+   explication) enregistrent leurs résultats comme annotations. Les appels au fournisseur tournent
+   dans des threads de travail ; les outils tournent sur le thread de l'interface, comme les appels
+   MCP.
+2. **Agent externe via MCP** — l'agent navigue lui-même dans les données depuis sa propre
+   application.
 
 Règles non négociables :
 
@@ -434,6 +440,6 @@ shaders (par signature, pas par identifiant, qui est local à une session), ress
 | 6 | Décompilation multi-backend + validation | fait (1 backend livré) |
 | 7 | Contrôle runtime (disable / highlight / replace / restore) | fait |
 | 8 | Profiling GPU (passe → shader → draw → full) | fait |
-| 9 | IA (étiquetage, tags, annotations, snapshot) | fait ; jobs API à faire |
+| 9 | IA (étiquetage, tags, annotations, snapshot, assistant intégré, tâches sur les shaders) | fait |
 | 10 | Serveur MCP (read-only puis debug puis modification) | fait |
 | 11 | Captures offline, ouverture, comparaison | fait |

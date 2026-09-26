@@ -26,7 +26,16 @@ CyGPUInspectorApp/Source
 ├── App/
 │   ├── Application       panels, selection, actions
 │   ├── CapturePanels     the frame timeline and the deep capture panel
-│   └── ModExportPanel    mod export, language preference
+│   ├── AssistantPanel    the AI assistant panel and the AI Analysis tab
+│   ├── HlslEditorPanel   the coloured HLSL tab and the HLSL editor window
+│   └── ModExportPanel    mod export, preferences
+├── Assistant/
+│   ├── AssistantProvider   Codex CLI, Claude Code CLI, OpenAI-compatible and local APIs
+│   ├── AssistantAgent      the bounded tool loop and the shader jobs
+│   └── Assistant           connection, conversation, approvals, worker threads
+├── Editor/
+│   ├── HlslEditor          ImGuiColorTextEdit with HLSL colouring and error marks
+│   └── CompilerMessages    FXC and DXC messages as lines of the source
 ├── Analysis/
 │   ├── FrameGraph              clustering, dependencies, pass classification
 │   └── ShaderAnalysisService   disassembly and reflection on a background thread, with a cache
@@ -56,7 +65,9 @@ CyGPUInspectorApp/Source
 | Resources | id, kind, dimensions, format, mips, writes/frame, usage; "render targets only" filter |
 | Frame events | the whole frame, virtualised; the selected shader's events are highlighted, and three filters reduce the list to the draws, to one shader's commands or to one pass's |
 | Preview | the shared GPU image, RGB/R/G/B/A channel, linearised depth, range, mip, slice |
-| Shader code | Disassembly / Bindings / HLSL / AI Analysis / Tools tabs |
+| Shader code | Disassembly / Bindings / HLSL / AI Analysis / Tools tabs. The HLSL tab shows each decompiler's reconstruction coloured as HLSL, editable, with Compile, Compile & Inject and Open in a window |
+| AI assistant | provider connection, chat with the assistant that reads the frame with CyGPUInspector's tools, permission mode. See [AI.md](AI.md) |
+| HLSL editor | a window of its own (View > HLSL editor): the full editor, see below |
 | Mod export | what was replaced or disabled, and the package it exports to |
 | Captures | saving, reopening and comparing offline captures |
 | MCP | permission level and the log of every call |
@@ -68,6 +79,26 @@ and its render target. That is the navigation loop asked for in §84. It runs th
 well: picking a pass, in the bars or in the list, scrolls Frame events to that pass's first
 command rather than leaving the list where it was, and the resources and shaders listed beside
 the bars are themselves the selection.
+
+## HLSL editor
+
+The HLSL of the selected shader is one document, shown either in the HLSL tab or in a window of its
+own (**Open in a window**, or View > HLSL editor). That window is a separate Windows window with the
+system's title bar: it can go to another screen and be maximised. It has
+
+* syntax colouring, line numbers, bracket matching, undo and redo, find and replace (Ctrl+F),
+  word wrap, whitespace and a minimap (ImGuiColorTextEdit, MIT);
+* **Load a reconstruction**: any decompiler's output for this shader, or any AI clean-up of it;
+* an entry point and a profile to **test the compilation** for (F7), prefilled with the shader's
+  own profile; FXC for Shader Model 5, DXC for Shader Model 6;
+* the compiler's errors and warnings **marked on their lines**, with the message as a tooltip, and
+  listed under the editor: clicking one moves to its line;
+* **Compile & Inject** (F5) into the running game, with the shader's own profile, and **Restore
+  original**;
+* opening and saving `.hlsl` files (Ctrl+O, Ctrl+S).
+
+The document belongs to one shader. Selecting another shader loads its reconstruction, unless the
+document holds edits: those are kept, and the HLSL tab offers to load the new shader instead.
 
 A first run opens on a built layout rather than a pile of windows in a corner: what you are
 connected to and what to pick from on the left, the frame in the middle, its commands underneath,

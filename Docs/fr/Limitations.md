@@ -93,8 +93,15 @@ documentation, plutôt que prises pour des bugs.
 
 ## Limites de l'IA et du MCP (milestones 9 et 10)
 
-* Le standalone **n'appelle aucune API d'IA** : le chemin implémenté est le MCP, où c'est un agent
-  externe qui raisonne. Les jobs assistés avec clé API restent à faire.
+* L'assistant IA répond **une fois son travail terminé**, sans streaming. Avec une CLI, chaque
+  étape de sa boucle relance la CLI, ce qui prend quelques secondes ; une API est plus rapide.
+* Un fournisseur API doit accepter le mode JSON (`response_format: {"type":"json_object"}`). Un
+  serveur local qui ne l'accepte pas n'est pas pris en charge.
+* L'assistant garde sa conversation en mémoire seulement : elle disparaît à la fermeture de
+  l'application. Les résultats des tâches sur les shaders sont conservés, comme annotations du
+  shader.
+* Ce que l'assistant dit du rôle d'une passe ou d'un shader est une hypothèse, aussi sûre qu'elle
+  paraisse : la confiance qu'il donne est sa propre estimation, pas une mesure.
 * Le serveur MCP n'accepte **qu'un proxy à la fois**.
 * Un outil qui demande un travail long le démarre et répond « redemande dans un instant » plutôt
   que de bloquer l'interface.

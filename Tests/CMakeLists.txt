@@ -1,5 +1,6 @@
 # Tests — run without a game and without a GPU.
 #   CyGPUInspectorCoreTests    self checks of hashing, ring buffer, DXBC parsing, session directory
+#   CyGPUInspectorAssistantTests  the AI assistant and the HLSL editor parsing, with fake providers
 #   CyGPUInspectorFakeSession  a synthetic add-on, to exercise CyGPUInspectorApp end to end
 
 add_executable(CyGPUInspectorCoreTests CyGPUInspectorCoreTests/Main.cpp)
@@ -46,6 +47,23 @@ target_link_libraries(CyGPUInspectorShaderTests PRIVATE
 set_target_properties(CyGPUInspectorShaderTests PROPERTIES
     RUNTIME_OUTPUT_DIRECTORY "${CYGI_OUTPUT_DIR}")
 
+# The AI assistant and the HLSL editor's parsing: a scripted provider and a loopback HTTP server
+# playing an OpenAI-compatible API. No GPU, no game, nothing sent outside the machine.
+add_executable(CyGPUInspectorAssistantTests
+    CyGPUInspectorAssistantTests/Main.cpp
+    ${CMAKE_SOURCE_DIR}/CyGPUInspectorApp/Source/Assistant/AssistantText.cpp
+    ${CMAKE_SOURCE_DIR}/CyGPUInspectorApp/Source/Assistant/AssistantProvider.cpp
+    ${CMAKE_SOURCE_DIR}/CyGPUInspectorApp/Source/Assistant/AssistantAgent.cpp
+    ${CMAKE_SOURCE_DIR}/CyGPUInspectorApp/Source/Assistant/Assistant.cpp
+    ${CMAKE_SOURCE_DIR}/CyGPUInspectorApp/Source/Editor/CompilerMessages.cpp
+    ${CMAKE_SOURCE_DIR}/CyGPUInspectorApp/Source/Mcp/McpBridge.cpp)
+target_include_directories(CyGPUInspectorAssistantTests PRIVATE ${CMAKE_SOURCE_DIR}/CyGPUInspectorApp/Source)
+target_link_libraries(CyGPUInspectorAssistantTests PRIVATE
+    CyGPUInspectorCore CyGPUInspectorDatabase winhttp ws2_32 shell32)
+set_target_properties(CyGPUInspectorAssistantTests PROPERTIES
+    RUNTIME_OUTPUT_DIRECTORY "${CYGI_OUTPUT_DIR}")
+
 add_test(NAME CoreTests COMMAND CyGPUInspectorCoreTests)
 add_test(NAME ShaderTests COMMAND CyGPUInspectorShaderTests)
 add_test(NAME IpcTests COMMAND CyGPUInspectorIpcTests)
+add_test(NAME AssistantTests COMMAND CyGPUInspectorAssistantTests)

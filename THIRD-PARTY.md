@@ -12,6 +12,7 @@ and an AGPL v3 work to be linked into a single one.
 | **ReShade SDK** (headers only) | 6.8.x, API 20 | BSD-3-Clause | the add-on | `ThirdParty/reshade/` |
 | **Dear ImGui** (docking) | 1.93 WIP | MIT | the standalone | `ThirdParty/imgui/` |
 | **Dear ImGui** (headers only) | 1.92.5 | MIT | the add-on overlay, matching ReShade's own version | `ThirdParty/reshade_imgui/` |
+| **ImGuiColorTextEdit** | commit `99fcb0d` | MIT | the HLSL editor of the standalone: colouring, undo, find, error marks | `ThirdParty/ImGuiColorTextEdit/` |
 | **3Dmigoto HLSL decompiler** | commit `8f329bd` | **GPL-3.0** | the `hlsldecompiler` decompilation backend | `ThirdParty/hlsldecompiler/` |
 | **dxil-spirv** | 2.73.0, commit `bed30ff` | MIT | the `dxil-spirv` backend, first half: DXIL → SPIR-V | `ThirdParty/dxil-spirv/` |
 | **SPIRV-Cross** | commit `be71ee8c` | Apache-2.0 OR MIT | the `dxil-spirv` backend, second half: SPIR-V → HLSL | `ThirdParty/SPIRV-Cross/` |

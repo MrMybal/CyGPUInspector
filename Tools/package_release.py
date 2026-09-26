@@ -82,7 +82,8 @@ def main():
         copy(os.path.join(ROOT, 'Lang', lang), os.path.join(stage, 'App', 'Lang', lang))
     for addon in ('CyGPUInspectorRS.addon64', 'CyGPUInjector.addon64'):
         copy(os.path.join(BIN, addon), os.path.join(stage, 'Addons', addon))
-    for exe in ('CyGPUInspectorCoreTests.exe', 'CyGPUInspectorIpcTests.exe', 'CyGPUInspectorShaderTests.exe',
+    for exe in ('CyGPUInspectorCoreTests.exe', 'CyGPUInspectorAssistantTests.exe', 'CyGPUInspectorIpcTests.exe',
+                'CyGPUInspectorShaderTests.exe',
                 'CyGPUInspectorFakeSession.exe', 'CyGPUInspectorMCP.exe'):
         copy(os.path.join(BIN, exe), os.path.join(stage, 'TestWithoutAGame', exe))
     # The IPC tests load the add-on the way the Unreal plugin does: it sits next to them.
@@ -148,6 +149,8 @@ def main():
         'ReShade/LICENSE-ReShade.txt': 'CyGPUInspectorUnreal/CyGPUInspector/Binaries/ThirdParty/CyGPUInspector/Win64/LICENSE-ReShade.txt',
         'ReShade/NOTICES-ReShade.txt': 'CyGPUInspectorUnreal/CyGPUInspector/Binaries/ThirdParty/CyGPUInspector/Win64/NOTICES-ReShade.txt',
         'DearImGui/LICENSE.txt': 'ThirdParty/imgui/LICENSE.txt',
+        'ImGuiColorTextEdit/LICENSE': 'ThirdParty/ImGuiColorTextEdit/LICENSE',
+        'ImGuiColorTextEdit/ORIGIN.md': 'ThirdParty/ImGuiColorTextEdit/ORIGIN.md',
         '3Dmigoto/LICENSE.GPL.txt': 'ThirdParty/hlsldecompiler/LICENSE.GPL.txt',
         '3Dmigoto/ORIGIN.md': 'ThirdParty/hlsldecompiler/ORIGIN.md',
         'dxil-spirv/LICENSE.MIT': 'ThirdParty/dxil-spirv/LICENSE.MIT',

@@ -63,7 +63,7 @@ CyGPUInspectorApp/Source
 | Assistant IA | connexion au fournisseur, tchat avec l'assistant qui lit la frame avec les outils de CyGPUInspector, mode d'autorisation. Voir [AI.md](AI.md) |
 | Éditeur HLSL | une fenêtre à part (Affichage > Éditeur HLSL) : l'éditeur complet, voir ci-dessous |
 | Mod export | ce qui a été remplacé ou désactivé, et le paquet vers lequel cela s'exporte |
-| Captures | enregistrement, réouverture et comparaison des captures hors ligne |
+| Captures | enregistrement, réouverture et comparaison des captures hors ligne : la comparaison liste les shaders qui n'ont tourné que dans une frame ou ont tourné différemment, et les ressources présentes d'un seul côté (§45). `compare_captures` la donne à un agent et à l'assistant IA, `live` désignant la frame du jeu connecté |
 | Profil du jeu | ce que l'outil retient du jeu : sessions, shaders nouveaux ou déjà connus, état enregistré des shaders désactivés et remplacés, captures du jeu. Voir [Database.md](Database.md) |
 | MCP | niveau de permission et journal de chaque appel |
 | Details | onglets Shader / Resource / Event / Log, avec les actions runtime et le graphe de dépendances |

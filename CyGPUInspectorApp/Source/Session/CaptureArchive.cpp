@@ -13,9 +13,11 @@
 #include <Windows.h>
 
 #include <algorithm>
+#include <cmath>
 #include <cstdio>
 #include <cstring>
 #include <fstream>
+#include <unordered_map>
 #include <unordered_set>
 
 namespace cygi
@@ -686,6 +688,111 @@ namespace cygi
 		if (a.HasSession() && b.HasSession() &&
 		    std::string(a.Session().process_name) != std::string(b.Session().process_name))
 			diff.notes.push_back("These two captures come from different processes.");
+
+		// ---- what ran in each frame -------------------------------------------------------
+		auto milliseconds = [](const SessionModel &model, const ShaderInfo &shader) {
+			return shader.gpu_ticks != 0 && model.Timings().IsValid() ? model.Timings().Milliseconds(shader.gpu_ticks) : -1.0;
+		};
+		std::unordered_map<std::string, const ShaderInfo *> by_signature_b;
+		for (const ShaderInfo &shader : b.Shaders())
+			if (shader.id != 0)
+				by_signature_b[shader.signature.ToHex()] = &shader;
+		std::unordered_set<std::string> seen;
+		for (const ShaderInfo &shader : a.Shaders())
+		{
+			if (shader.id == 0)
+				continue;
+			const std::string key = shader.signature.ToHex();
+			seen.insert(key);
+			const auto other = by_signature_b.find(key);
+			const ShaderInfo *in_b = other != by_signature_b.end() ? other->second : nullptr;
+
+			CaptureDiff::ShaderChange change;
+			change.signature = key;
+			change.stage = shader.stage;
+			change.id_a = shader.id;
+			change.calls_a = shader.draws_this_frame + shader.dispatches_this_frame;
+			change.ms_a = milliseconds(a, shader);
+			if (in_b != nullptr)
+			{
+				change.id_b = in_b->id;
+				change.calls_b = in_b->draws_this_frame + in_b->dispatches_this_frame;
+				change.ms_b = milliseconds(b, *in_b);
+			}
+
+			if (change.calls_a != 0 && change.calls_b == 0)
+				diff.used_only_in_a.push_back(change);
+			else if (change.calls_a == 0 && change.calls_b != 0)
+				diff.used_only_in_b.push_back(change);
+			else if (change.calls_a != 0 && change.calls_b != 0)
+			{
+				const bool timed = change.ms_a >= 0.0 && change.ms_b >= 0.0;
+				const double time_delta = timed ? std::abs(change.ms_b - change.ms_a) : 0.0;
+				// A change of time counts when it is not noise: at least 0.05 ms and 10 %.
+				const bool time_changed = timed && time_delta >= 0.05 && time_delta >= 0.1 * std::max(change.ms_a, change.ms_b);
+				if (change.calls_a != change.calls_b || time_changed)
+					diff.changed.push_back(change);
+			}
+		}
+		for (const ShaderInfo &shader : b.Shaders())
+		{
+			if (shader.id == 0 || seen.count(shader.signature.ToHex()) != 0)
+				continue;
+			if (shader.draws_this_frame + shader.dispatches_this_frame == 0)
+				continue;
+			CaptureDiff::ShaderChange change;
+			change.signature = shader.signature.ToHex();
+			change.stage = shader.stage;
+			change.id_b = shader.id;
+			change.calls_b = shader.draws_this_frame + shader.dispatches_this_frame;
+			change.ms_b = milliseconds(b, shader);
+			diff.used_only_in_b.push_back(change);
+		}
+
+		// The biggest changes first: that is what an explanation starts with.
+		auto weight = [](const CaptureDiff::ShaderChange &change) {
+			const double calls = std::abs(static_cast<double>(change.calls_b) - static_cast<double>(change.calls_a));
+			const double time = change.ms_a >= 0.0 || change.ms_b >= 0.0
+				? std::abs(std::max(change.ms_b, 0.0) - std::max(change.ms_a, 0.0)) * 1000.0 : 0.0;
+			return calls + time;
+		};
+		for (std::vector<CaptureDiff::ShaderChange> *list : { &diff.used_only_in_a, &diff.used_only_in_b, &diff.changed })
+			std::stable_sort(list->begin(), list->end(), [&](const auto &x, const auto &y) { return weight(x) > weight(y); });
+
+		// ---- resources ------------------------------------------------------------------------
+		auto resource_key = [](const ResourceInfo &resource) {
+			return std::to_string(static_cast<uint32_t>(resource.kind)) + "|" + std::to_string(resource.format) + "|" +
+				std::to_string(resource.width) + "x" + std::to_string(resource.height) + "|" + resource.name;
+		};
+		std::unordered_map<std::string, std::pair<const ResourceInfo *, int>> balance;
+		for (const ResourceInfo &resource : a.Resources())
+			if (resource.id != 0 && resource.alive)
+			{
+				auto &entry = balance[resource_key(resource)];
+				entry.first = &resource;
+				++entry.second;
+			}
+		for (const ResourceInfo &resource : b.Resources())
+			if (resource.id != 0 && resource.alive)
+			{
+				auto &entry = balance[resource_key(resource)];
+				if (entry.first == nullptr)
+					entry.first = &resource;
+				--entry.second;
+			}
+		for (const auto &item : balance)
+		{
+			if (item.second.second == 0)
+				continue;
+			CaptureDiff::ResourceChange change;
+			change.kind = item.second.first->kind;
+			change.format = item.second.first->format;
+			change.width = item.second.first->width;
+			change.height = item.second.first->height;
+			change.name = item.second.first->name;
+			change.count = static_cast<uint32_t>(std::abs(item.second.second));
+			(item.second.second > 0 ? diff.resources_only_in_a : diff.resources_only_in_b).push_back(change);
+		}
 
 		return diff;
 	}

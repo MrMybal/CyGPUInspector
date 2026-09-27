@@ -978,6 +978,26 @@ int main(int argc, char **argv)
 						"a capture compared with itself shows no difference");
 					Check(diff.only_in_a.empty() && diff.only_in_b.empty(),
 						"no shader is reported as exclusive to one side");
+					Check(diff.used_only_in_a.empty() && diff.used_only_in_b.empty() && diff.changed.empty() &&
+						diff.resources_only_in_a.empty() && diff.resources_only_in_b.empty(),
+						"and nothing is reported as having changed");
+
+					// Light off, light on: one shader stops running, another runs more.
+					if (cygi::ShaderInfo *ui = other.ShaderById(9))
+					{
+						ui->draws_this_frame = 0;
+						ui->dispatches_this_frame = 0;
+					}
+					if (cygi::ShaderInfo *gbuffer = other.ShaderById(4))
+						gbuffer->draws_this_frame += 100;
+					const cygi::CaptureDiff changed = cygi::CompareCaptures(reopened, other);
+					const cygi::ShaderInfo *ui_before = reopened.ShaderById(9);
+					Check(changed.used_only_in_a.size() == 1 && ui_before != nullptr &&
+						changed.used_only_in_a[0].signature == ui_before->signature.ToHex(),
+						"a shader that stops running is reported as used only in the first frame");
+					Check(changed.changed.size() == 1 && changed.changed[0].id_b == 4 &&
+						changed.changed[0].calls_b == changed.changed[0].calls_a + 100,
+						"a shader that runs more is reported with both counts");
 				}
 
 				std::filesystem::remove_all(directory, code);

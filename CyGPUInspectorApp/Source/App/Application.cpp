@@ -2648,6 +2648,148 @@ namespace cygi
 		// buttons use: InjectHlsl, the shader commands and the mod recorder. They take the model
 		// lock themselves, so it is let go here, or the first of them would wait for it forever.
 		lock.unlock();
+
+		// ---- comparing frames: read only, but they load captures and lock models themselves --------
+		if (tool == "list_captures")
+		{
+			RefreshCaptures();
+			Json list = Json::Array();
+			for (const CaptureInfo &info : m_captures)
+			{
+				Json entry = Json::Object();
+				entry["name"] = Json(info.path.filename().string());
+				entry["game"] = Json(info.process_name);
+				entry["api"] = Json(info.api);
+				entry["created"] = Json(info.created);
+				entry["frame"] = Json(info.frame_index);
+				entry["draws"] = Json(info.draw_count);
+				entry["dispatches"] = Json(info.dispatch_count);
+				entry["shaders"] = Json(info.shader_count);
+				list.Push(entry);
+			}
+			Json result = Json::Object();
+			result["captures"] = list;
+			result["live_available"] = Json(m_client != nullptr);
+			return Success(std::move(result));
+		}
+
+		if (tool == "compare_captures")
+		{
+			// Each side is a capture loaded from disk, or the live model under its own lock.
+			struct Side
+			{
+				std::unique_ptr<SessionModel> owned;
+				SessionModel *model = nullptr;
+				std::string label;
+			};
+			auto open = [this](const std::string &which, Side &side, std::string &error) {
+				if (which == "live")
+				{
+					if (m_client == nullptr)
+					{
+						error = "no game is connected, so there is no live frame";
+						return false;
+					}
+					side.model = &m_client->Model();
+					side.label = "live frame";
+					return true;
+				}
+				RefreshCaptures();
+				for (const CaptureInfo &info : m_captures)
+				{
+					if (info.path.filename().string() != which && info.path.string() != which)
+						continue;
+					side.owned = std::make_unique<SessionModel>();
+					CaptureInfo loaded;
+					if (!CaptureArchive::Load(info.path, *side.owned, loaded, error))
+						return false;
+					side.model = side.owned.get();
+					side.label = loaded.Describe();
+					return true;
+				}
+				error = "no capture is called \"" + which + "\": see list_captures";
+				return false;
+			};
+
+			Side a;
+			Side b;
+			std::string error;
+			if (!open(arguments["a"].AsString(), a, error) || !open(arguments["b"].AsString(), b, error))
+				return Failure(error);
+			if (a.model == b.model)
+				return Failure("a and b are the same frame");
+
+			CaptureDiff diff;
+			{
+				// Only the live model is shared with other threads; a loaded capture is ours alone.
+				std::unique_lock<std::mutex> lock_a(a.model->Mutex(), std::defer_lock);
+				std::unique_lock<std::mutex> lock_b(b.model->Mutex(), std::defer_lock);
+				std::lock(lock_a, lock_b);
+				diff = CompareCaptures(*a.model, *b.model);
+			}
+
+			const uint32_t limit = arguments["limit"].AsUInt32(50);
+			auto shaders = [limit](const std::vector<CaptureDiff::ShaderChange> &changes) {
+				Json list = Json::Array();
+				for (const CaptureDiff::ShaderChange &change : changes)
+				{
+					if (list.Size() >= limit)
+						break;
+					Json entry = Json::Object();
+					entry["signature"] = Json(change.signature.substr(0, 16));
+					entry["stage"] = Json(std::string(ShaderStageName(change.stage)));
+					if (change.id_a != 0)
+						entry["id_in_a"] = Json(change.id_a);
+					if (change.id_b != 0)
+						entry["id_in_b"] = Json(change.id_b);
+					entry["calls_a"] = Json(change.calls_a);
+					entry["calls_b"] = Json(change.calls_b);
+					if (change.ms_a >= 0.0)
+						entry["gpu_ms_a"] = Json(change.ms_a);
+					if (change.ms_b >= 0.0)
+						entry["gpu_ms_b"] = Json(change.ms_b);
+					list.Push(entry);
+				}
+				return list;
+			};
+			auto resources = [limit](const std::vector<CaptureDiff::ResourceChange> &changes) {
+				Json list = Json::Array();
+				for (const CaptureDiff::ResourceChange &change : changes)
+				{
+					if (list.Size() >= limit)
+						break;
+					Json entry = Json::Object();
+					entry["kind"] = Json(std::string(ResourceKindName(change.kind)));
+					entry["format"] = Json(std::string(FormatName(change.format)));
+					entry["size"] = Json(std::to_string(change.width) + "x" + std::to_string(change.height));
+					if (!change.name.empty())
+						entry["name"] = Json(change.name);
+					entry["count"] = Json(change.count);
+					list.Push(entry);
+				}
+				return list;
+			};
+
+			Json result = Json::Object();
+			result["a"] = Json(a.label);
+			result["b"] = Json(b.label);
+			result["draw_delta"] = Json(diff.draw_delta);
+			result["dispatch_delta"] = Json(diff.dispatch_delta);
+			result["event_delta"] = Json(diff.event_delta);
+			result["gpu_delta_ms"] = Json(diff.gpu_delta_ms);
+			result["shaders_used_only_in_a"] = shaders(diff.used_only_in_a);
+			result["shaders_used_only_in_b"] = shaders(diff.used_only_in_b);
+			result["shaders_changed"] = shaders(diff.changed);
+			result["resources_only_in_a"] = resources(diff.resources_only_in_a);
+			result["resources_only_in_b"] = resources(diff.resources_only_in_b);
+			Json notes = Json::Array();
+			for (const std::string &note : diff.notes)
+				notes.Push(Json(note));
+			notes.Push(Json("Shader ids belong to each frame: inspect_shader works on the frame the application has "
+			                "open. Match shaders across frames by signature."));
+			result["notes"] = notes;
+			return Success(std::move(result));
+		}
 		if (tool == "disable_shader" || tool == "enable_shader" || tool == "highlight_shader" ||
 		    tool == "restore_shader")
 		{
@@ -3250,6 +3392,40 @@ namespace cygi
 					ImGui::TextUnformatted(m_diff.only_in_b[i].c_str());
 				}
 			}
+			// What ran differently: usually the answer to "what changed in the scene?".
+			auto changes = [&](const char *title, const std::vector<CaptureDiff::ShaderChange> &list) {
+				if (list.empty())
+					return;
+				ImGui::SeparatorText(Tr(title));
+				for (size_t i = 0; i < list.size() && i < 20; ++i)
+				{
+					const CaptureDiff::ShaderChange &change = list[i];
+					char line[192];
+					std::snprintf(line, sizeof(line), "%s  %-8s  %u -> %u", change.signature.substr(0, 12).c_str(),
+						ShaderStageName(change.stage), change.calls_a, change.calls_b);
+					std::string text = line;
+					if (change.ms_a >= 0.0 || change.ms_b >= 0.0)
+					{
+						std::snprintf(line, sizeof(line), "   %.3f -> %.3f ms", std::max(change.ms_a, 0.0), std::max(change.ms_b, 0.0));
+						text += line;
+					}
+					ImGui::TextUnformatted(text.c_str());
+				}
+				if (list.size() > 20)
+					ImGui::TextDisabled(Tr("... and %zu more"), list.size() - 20);
+			};
+			changes("Shaders that ran only in A", m_diff.used_only_in_a);
+			changes("Shaders that ran only in B", m_diff.used_only_in_b);
+			changes("Shaders that ran differently", m_diff.changed);
+			if (!m_diff.resources_only_in_a.empty() || !m_diff.resources_only_in_b.empty())
+			{
+				ImGui::SeparatorText(Tr("Resources in only one of them"));
+				for (int side = 0; side < 2; ++side)
+					for (const CaptureDiff::ResourceChange &change : side == 0 ? m_diff.resources_only_in_a : m_diff.resources_only_in_b)
+						ImGui::Text("%s  %u x %s %s %ux%u %s", side == 0 ? "A" : "B", change.count, ResourceKindName(change.kind),
+							FormatName(change.format), change.width, change.height, change.name.c_str());
+			}
+
 			for (const std::string &note : m_diff.notes)
 				ImGui::TextWrapped("%s", note.c_str());
 		}

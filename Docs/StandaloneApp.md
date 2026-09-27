@@ -69,7 +69,7 @@ CyGPUInspectorApp/Source
 | AI assistant | provider connection, chat with the assistant that reads the frame with CyGPUInspector's tools, permission mode. See [AI.md](AI.md) |
 | HLSL editor | a window of its own (View > HLSL editor): the full editor, see below |
 | Mod export | what was replaced or disabled, and the package it exports to |
-| Captures | saving, reopening and comparing offline captures |
+| Captures | saving, reopening and comparing offline captures: the comparison lists the shaders that ran in only one frame or ran differently, and the resources present in only one (§45). `compare_captures` gives it to an agent and the AI assistant, `live` standing for the frame of the connected game |
 | Game profile | what is remembered about the game: sessions, shaders new or already known, the saved state of disabled and replaced shaders, the game's captures. See [Database.md](Database.md) |
 | MCP | permission level and the log of every call |
 | Details | Shader / Resource / Event / Log tabs, with the runtime actions and the dependency graph |

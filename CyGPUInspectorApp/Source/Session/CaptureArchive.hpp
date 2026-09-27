@@ -74,6 +74,37 @@ namespace cygi
 		std::vector<std::string> only_in_a;   // shader signatures, short form
 		std::vector<std::string> only_in_b;
 		std::vector<std::string> notes;
+
+		// What the two frames did differently (section 45: "light off, light on: what changed?").
+		// Shaders are matched by signature and counted as used when they ran in the frame; a shader
+		// that exists in both but runs in only one is what a change in the scene usually looks like.
+		struct ShaderChange
+		{
+			std::string signature;            // full, hexadecimal
+			ShaderStage stage = ShaderStage::unknown;
+			uint32_t id_a = 0;                // 0 when absent from that frame's model
+			uint32_t id_b = 0;
+			uint32_t calls_a = 0;             // draws and dispatches in the frame
+			uint32_t calls_b = 0;
+			double ms_a = -1.0;               // -1 when not timed
+			double ms_b = -1.0;
+		};
+		std::vector<ShaderChange> used_only_in_a;
+		std::vector<ShaderChange> used_only_in_b;
+		std::vector<ShaderChange> changed;    // used in both, with other calls or another GPU time
+
+		// Resources are matched by what they are (kind, format, size, name): ids are per session.
+		struct ResourceChange
+		{
+			ResourceKind kind = ResourceKind::unknown;
+			uint32_t format = 0;
+			uint32_t width = 0;
+			uint32_t height = 0;
+			std::string name;
+			uint32_t count = 0;               // how many more of these the frame has
+		};
+		std::vector<ResourceChange> resources_only_in_a;
+		std::vector<ResourceChange> resources_only_in_b;
 	};
 
 	CaptureDiff CompareCaptures(const SessionModel &a, const SessionModel &b);

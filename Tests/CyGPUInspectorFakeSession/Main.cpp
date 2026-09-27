@@ -441,6 +441,7 @@ int main()
 	std::unordered_set<uint32_t> disabled_shaders;
 	std::unordered_set<uint32_t> replaced_shaders;
 	cygi::TrackingLevel level = cygi::TrackingLevel::tracking;
+	cygi::TimingFocusRequest timing_focus = {};
 
 	// Deep capture, faked the same way the add-on does it: armed from the control pipe, recorded
 	// for a few frames, then disarmed. It exists so the whole path — protocol, model, archive and
@@ -476,6 +477,7 @@ int main()
 				if (ack.accepted != 0)
 				{
 					std::printf("standalone connected (PID %u)\n", request->app_process_id);
+					timing_focus = {};
 					publish_session_info(level);
 					publish_static_data();
 				}
@@ -484,6 +486,14 @@ int main()
 			case cygi::ControlType::full_sync:
 				publish_session_info(level);
 				publish_static_data();
+				pipe.SendAck(message.request_id, true);
+				break;
+			case cygi::ControlType::set_timing_focus:
+				if (const cygi::TimingFocusRequest *request = message.As<cygi::TimingFocusRequest>())
+				{
+					timing_focus = *request;
+					std::printf("timing focus -> %s\n", cygi::TimingFocusKindName(timing_focus.kind));
+				}
 				pipe.SendAck(message.request_id, true);
 				break;
 			case cygi::ControlType::set_level:
@@ -708,7 +718,10 @@ int main()
 				{
 					if (event.kind != cygi::EventKind::dispatch && event.pipeline_id == 0)
 						continue;
-					if ((event.index % 256) != 0 && event.kind != cygi::EventKind::dispatch)
+					// A focused command has a measurement of its own, as the add-on gives it.
+					const bool focused = timing_focus.kind != cygi::TimingFocusKind::none &&
+						cygi::TimingFocusMatches(timing_focus, event);
+					if (!focused && (event.index % 256) != 0 && event.kind != cygi::EventKind::dispatch)
 						continue;
 
 					cygi::TimingResult timing = {};

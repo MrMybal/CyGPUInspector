@@ -64,7 +64,7 @@ namespace cygi
 		// Also for scripted runs, and for the screenshots of the documentation: select a shader as
 		// soon as the session has sent it, decompile it if asked, and bring a view forward —
 		// "hlsl", "ai-analysis", "hlsl-editor" or "assistant". No click, no cursor moved.
-		void RequestStartupShader(uint32_t shader_id, bool decompile);
+		void RequestStartupShader(uint32_t shader_id, bool decompile, bool time = false);
 		void RequestStartupView(const std::string &view);
 		// Fills the search of the Shaders panel, in the query language of find_shaders.
 		void SetShaderSearch(const std::string &query);
@@ -176,6 +176,12 @@ namespace cygi
 		// The game profile and its persistent state. Defined in GameProfilePanel.cpp.
 		std::filesystem::path GamesRoot();
 		void UpdateGameProfile(double delta_seconds);
+		// Selected Shader / Draw / Resource (TimingFocus.cpp): one shader's draws, one draw or the
+		// draws into one resource get a GPU time of their own on top of Pass Timing.
+		void SetTimingFocus(TimingFocusKind kind, uint32_t id);
+		void RefreshTimingFocus(double delta_seconds);
+		bool DrawTimingFocusButton(TimingFocusKind kind, uint32_t id);
+		void DrawShaderTiming(uint32_t shader_id);
 		void CloseGameProfile();
 		void SaveProfileState();
 		void ReapplyProfileState();
@@ -288,6 +294,11 @@ namespace cygi
 		bool m_disassembly_wrap = false;
 		int m_selected_backend = 0;
 		std::string m_inject_message;
+
+		TimingFocusRequest m_timing_focus = {};
+		uint32_t m_timing_focus_id = 0;        // the shader, event index or resource it was asked for
+		std::string m_timing_focus_message;
+		double m_since_focus_refresh = 0.0;
 
 		// The HLSL document of the HLSL tab and of the editor window, and the shader it belongs to.
 		HlslEditor m_hlsl_editor;
@@ -417,6 +428,7 @@ namespace cygi
 		bool m_show_demo = false;
 		uint32_t m_startup_shader = 0;
 		bool m_startup_decompile = false;
+		bool m_startup_time = false;
 		std::string m_code_tab_request;        // a tab of Shader code to select once: "HLSL", "AI Analysis"
 		bool m_show_about = false;
 		ID3D11ShaderResourceView *m_logo = nullptr;

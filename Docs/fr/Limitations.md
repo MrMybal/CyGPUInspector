@@ -80,6 +80,10 @@ documentation, plutôt que prises pour des bugs.
   rapprochés de la frame affichée par index d'événement, ce qui est une approximation.
 * Plafond de 16384 timestamps par frame ; au-delà les marques sont comptées comme abandonnées.
 * En D3D12 multi-command-list, l'ordre d'enregistrement n'est pas l'ordre d'exécution.
+* En `Pass Timing`, un draw n'a de temps à lui que si une mesure ciblée (Selected Shader, Draw ou
+  Resource) le désigne. Une mesure Selected Shader couvre les 64 premiers pipelines qui utilisent le
+  shader ; une mesure Selected Draw reconnaît le draw par son pipeline, ses cibles et ses compteurs,
+  donc des draws identiques dans la même frame sont tous mesurés.
 
 ## Limites des captures (milestone 11, implémenté)
 

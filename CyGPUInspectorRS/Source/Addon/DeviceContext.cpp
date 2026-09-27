@@ -286,6 +286,13 @@ namespace cygi
 				{
 					log::Info("Standalone connected (PID %u), sending a full sync",
 						request != nullptr ? request->app_process_id : 0);
+					// A timing focus belongs to the standalone that asked for it; this one starts
+					// without, as it believes.
+					{
+						std::lock_guard<std::mutex> lock(timing_focus_mutex);
+						timing_focus = {};
+					}
+					timing_focus_version.fetch_add(1, std::memory_order_release);
 					ipc.PublishSessionInfo(level.load(std::memory_order_relaxed));
 					shaders.QueueEverything();
 					resources.QueueEverything();
@@ -363,6 +370,23 @@ namespace cygi
 				capture_buffers.Release(frames.FrameIndex());
 				ipc.Pipe().SendAck(message.request_id, true);
 				break;
+			case ControlType::set_timing_focus:
+			{
+				const TimingFocusRequest *request = message.As<TimingFocusRequest>();
+				if (request != nullptr)
+				{
+					{
+						std::lock_guard<std::mutex> lock(timing_focus_mutex);
+						timing_focus = *request;
+						if (timing_focus.pipeline_count > kMaxTimingFocusPipelines)
+							timing_focus.pipeline_count = kMaxTimingFocusPipelines;
+					}
+					timing_focus_version.fetch_add(1, std::memory_order_release);
+					log::Info("Timing focus set to %s", TimingFocusKindName(request->kind));
+				}
+				ipc.Pipe().SendAck(message.request_id, request != nullptr);
+				break;
+			}
 			case ControlType::freeze_preview:
 			{
 				const FreezePreviewRequest *request = message.As<FreezePreviewRequest>();
@@ -1023,14 +1047,27 @@ namespace cygi
 				return;
 
 			// Pass timing only marks when the render target set changed, which is where a pass
-			// boundary is; full draw timing marks every command.
+			// boundary is; full draw timing marks every command. A timing focus adds a mark before
+			// each command it names and one at the next command, which closes its measurement.
 			if (!per_draw && level == TrackingLevel::pass_timing)
 			{
+				const uint32_t version = context.timing_focus_version.load(std::memory_order_acquire);
+				if (version != state.focus_version)
+				{
+					std::lock_guard<std::mutex> lock(context.timing_focus_mutex);
+					state.focus = context.timing_focus;
+					state.focus_version = version;
+				}
+				const bool focused = state.focus.kind != TimingFocusKind::none && TimingFocusMatches(state.focus, event);
+				const bool closing = state.close_focus;
+				state.close_focus = focused;
+
 				const uint64_t signature = (static_cast<uint64_t>(event.primary_resource) << 32) |
 					event.secondary_resource;
-				if (signature == state.timed_target_signature)
-					return;
+				const bool boundary = signature != state.timed_target_signature;
 				state.timed_target_signature = signature;
+				if (!boundary && !focused && !closing)
+					return;
 			}
 
 			const TimingMark mark = context.timer.Mark(cmd, static_cast<uint32_t>(state.events.size()) - 1,

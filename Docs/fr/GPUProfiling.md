@@ -104,7 +104,7 @@ ce genre est donc visible dans `ReShade.log` au lieu d'être une colonne vide da
 | `Tracking` et en dessous | rien | — |
 | `Pass Timing` | un timestamp à chaque changement de cible de rendu | **implémenté** |
 | `Full Draw Timing` | un timestamp par draw et par dispatch | **implémenté** |
-| `Selected Shader` / `Selected Draw` | filtrage côté add-on | à venir |
+| `Selected Shader` / `Selected Draw` / `Selected Resource` | en plus de `Pass Timing`, un timestamp avant chaque commande que la cible désigne et un à la commande suivante | **implémenté** |
 
 L'agrégation par shader et par passe est faite **côté standalone**, à partir des mesures par
 commande : c'est gratuit et cela évite d'embarquer la logique d'agrégation dans le jeu.
@@ -112,11 +112,39 @@ commande : c'est gratuit et cela évite d'embarquer la logique d'agrégation dan
 `Full Draw Timing` peut diviser le framerate par deux. C'est un mode diagnostic, activé
 explicitement, et annoncé comme tel dans l'interface (§23, §67).
 
+### Selected Shader, Selected Draw, Selected Resource
+
+Avec `Pass Timing` seul, la mesure d'un draw court jusqu'au changement de cible de rendu suivant : un
+shader dessiné au milieu d'une passe n'a pas de temps à lui. Une **mesure ciblée** règle cela pour les
+commandes que l'utilisateur regarde, sans payer pour toutes les commandes de la frame :
+
+* **Selected Shader** — les draws et dispatches de tous les pipelines qui utilisent le shader. Le
+  standalone envoie les pipelines qu'il connaît, jusqu'à 64, et les renvoie quand le jeu en crée de
+  nouveaux ;
+* **Selected Draw** — une commande, reconnue par son pipeline, ses cibles et ses compteurs plutôt que
+  par sa position, qu'une command list ne connaît pas pendant l'enregistrement ;
+* **Selected Resource** — les draws dont la cible de rendu 0 ou la cible de profondeur est la
+  ressource.
+
+Pour chaque commande désignée, l'add-on prend un timestamp juste avant et un à la commande suivante,
+qui clôt la mesure : deux timestamps par commande, en plus des frontières de passes. La même fonction
+`TimingFocusMatches` décide dans l'add-on et dans le producteur de test.
+
+Les boutons sont dans le panneau Details : **Mesurer ce shader précisément** (onglet Shader),
+**Mesurer ce draw précisément** (onglet Event), **Mesurer les draws qui écrivent dans cette
+ressource** (onglet Resource). Ils montent le niveau à `Pass Timing` s'il était plus bas ; en
+`Full Draw Timing`, toutes les commandes sont déjà mesurées. Une mesure ciblée appartient au
+standalone qui l'a demandée : l'add-on l'abandonne quand un standalone se connecte.
+
 ## Restitution
 
 * par passe : `Depth Prepass 0.42 ms · GBuffer 1.31 ms · Lighting 2.82 ms …` ;
-* par shader : appels, total GPU, moyenne, maximum ;
-* par draw : la valeur brute, dans l'inspecteur d'événement.
+* par shader : appels, total GPU, moyenne, maximum, dans l'onglet Shader du panneau Details — à
+  partir des commandes mesurées seules, donc sous une mesure Selected Shader ou en `Full Draw Timing` ;
+* par draw : sa propre valeur, dans l'onglet Event, sous une mesure ciblée qui le désigne ou en
+  `Full Draw Timing` ;
+* par ressource, sous une mesure Selected Resource : le nombre de draws qui y écrivent et leur total
+  GPU.
 
 Le nombre de timestamps par frame est plafonné (`MaxTimestamps`, 16384 par défaut) ; au-delà, les
 marques sont comptées comme abandonnées plutôt que d'agrandir le heap en plein rendu.

@@ -648,6 +648,85 @@ int main(int argc, char **argv)
 					"a pass's share of the frame is a fraction of it");
 			}
 
+			// ---- Selected Shader / Draw / Resource (section 22) -------------------------------
+			// Like Pass Timing, the fake producer measures few draws on their own: of the 40 UI
+			// draws (pipeline 7, shader 9, into the back buffer #7), one. A focus gives the draws
+			// it names a measurement each, through the same TimingFocusMatches the add-on runs.
+			{
+				auto timed_draws = [&](uint32_t pipeline_id) {
+					std::lock_guard<std::mutex> lock(model.Mutex());
+					uint32_t count = 0;
+					for (const cygi::FrameEvent &event : model.LastFrame().events)
+						if (event.pipeline_id == pipeline_id && model.Timings().by_event.count(event.index) != 0)
+							++count;
+					return count;
+				};
+				Check(timed_draws(7) < 40, "without a focus, the UI draws are not all measured on their own");
+				const uint32_t gbuffer_timed = timed_draws(2);
+
+				cygi::TimingFocusRequest nothing = {};
+				cygi::FrameEvent any_draw = {};
+				any_draw.kind = cygi::EventKind::draw;
+				any_draw.pipeline_id = 7;
+				any_draw.primary_resource = 7;
+				Check(!cygi::TimingFocusMatches(nothing, any_draw), "no focus names no command");
+				cygi::TimingFocusRequest no_resource = {};
+				no_resource.kind = cygi::TimingFocusKind::resource;
+				Check(!cygi::TimingFocusMatches(no_resource, any_draw), "a resource focus without a resource names none");
+
+				// Selected Shader: the pipelines using it, as the standalone knows them.
+				cygi::TimingFocusRequest focus = {};
+				focus.kind = cygi::TimingFocusKind::shader;
+				{
+					std::lock_guard<std::mutex> lock(model.Mutex());
+					for (const cygi::PipelineInfo &pipeline : model.Pipelines())
+						if (std::find(pipeline.shader_ids.begin(), pipeline.shader_ids.end(), 9u) != pipeline.shader_ids.end() &&
+						    focus.pipeline_count < cygi::kMaxTimingFocusPipelines)
+							focus.pipelines[focus.pipeline_count++] = pipeline.id;
+				}
+				Check(focus.pipeline_count == 1 && focus.pipelines[0] == 7, "shader 9 is used by pipeline 7 only");
+				Check(client.SetTimingFocus(focus), "the add-on accepts a Selected Shader focus");
+				Check(WaitFor([&]() { return timed_draws(7) == 40; }, 5000),
+					"with the focus on shader 9, each of its 40 draws has a measurement of its own");
+				Check(timed_draws(2) == gbuffer_timed, "and the other shaders' draws are left as they were");
+
+				// Selected Draw: one GBuffer draw, recognised by what it is rather than where it is.
+				cygi::TimingFocusRequest draw_focus = {};
+				draw_focus.kind = cygi::TimingFocusKind::draw;
+				uint32_t draw_index = 0;
+				{
+					std::lock_guard<std::mutex> lock(model.Mutex());
+					for (const cygi::FrameEvent &event : model.LastFrame().events)
+						if (event.pipeline_id == 2 && event.a == 1205)
+						{
+							draw_focus.draw = event;
+							draw_index = event.index;
+							break;
+						}
+				}
+				Check(draw_index != 0, "the GBuffer draw to time is in the frame");
+				Check(client.SetTimingFocus(draw_focus), "the add-on accepts a Selected Draw focus");
+				Check(WaitFor([&]() {
+					std::lock_guard<std::mutex> lock(model.Mutex());
+					return model.Timings().by_event.count(draw_index) != 0;
+				}, 5000), "the selected draw has a measurement of its own");
+				Check(WaitFor([&]() { return timed_draws(7) < 40; }, 5000),
+					"and the previous focus no longer applies");
+				Check(timed_draws(2) == gbuffer_timed + 1, "only that one GBuffer draw is added");
+
+				// Selected Resource: every draw into the back buffer, tonemap and UI.
+				cygi::TimingFocusRequest resource_focus = {};
+				resource_focus.kind = cygi::TimingFocusKind::resource;
+				resource_focus.resource_id = 7;
+				Check(client.SetTimingFocus(resource_focus), "the add-on accepts a Selected Resource focus");
+				Check(WaitFor([&]() { return timed_draws(7) == 40 && timed_draws(6) == 1; }, 5000),
+					"the draws into the back buffer are measured on their own");
+
+				Check(client.SetTimingFocus(nothing), "the focus can be stopped");
+				Check(WaitFor([&]() { return timed_draws(7) < 40; }, 5000),
+					"after which the draws share their measurements again");
+			}
+
 			// An add-on built before start times existed sends the sixteen byte layout and a zero
 			// where the element size now is. It must still be read, and read as having no starts,
 			// rather than as elements of the wrong size.

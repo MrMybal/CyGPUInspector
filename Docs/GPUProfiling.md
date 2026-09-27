@@ -99,7 +99,7 @@ column in the interface.
 | `Tracking` and below | nothing | — |
 | `Pass Timing` | one timestamp at every render target change | **implemented** |
 | `Full Draw Timing` | one timestamp per draw and per dispatch | **implemented** |
-| `Selected Shader` / `Selected Draw` | filtering on the add-on side | to come |
+| `Selected Shader` / `Selected Draw` / `Selected Resource` | on top of `Pass Timing`, a timestamp before each command the focus names and one at the next command | **implemented** |
 
 Aggregation per shader and per pass is done **on the standalone side**, from the per command
 measurements: it is free there and it keeps the aggregation logic out of the game.
@@ -108,12 +108,35 @@ measurements: it is free there and it keeps the aggregation logic out of the gam
 announced as such in the interface (§23, §67). A deep capture turns it on for its own duration and
 turns it back off afterwards.
 
+### Selected Shader, Selected Draw, Selected Resource
+
+Under `Pass Timing` alone, a draw's measurement runs to the next render target change: a shader
+drawn in the middle of a pass has no time of its own. A **timing focus** fixes that for the commands
+the user is looking at, without paying for every command in the frame:
+
+* **Selected Shader** — the draws and dispatches of every pipeline using the shader. The standalone
+  sends the pipelines it knows, up to 64, and sends them again when the game creates new ones;
+* **Selected Draw** — one command, recognised by its pipeline, its targets and its counts rather
+  than by its position, which a command list does not know while it records;
+* **Selected Resource** — the draws whose render target 0 or depth target is the resource.
+
+For each command the focus names, the add-on takes one timestamp just before it and one at the next
+command, which closes the measurement: two timestamps per command, on top of the pass boundaries.
+The same `TimingFocusMatches` function decides in the add-on and in the test producer.
+
+The buttons are in the Details panel: **Time this shader precisely** (Shader tab), **Time this draw
+precisely** (Event tab), **Time the draws into this resource** (Resource tab). They raise the level to
+`Pass Timing` if it was lower; under `Full Draw Timing` every command is already measured. A focus
+belongs to the standalone that set it: the add-on drops it when a standalone connects.
+
 ## Presentation
 
 * per pass: `Depth Prepass 0.42 ms · GBuffer 1.31 ms · Lighting 2.82 ms …`, and as time-scaled bars
   in the [frame timeline](CaptureModes.md);
-* per shader: calls, GPU total, average, maximum;
-* per draw: the raw value, in the event inspector.
+* per shader: calls, GPU total, average, maximum, in the Shader tab of the Details panel — from the
+  commands measured on their own, so under a Selected Shader focus or `Full Draw Timing`;
+* per draw: its own value, in the Event tab, under a focus that names it or `Full Draw Timing`;
+* per resource, under a Selected Resource focus: the number of draws into it and their GPU total.
 
 The number of timestamps per frame is capped (`MaxTimestamps`, 16384 by default); beyond it, marks
 are counted as dropped rather than growing the heap in the middle of rendering.

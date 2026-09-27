@@ -54,6 +54,9 @@ namespace cygi
 		bool StopPreview();
 		// Keeps the shared image as it is (true) or lets it follow the game again (false).
 		bool SetPreviewFrozen(bool frozen);
+		// Selected Shader / Draw / Resource on top of Pass Timing; kind none stops it. False also
+		// when the add-on is older than the standalone and does not know the request.
+		bool SetTimingFocus(const TimingFocusRequest &request);
 		// Sends replacement byte code for a shader; the add-on rebuilds every pipeline using it.
 		bool ReplaceShader(uint32_t shader_id, const std::vector<uint8_t> &code, std::string &message);
 

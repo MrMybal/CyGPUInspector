@@ -45,6 +45,11 @@ namespace cygi
 		uint32_t compute_pipeline_stages = 0;
 		// Last render target set a timestamp was taken for, so pass timing only marks changes.
 		uint64_t timed_target_signature = 0;
+		// The timing focus as this list last read it (DeviceContext::timing_focus), and whether the
+		// previous command was one it named, so the next command closes its measurement.
+		uint32_t focus_version = 0;
+		TimingFocusRequest focus = {};
+		bool close_focus = false;
 		uint8_t queue_index = 0;
 		bool in_render_pass = false;
 
@@ -150,6 +155,7 @@ namespace cygi
 			graphics_pipeline_stages = 0;
 			compute_pipeline_stages = 0;
 			timed_target_signature = 0;
+			close_focus = false;
 			in_render_pass = false;
 			for (uint32_t &id : render_target_ids)
 				id = 0;

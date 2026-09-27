@@ -2,6 +2,7 @@
 //
 // Copyright (C) 2026 Cyberalien. Licensed under the GNU AGPL v3 or later.
 #include "Application.hpp"
+#include "LayoutHelpers.hpp"
 
 #include <CyGPUInspectorCore/Localization.hpp>
 
@@ -167,6 +168,10 @@ namespace cygi
 		m_selected_shader = 0;
 		m_selected_resource = 0;
 		m_selected_event = 0;
+		// The add-on drops a timing focus when a standalone says hello.
+		m_timing_focus = {};
+		m_timing_focus_id = 0;
+		m_timing_focus_message.clear();
 		m_preview.Close();
 		m_preview_resource = 0;
 		m_preview_message.clear();
@@ -434,6 +439,7 @@ namespace cygi
 		UpdateAssistant(delta_seconds);
 		ApplyStartupRequests();
 		UpdateGameProfile(delta_seconds);
+		RefreshTimingFocus(delta_seconds);
 
 		// Rebuilding a graph of tens of thousands of events every frame would be wasteful; four
 		// times a second is well under what the eye notices and keeps the UI thread free.
@@ -591,10 +597,11 @@ namespace cygi
 		m_default_tabs_pending = 3;
 	}
 
-	void Application::RequestStartupShader(uint32_t shader_id, bool decompile)
+	void Application::RequestStartupShader(uint32_t shader_id, bool decompile, bool time)
 	{
 		m_startup_shader = shader_id;
 		m_startup_decompile = decompile;
+		m_startup_time = time;
 	}
 
 	void Application::RequestStartupView(const std::string &view)
@@ -638,6 +645,11 @@ namespace cygi
 
 		m_selected_shader = m_startup_shader;
 		RequestAnalysis(m_startup_shader);
+		if (m_startup_time)
+		{
+			m_startup_time = false;
+			SetTimingFocus(TimingFocusKind::shader, m_startup_shader);
+		}
 		if (!m_startup_decompile)
 		{
 			m_startup_shader = 0;
@@ -3957,6 +3969,7 @@ namespace cygi
 					if (!m_inject_message.empty())
 						ImGui::TextWrapped("%s", m_inject_message.c_str());
 
+					DrawShaderTiming(shader_id);
 					DrawNotesEditor(shader_id);
 					lock.lock();
 				}
@@ -4058,6 +4071,23 @@ namespace cygi
 
 					const uint32_t resource_id = resource->id;
 					const bool previewing = m_preview_resource == resource_id;
+					// Selected Resource: what the draws into it cost, once the add-on times them.
+					if (m_timing_focus.kind == TimingFocusKind::resource && m_timing_focus_id == resource_id &&
+					    model.Timings().IsValid())
+					{
+						uint32_t draws = 0;
+						uint64_t ticks = 0;
+						for (const FrameEvent &candidate : model.LastFrame().events)
+						{
+							if (!TimingFocusMatches(m_timing_focus, candidate))
+								continue;
+							++draws;
+							const auto found = model.Timings().by_event.find(candidate.index);
+							if (found != model.Timings().by_event.end())
+								ticks += found->second;
+						}
+						ImGui::Text(Tr("Draws into it: %u, GPU %.3f ms"), draws, model.Timings().Milliseconds(ticks));
+					}
 					lock.unlock();
 					if (ImGui::Button(previewing ? "Stop preview" : "Preview"))
 					{
@@ -4070,6 +4100,7 @@ namespace cygi
 					HelpMarker(Tr("The add-on copies this resource into a texture shared with this "
 					              "process, on the game's own queue. The pixels never go through "
 					              "system memory."));
+					DrawTimingFocusButton(TimingFocusKind::resource, resource_id);
 					lock.lock();
 				}
 				ImGui::EndTabItem();
@@ -4106,6 +4137,25 @@ namespace cygi
 						if (const ShaderInfo *shader = model.ShaderById(shader_id))
 							ImGui::BulletText(Tr("%s shader #%u (%s)"), ShaderStageName(shader->stage), shader->id,
 								shader->ShortSignature().c_str());
+					}
+
+					// Selected Draw. Under Pass Timing alone, a command's measurement runs to the
+					// next pass boundary, so it is shown only when it is the command's own.
+					if (IsDrawOrDispatch(event->kind))
+					{
+						ImGui::Separator();
+						const FrameTimings &timings = model.Timings();
+						const bool own = TimingFocusMatches(m_timing_focus, *event) ||
+							(model.HasSession() && model.Session().level == TrackingLevel::full_draw_timing);
+						const auto measured = timings.by_event.find(event->index);
+						if (own && timings.IsValid() && measured != timings.by_event.end())
+							ImGui::Text(Tr("GPU time:       %.4f ms"), timings.Milliseconds(measured->second));
+						const uint32_t event_index = event->index;
+						lock.unlock();
+						DrawTimingFocusButton(TimingFocusKind::draw, event_index);
+						if (!m_timing_focus_message.empty())
+							TextDisabledWrapped(m_timing_focus_message.c_str());
+						lock.lock();
 					}
 				}
 				ImGui::EndTabItem();

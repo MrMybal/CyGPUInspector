@@ -58,6 +58,11 @@ namespace cygi
 		CaptureBuffers capture_buffers;
 
 		std::atomic<TrackingLevel> level{ TrackingLevel::tracking };
+		// Selected Shader / Draw / Resource on top of Pass Timing. Written by the control pipe,
+		// read by every command list through the version, so a command costs one atomic load.
+		std::mutex timing_focus_mutex;
+		TimingFocusRequest timing_focus = {};
+		std::atomic<uint32_t> timing_focus_version{ 0 };
 		std::atomic<uint32_t> skipped_draws{ 0 };
 		std::atomic<uint32_t> timed_marks{ 0 };
 

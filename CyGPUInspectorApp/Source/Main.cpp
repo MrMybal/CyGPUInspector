@@ -356,15 +356,19 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, LPWSTR, int)
 					continue;
 				}
 
-				// --select-shader=<id> [--decompile] --show=<view>[,<view>]: open straight on a view,
+				// --select-shader=<id> [--decompile] [--time] --show=<view>[,<view>]: open straight on a view,
 				// for a script or a screenshot, without moving anyone's cursor.
 				if (argument.rfind(L"--select-shader=", 0) == 0)
 				{
 					const uint32_t shader_id = static_cast<uint32_t>(std::wcstoul(argument.c_str() + 16, nullptr, 10));
 					bool decompile = false;
+					bool time = false;
 					for (int j = 1; j < count; ++j)
+					{
 						decompile = decompile || std::wstring(arguments[j]) == L"--decompile";
-					application.RequestStartupShader(shader_id, decompile);
+						time = time || std::wstring(arguments[j]) == L"--time";
+					}
+					application.RequestStartupShader(shader_id, decompile, time);
 					continue;
 				}
 				if (argument.rfind(L"--search=", 0) == 0)

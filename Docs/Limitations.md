@@ -73,6 +73,10 @@ the documentation, rather than taken for bugs.
   on screen by event index, which is an approximation.
 * A cap of 16384 timestamps per frame; beyond it, marks are counted as dropped.
 * On D3D12 with several command lists, recording order is not execution order.
+* Under `Pass Timing`, a draw has a time of its own only when a timing focus (Selected Shader, Draw
+  or Resource) names it. A Selected Shader focus covers the first 64 pipelines using the shader; a
+  Selected Draw focus recognises the draw by its pipeline, targets and counts, so identical draws
+  in the same frame are all timed.
 
 ## Capture limits
 

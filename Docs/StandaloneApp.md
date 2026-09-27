@@ -72,7 +72,7 @@ CyGPUInspectorApp/Source
 | Captures | saving, reopening and comparing offline captures: the comparison lists the shaders that ran in only one frame or ran differently, and the resources present in only one (§45). `compare_captures` gives it to an agent and the AI assistant, `live` standing for the frame of the connected game |
 | Game profile | what is remembered about the game: sessions, shaders new or already known, the saved state of disabled and replaced shaders, the game's captures. See [Database.md](Database.md) |
 | MCP | permission level and the log of every call |
-| Details | Shader / Resource / Event / Log tabs, with the runtime actions and the dependency graph |
+| Details | Shader / Resource / Event / Log tabs, with the runtime actions, the dependency graph, a shader's GPU time (calls, total, average, max) and the buttons that time one shader, one draw or the draws into one resource on their own. See [GPUProfiling.md](GPUProfiling.md) |
 | Status | IPC throughput, bytes pending, losses, add-on cost, counters on the game side |
 
 Selecting a shader highlights its draw calls in the frame; selecting an event selects its shader
@@ -137,7 +137,7 @@ Everything they do is also reachable from the interface.
 | `--connect[=<pid>]` | attaches to a running session at start-up. Without a pid it takes the only session there is, and refuses rather than guessing when several are running. |
 | `--level=<name>` | sets the tracking level on that session: `idle`, `tracking`, `pass-timing`, `capture`, `full-draw-timing`. Applied after `--connect`, because a level means nothing until there is a session to set it on. |
 | `--search=<query>` | fills the search of the Shaders panel, in the language above; quote it when it has several words. |
-| `--select-shader=<id>` | selects that shader as soon as the session has sent it. With `--decompile`, also runs the decompilers on it. |
+| `--select-shader=<id>` | selects that shader as soon as the session has sent it. With `--decompile`, also runs the decompilers on it; with `--time`, times it on its own (Selected Shader, see [GPUProfiling.md](GPUProfiling.md)). |
 | `--show=<view>[,<view>]` | brings views forward: `hlsl`, `ai-analysis` (tabs of Shader code), `hlsl-editor` (the editor window), `assistant` (the AI assistant panel). Used for the screenshots of this documentation. |
 
 ## Threads and locking

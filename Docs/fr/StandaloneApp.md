@@ -66,7 +66,7 @@ CyGPUInspectorApp/Source
 | Captures | enregistrement, réouverture et comparaison des captures hors ligne : la comparaison liste les shaders qui n'ont tourné que dans une frame ou ont tourné différemment, et les ressources présentes d'un seul côté (§45). `compare_captures` la donne à un agent et à l'assistant IA, `live` désignant la frame du jeu connecté |
 | Profil du jeu | ce que l'outil retient du jeu : sessions, shaders nouveaux ou déjà connus, état enregistré des shaders désactivés et remplacés, captures du jeu. Voir [Database.md](Database.md) |
 | MCP | niveau de permission et journal de chaque appel |
-| Details | onglets Shader / Resource / Event / Log, avec les actions runtime et le graphe de dépendances |
+| Details | onglets Shader / Resource / Event / Log, avec les actions runtime, le graphe de dépendances, le temps GPU d'un shader (appels, total, moyenne, max) et les boutons qui mesurent à part un shader, un draw ou les draws qui écrivent dans une ressource. Voir [GPUProfiling.md](GPUProfiling.md) |
 | Status | débit IPC, octets en attente, pertes, coût de l'add-on, compteurs côté jeu |
 
 Sélectionner un shader surligne ses draw calls dans la frame ; sélectionner un événement
@@ -137,7 +137,7 @@ Tout ce qu'elles font est aussi accessible depuis l'interface.
 | `--connect[=<pid>]` | s'attache à une session en cours au démarrage. Sans pid elle prend la seule session présente, et refuse plutôt que de deviner quand il y en a plusieurs. |
 | `--level=<nom>` | règle le niveau de suivi sur cette session : `idle`, `tracking`, `pass-timing`, `capture`, `full-draw-timing`. Appliquée après `--connect`, parce qu'un niveau ne veut rien dire tant qu'il n'y a pas de session sur laquelle le régler. |
 | `--search=<requête>` | remplit la recherche du panneau Shaders, dans le langage ci-dessus ; entre guillemets quand elle a plusieurs mots. |
-| `--select-shader=<id>` | sélectionne ce shader dès que la session l'a envoyé. Avec `--decompile`, lance aussi les décompilateurs dessus. |
+| `--select-shader=<id>` | sélectionne ce shader dès que la session l'a envoyé. Avec `--decompile`, lance aussi les décompilateurs dessus ; avec `--time`, le mesure à part (Selected Shader, voir [GPUProfiling.md](GPUProfiling.md)). |
 | `--show=<vue>[,<vue>]` | met des vues au premier plan : `hlsl`, `ai-analysis` (onglets de Shader code), `hlsl-editor` (la fenêtre de l'éditeur), `assistant` (le panneau Assistant IA). Sert aux captures d'écran de cette documentation. |
 
 ## Threads et verrouillage
@@ -165,8 +165,3 @@ Rien de coûteux ne tourne sur le thread de l'interface :
 * le **thread d'analyse** désassemble et réfléchit les shaders, avec cache mémoire et disque ;
 * le **frame graph** est reconstruit quatre fois par seconde, pas à chaque image, et la case
   `Follow` permet de geler celui d'une frame pendant qu'on l'inspecte.
-
-## Ce qui n'y est pas encore
-
-Décompilation HLSL (milestone 6), remplacement de shader (7), profiling GPU (8), IA (9), MCP (10),
-captures offline (11).

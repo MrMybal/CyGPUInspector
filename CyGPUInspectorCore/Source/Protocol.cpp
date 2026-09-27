@@ -174,6 +174,18 @@ namespace cygi
 		}
 	}
 
+	const char *TimingFocusKindName(TimingFocusKind kind)
+	{
+		switch (kind)
+		{
+		case TimingFocusKind::shader: return "Selected Shader";
+		case TimingFocusKind::draw: return "Selected Draw";
+		case TimingFocusKind::resource: return "Selected Resource";
+		case TimingFocusKind::none:
+		default: return "none";
+		}
+	}
+
 	const char *McpPermissionName(McpPermission permission)
 	{
 		switch (permission)

@@ -638,6 +638,7 @@ namespace cygi
 		mcp_response,     // utf8 JSON, standalone -> MCP proxy
 		freeze_preview,   // FreezePreviewRequest: keep the shared image as it is, or refresh it again
 		release_capture_buffers, // no payload: the standalone has what it needed of the capture's buffers
+		set_timing_focus, // TimingFocusRequest: on top of Pass Timing, time some commands on their own
 	};
 
 	// What an MCP client is allowed to do. The standalone owns this, never the proxy.
@@ -675,6 +676,59 @@ namespace cygi
 	{
 		TrackingLevel level;
 	};
+
+	// Selected Shader, Selected Draw and Selected Resource (section 22 of the brief): Pass Timing
+	// marks only where the render targets change; with a focus, the add-on also marks just before
+	// and just after every command the focus names, so those commands get a duration of their own
+	// for the price of two timestamps each, rather than the whole frame's of Full Draw Timing.
+	enum class TimingFocusKind : uint32_t
+	{
+		none = 0,
+		shader,     // the draws and dispatches of the pipelines that use one shader
+		draw,       // one command, recognised by its pipeline, counts and targets, frame after frame
+		resource,   // the draws whose render target 0 or depth target is one resource
+	};
+	const char *TimingFocusKindName(TimingFocusKind kind);
+
+	inline constexpr uint32_t kMaxTimingFocusPipelines = 64;
+
+	struct TimingFocusRequest
+	{
+		TimingFocusKind kind;
+		uint32_t resource_id;             // resource
+		FrameEvent draw;                  // draw: the command as the frame recorded it
+		uint32_t pipeline_count;          // shader: the pipelines using it, as the standalone knows them
+		uint32_t pipelines[kMaxTimingFocusPipelines];
+	};
+
+	// Whether a command is one the focus names. The same function decides in the add-on and in
+	// the fake session, so what the tests check is what runs in a game.
+	inline bool TimingFocusMatches(const TimingFocusRequest &focus, const FrameEvent &event)
+	{
+		switch (focus.kind)
+		{
+		case TimingFocusKind::shader:
+			if (event.pipeline_id == 0)
+				return false;
+			for (uint32_t i = 0; i < focus.pipeline_count && i < kMaxTimingFocusPipelines; ++i)
+				if (focus.pipelines[i] == event.pipeline_id)
+					return true;
+			return false;
+		case TimingFocusKind::draw:
+			// Not the index in the frame: a command list does not know where it will land in the
+			// frame when it records, and the same draw is recognised the same way every frame.
+			return event.kind == focus.draw.kind && event.pipeline_id == focus.draw.pipeline_id &&
+				event.primary_resource == focus.draw.primary_resource &&
+				event.secondary_resource == focus.draw.secondary_resource && event.a == focus.draw.a &&
+				event.b == focus.draw.b && event.c == focus.draw.c && event.d == focus.draw.d;
+		case TimingFocusKind::resource:
+			return IsDrawOrDispatch(event.kind) && focus.resource_id != 0 &&
+				(event.primary_resource == focus.resource_id || event.secondary_resource == focus.resource_id);
+		case TimingFocusKind::none:
+		default:
+			return false;
+		}
+	}
 
 	// Arms a capture. In runtime mode this only says "hand me the frames you are already
 	// recording"; in deep mode it switches the add-on into the expensive path for `frame_count`

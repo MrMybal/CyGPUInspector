@@ -252,6 +252,15 @@ namespace cygi
 		return SendAndWait(ControlType::freeze_preview, &request, sizeof(request), reply);
 	}
 
+	bool SessionClient::SetTimingFocus(const TimingFocusRequest &request)
+	{
+		ControlMessage reply;
+		if (!SendAndWait(ControlType::set_timing_focus, &request, sizeof(request), reply))
+			return false;
+		const ControlAck *ack = reply.As<ControlAck>();
+		return reply.type == ControlType::ack && ack != nullptr && ack->succeeded != 0;
+	}
+
 	bool SessionClient::ReleaseCaptureBuffers()
 	{
 		ControlMessage reply;

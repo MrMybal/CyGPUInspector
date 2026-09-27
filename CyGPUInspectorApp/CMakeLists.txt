@@ -32,6 +32,7 @@ set(CYGI_APP_SOURCES
     Source/App/AssistantPanel.cpp
     Source/App/HlslEditorPanel.cpp
     Source/App/GameProfilePanel.cpp
+    Source/App/TimingFocus.cpp
     Source/App/LayoutHelpers.hpp
     Source/Assistant/AssistantText.hpp
     Source/Assistant/AssistantText.cpp

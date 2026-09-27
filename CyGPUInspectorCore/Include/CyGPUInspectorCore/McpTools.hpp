@@ -29,6 +29,8 @@ namespace cygi
 		  "\"query\":{\"type\":\"string\"},\"used_this_frame\":{\"type\":\"boolean\"},\"limit\":{\"type\":\"integer\"}" },
 		{ "search_shaders", "Shaders used in the current frame matching a text query on stage, format or signature.",
 		  "\"query\":{\"type\":\"string\"},\"limit\":{\"type\":\"integer\"}" },
+		{ "find_shaders", "Shaders of the analysed frame found by what they do. query is a line of words, all of which must match: stage:cs (vs ps cs gs hs ds ms as), writes:rgba16f / writes:depth / writes:hdr / writes:#12 (a target their draws write: format, depth, any float format, or a resource id), reads:depth / reads:#7 (a resource bound for reading, needs a deep capture), ms>0.2, calls>1000, format:dxil, sm:6, tag:bloom, name:tonemap, used, disabled, replaced, new (new in this game's profile), or free text matched against the signature and the stage. Example: \"stage:cs writes:#12\". Optional: limit.",
+		  "\"query\":{\"type\":\"string\"},\"limit\":{\"type\":\"integer\"}" },
 		{ "inspect_shader", "Everything known about one shader, including its reflected bindings when analysed.",
 		  "\"shader_id\":{\"type\":\"integer\"}" },
 		{ "get_shader_disassembly", "The DXBC or DXIL disassembly of a shader. Starts the work if needed.",

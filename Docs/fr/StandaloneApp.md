@@ -75,6 +75,28 @@ fonctionne aussi dans l'autre sens : choisir une passe, dans les barres ou dans 
 défiler Frame events jusqu'à sa première commande au lieu de laisser la liste où elle était, et
 les ressources et les shaders affichés à côté des barres sont eux-mêmes la sélection.
 
+## Rechercher des shaders
+
+Le champ de recherche du panneau Shaders accepte du texte simple (un morceau de la signature ou de
+l'étage) ou des mots qui restreignent chacun la liste, tous devant correspondre (§46) :
+
+| Mot | Garde les shaders qui |
+|---|---|
+| `stage:cs`, `stage:ps,vs` | sont de cet étage (`vs ps cs gs hs ds ms as`, ou les noms complets) |
+| `writes:rgba16f`, `writes:depth`, `writes:hdr`, `writes:#12` | dessinent dans une cible de ce format, une cible de profondeur, n'importe quel format flottant, ou cette ressource |
+| `reads:depth`, `reads:#7` | ont cette ressource liée en lecture — demande une capture profonde de la frame |
+| `ms>0.2`, `calls>1000` | coûtent plus de 0,2 ms de GPU, exécutent plus de 1000 draws et dispatches dans la frame |
+| `format:dxil`, `sm:6` | ont ce format de bytecode, ce shader model |
+| `tag:bloom`, `name:tonemap` | portent ce tag ou ce nom dans leurs notes |
+| `used`, `disabled`, `replaced`, `new` | ont tourné dans la frame, sont désactivés, sont remplacés, sont nouveaux dans le profil du jeu |
+
+« Trouver les shaders qui écrivent du RGBA16F » s'écrit `writes:rgba16f` ; « les compute shaders qui
+écrivent cette ressource » s'écrit `stage:cs writes:#12`. Les cibles couleur comptent pour le pixel
+shader d'un draw, une cible de profondeur pour tout son pipeline, et les UAV et ressources lues
+viennent des liaisons d'une capture profonde. Un mot non compris est affiché, jamais ignoré en
+silence. Le même texte est la `query` de l'outil MCP `find_shaders` : un agent et l'assistant IA
+cherchent de la même façon.
+
 ## Éditeur HLSL
 
 Le HLSL du shader sélectionné est un seul document, affiché soit dans l'onglet HLSL, soit dans une
@@ -114,6 +136,7 @@ Tout ce qu'elles font est aussi accessible depuis l'interface.
 |---|---|
 | `--connect[=<pid>]` | s'attache à une session en cours au démarrage. Sans pid elle prend la seule session présente, et refuse plutôt que de deviner quand il y en a plusieurs. |
 | `--level=<nom>` | règle le niveau de suivi sur cette session : `idle`, `tracking`, `pass-timing`, `capture`, `full-draw-timing`. Appliquée après `--connect`, parce qu'un niveau ne veut rien dire tant qu'il n'y a pas de session sur laquelle le régler. |
+| `--search=<requête>` | remplit la recherche du panneau Shaders, dans le langage ci-dessus ; entre guillemets quand elle a plusieurs mots. |
 | `--select-shader=<id>` | sélectionne ce shader dès que la session l'a envoyé. Avec `--decompile`, lance aussi les décompilateurs dessus. |
 | `--show=<vue>[,<vue>]` | met des vues au premier plan : `hlsl`, `ai-analysis` (onglets de Shader code), `hlsl-editor` (la fenêtre de l'éditeur), `assistant` (le panneau Assistant IA). Sert aux captures d'écran de cette documentation. |
 

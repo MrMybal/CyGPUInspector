@@ -47,6 +47,8 @@ Game (D3D11 / D3D12)
  → CyGPUInspectorApp
      · list of connected applications (several games in parallel)
      · shaders, resources, frame events, details, correlations
+     · shader search by what they do: stage:cs writes:rgba16f ms>0.2 reads:depth...
+     · a profile per game: shaders new or already known, disabled and replaced shaders kept
      · preview of a render target or a depth buffer: RGB/R/G/B/A channel, linearised depth,
        reverse-Z, adjustable range, chosen mip and slice
      · reconstructed frame graph: derived passes, dependencies between resources, renaming

@@ -616,6 +616,11 @@ namespace cygi
 		}
 	}
 
+	void Application::SetShaderSearch(const std::string &query)
+	{
+		std::snprintf(m_shader_filter, sizeof(m_shader_filter), "%s", query.c_str());
+	}
+
 	void Application::ApplyStartupRequests()
 	{
 		if (m_startup_shader == 0)
@@ -896,13 +901,49 @@ namespace cygi
 		SessionModel &model = *ActiveModel();
 		std::lock_guard<std::mutex> lock(model.Mutex());
 
-		ImGui::SetNextItemWidth(220.0f);
-		ImGui::InputTextWithHint("##shaderfilter", Tr("filter by signature or stage"), m_shader_filter,
+		ImGui::SetNextItemWidth(260.0f);
+		ImGui::InputTextWithHint("##shaderfilter", Tr("search: text, stage:ps writes:rgba16f ms>0.2..."), m_shader_filter,
 			sizeof(m_shader_filter));
+		ImGui::SameLine();
+		ImGui::TextDisabled("(?)");
+		if (ImGui::BeginItemTooltip())
+		{
+			ImGui::PushTextWrapPos(ImGui::GetFontSize() * 42.0f);
+			ImGui::TextUnformatted(Tr(
+				"Words narrow the list, all of them must match:\n"
+				"  stage:cs  stage:ps,vs        the stage\n"
+				"  writes:rgba16f  writes:depth  writes:hdr  writes:#12\n"
+				"                               a target its draws write: format, depth, float, or resource id\n"
+				"  reads:depth  reads:#7        a resource bound for reading (needs a deep capture)\n"
+				"  ms>0.2  calls>1000           GPU time, draws and dispatches in the frame\n"
+				"  format:dxil  sm:6            byte code format, shader model\n"
+				"  tag:bloom  name:tonemap      from the shader's notes\n"
+				"  used  disabled  replaced  new\n"
+				"  anything else                a piece of the signature or of the stage\n"
+				"Example: \"stage:cs writes:#12\" is the compute shaders writing resource 12."));
+			ImGui::PopTextWrapPos();
+			ImGui::EndTooltip();
+		}
 		ImGui::SameLine();
 		ImGui::Checkbox(TrId("Used this frame"), &m_only_used_this_frame);
 		ImGui::SameLine();
 		ImGui::Text(Tr("%zu shaders"), model.Shaders().size());
+
+		const ShaderQuery query = ShaderQuery::Parse(m_shader_filter);
+		if (!query.errors.empty())
+		{
+			std::string words;
+			for (const std::string &word : query.errors)
+				words += (words.empty() ? "" : ", ") + word;
+			ImGui::TextColored(ImVec4(1.0f, 0.6f, 0.3f, 1.0f), Tr("Not understood: %s"), words.c_str());
+		}
+		if (query.NeedsBindings() && !model.LastFrame().HasDeepCapture())
+			ImGui::TextColored(ImVec4(1.0f, 0.8f, 0.35f, 1.0f), "%s",
+				Tr("reads: needs a deep capture of this frame, which records what each command binds."));
+		if (query.NeedsTiming() && !model.Timings().IsValid())
+			ImGui::TextColored(ImVec4(1.0f, 0.8f, 0.35f, 1.0f), "%s",
+				Tr("ms: needs GPU timings: set the tracking level to Pass Timing or higher."));
+		const std::unordered_map<uint32_t, ShaderFrameFacts> &facts = ShaderFactsOf(model, query);
 
 		constexpr ImGuiTableFlags kFlags = ImGuiTableFlags_ScrollY | ImGuiTableFlags_RowBg |
 			ImGuiTableFlags_BordersOuter | ImGuiTableFlags_BordersV | ImGuiTableFlags_Resizable |
@@ -940,9 +981,10 @@ namespace cygi
 				if (m_only_used_this_frame && shader.draws_this_frame == 0 && shader.dispatches_this_frame == 0)
 					continue;
 
-				const std::string searchable = std::string(ShaderStageName(shader.stage)) + " " +
-					shader.signature.ToHex();
-				if (!ContainsInsensitive(searchable, m_shader_filter))
+				const auto fact = facts.find(shader.id);
+				if (!MatchesShaderQuery(query, shader, fact != facts.end() ? &fact->second : nullptr, model,
+					query.NeedsNotes() || !query.words.empty() ? NotesViewOf(shader.signature) : nullptr,
+					m_profile_live && !m_profile.WasKnownBefore(shader.signature)))
 					continue;
 				rows.push_back(&shader);
 			}
@@ -2012,6 +2054,43 @@ namespace cygi
 			return Success(std::move(result));
 		}
 
+		if (tool == "find_shaders")
+		{
+			const ShaderQuery query = ShaderQuery::Parse(arguments["query"].AsString());
+			const std::unordered_map<uint32_t, ShaderFrameFacts> &facts = ShaderFactsOf(model, query);
+			const uint32_t limit = arguments["limit"].AsUInt32(100);
+			Json list = Json::Array();
+			uint32_t matches = 0;
+			for (const ShaderInfo &shader : model.Shaders())
+			{
+				if (shader.id == 0)
+					continue;
+				const auto fact = facts.find(shader.id);
+				if (!MatchesShaderQuery(query, shader, fact != facts.end() ? &fact->second : nullptr, model,
+					query.NeedsNotes() || !query.words.empty() ? NotesViewOf(shader.signature) : nullptr,
+					m_profile_live && !m_profile.WasKnownBefore(shader.signature)))
+					continue;
+				++matches;
+				if (list.Size() < limit)
+					list.Push(ShaderSummary(shader, model));
+			}
+			Json result = Json::Object();
+			result["matches"] = Json(matches);
+			result["shaders"] = list;
+			if (!query.errors.empty())
+			{
+				Json errors = Json::Array();
+				for (const std::string &word : query.errors)
+					errors.Push(Json(word));
+				result["not_understood"] = errors;
+			}
+			if (query.NeedsBindings() && !model.LastFrame().HasDeepCapture())
+				result["note"] = Json("reads: needs a deep capture of this frame; without one nothing matches it");
+			else if (query.NeedsTiming() && !model.Timings().IsValid())
+				result["note"] = Json("ms: needs GPU timings (tracking level Pass Timing or higher)");
+			return Success(std::move(result));
+		}
+
 		if (tool == "get_game_profile")
 		{
 			if (!m_profile.IsOpen())
@@ -2715,10 +2794,43 @@ namespace cygi
 		m_notes_signature = signature;
 	}
 
+	const std::unordered_map<uint32_t, ShaderFrameFacts> &Application::ShaderFactsOf(const SessionModel &model,
+	                                                                               const ShaderQuery &query)
+	{
+		static const std::unordered_map<uint32_t, ShaderFrameFacts> kNone;
+		if (query.writes.empty() && query.reads.empty())
+			return kNone;
+		if (m_query_facts_model != &model || m_query_facts_frame != model.LastFrame().index)
+		{
+			m_query_facts = CollectShaderFacts(model);
+			m_query_facts_model = &model;
+			m_query_facts_frame = model.LastFrame().index;
+		}
+		return m_query_facts;
+	}
+
+	const ShaderNotesView *Application::NotesViewOf(const Sha256Digest &signature)
+	{
+		const std::string key = signature.ToHex();
+		auto found = m_notes_views.find(key);
+		if (found == m_notes_views.end())
+		{
+			ShaderNotes notes;
+			LoadShaderNotes(m_analysis.Store(), signature, notes);   // nothing stored is not an error
+			ShaderNotesView view;
+			view.name = notes.user_name;
+			for (const ShaderTag tag : notes.tags)
+				view.tags.push_back(ShaderTagName(tag));
+			found = m_notes_views.emplace(key, std::move(view)).first;
+		}
+		return &found->second;
+	}
+
 	void Application::SaveNotes()
 	{
 		if (m_notes_shader == 0 || m_notes_signature.IsZero())
 			return;
+		m_notes_views.erase(m_notes_signature.ToHex());
 		SaveShaderNotes(m_analysis.Store(), m_notes_signature, m_notes);
 	}
 

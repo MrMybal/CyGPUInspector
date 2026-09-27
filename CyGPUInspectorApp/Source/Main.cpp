@@ -367,6 +367,14 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, LPWSTR, int)
 					application.RequestStartupShader(shader_id, decompile);
 					continue;
 				}
+				if (argument.rfind(L"--search=", 0) == 0)
+				{
+					std::string query;
+					for (size_t k = 9; k < argument.size(); ++k)
+						query += static_cast<char>(argument[k]);
+					application.SetShaderSearch(query);
+					continue;
+				}
 				if (argument.rfind(L"--show=", 0) == 0)
 				{
 					std::wstring views = argument.substr(7);

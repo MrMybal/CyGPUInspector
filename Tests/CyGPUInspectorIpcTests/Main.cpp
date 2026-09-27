@@ -8,6 +8,7 @@
 #include "Analysis/FrameGraph.hpp"
 #include "Analysis/FrameTimeline.hpp"
 #include "Analysis/FrameTrack.hpp"
+#include "Analysis/ShaderQuery.hpp"
 #include "Mcp/McpBridge.hpp"
 #include "Session/CaptureArchive.hpp"
 #include "Render/SharedTexture.hpp"
@@ -735,6 +736,39 @@ int main(int argc, char **argv)
 						"a deep capture brings the names the game gave its resources");
 					Check(depth != nullptr && depth->Describe().find("\"SceneDepth\"") != std::string::npos,
 						"and the name is part of how a resource is described");
+				}
+
+				{
+					// Searching the shaders of the frame by what they do (section 46).
+					std::lock_guard<std::mutex> lock(model.Mutex());
+					const auto facts = cygi::CollectShaderFacts(model);
+					auto find = [&](const char *text) {
+						const cygi::ShaderQuery query = cygi::ShaderQuery::Parse(text);
+						std::vector<uint32_t> ids;
+						for (const cygi::ShaderInfo &shader : model.Shaders())
+						{
+							const auto fact = facts.find(shader.id);
+							if (shader.id != 0 && cygi::MatchesShaderQuery(query, shader,
+								fact != facts.end() ? &fact->second : nullptr, model, nullptr, false))
+								ids.push_back(shader.id);
+						}
+						std::sort(ids.begin(), ids.end());
+						return ids;
+					};
+					Check(find("stage:cs") == std::vector<uint32_t>({ 5, 6, 7 }), "stage:cs finds the compute shaders");
+					Check(find("writes:#7") == std::vector<uint32_t>({ 8, 9 }),
+						"writes:#7 finds the pixel shaders drawing into the back buffer, not their vertex shaders");
+					Check(find("stage:ps writes:depth") == std::vector<uint32_t>({ 2, 4 }),
+						"stage:ps writes:depth finds the pixel shaders drawn with a depth target");
+					Check(find("writes:rgba8") == std::vector<uint32_t>({ 4, 8, 9 }),
+						"writes:rgba8 finds the shaders writing an r8g8b8a8 target");
+					Check(find("calls>1000") == std::vector<uint32_t>({ 3, 4 }), "calls>1000 finds the G-buffer shaders");
+					Check(find("stage:vs calls<1000") == std::vector<uint32_t>({ 1 }), "criteria combine");
+					Check(!cygi::ShaderQuery::Parse("colour:red").errors.empty(), "an unknown criterion is reported, not ignored");
+					Check(cygi::FormatMatches(10, "rgba16f") && cygi::FormatMatches(10, "R16G16B16A16_FLOAT") &&
+						!cygi::FormatMatches(28, "rgba16f"), "formats match by their short and full names");
+					Check(cygi::FormatMatches(40, "depth") && cygi::FormatMatches(29, "srgb") && cygi::FormatMatches(10, "hdr"),
+						"and by kind: depth, sRGB, HDR");
 				}
 
 				{

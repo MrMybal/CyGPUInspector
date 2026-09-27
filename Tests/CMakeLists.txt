@@ -22,6 +22,7 @@ add_executable(CyGPUInspectorIpcTests
     ${CMAKE_SOURCE_DIR}/CyGPUInspectorApp/Source/Analysis/FrameGraph.cpp
     ${CMAKE_SOURCE_DIR}/CyGPUInspectorApp/Source/Analysis/FrameTimeline.cpp
     ${CMAKE_SOURCE_DIR}/CyGPUInspectorApp/Source/Analysis/FrameTrack.cpp
+    ${CMAKE_SOURCE_DIR}/CyGPUInspectorApp/Source/Analysis/ShaderQuery.cpp
     ${CMAKE_SOURCE_DIR}/CyGPUInspectorApp/Source/Session/CaptureArchive.cpp
     ${CMAKE_SOURCE_DIR}/CyGPUInspectorApp/Source/Mcp/McpBridge.cpp)
 target_include_directories(CyGPUInspectorIpcTests PRIVATE ${CMAKE_SOURCE_DIR}/CyGPUInspectorApp/Source)

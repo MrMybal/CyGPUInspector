@@ -10,6 +10,7 @@
 #include "Analysis/FrameTrack.hpp"
 #include "Mcp/McpBridge.hpp"
 #include "Analysis/ShaderAnalysisService.hpp"
+#include "Analysis/ShaderQuery.hpp"
 #include "Render/CaptureBufferWriter.hpp"
 #include "Render/PreviewRenderer.hpp"
 #include "Render/SharedTexture.hpp"
@@ -65,6 +66,8 @@ namespace cygi
 		// "hlsl", "ai-analysis", "hlsl-editor" or "assistant". No click, no cursor moved.
 		void RequestStartupShader(uint32_t shader_id, bool decompile);
 		void RequestStartupView(const std::string &view);
+		// Fills the search of the Shaders panel, in the query language of find_shaders.
+		void SetShaderSearch(const std::string &query);
 
 	private:
 		void BuildDefaultLayout(unsigned int dockspace_id);
@@ -188,6 +191,13 @@ namespace cygi
 		void OpenHlslFile();
 		void SaveHlslFile();
 
+		// Searching shaders (section 46): what each shader did in the analysed frame, computed once
+		// per frame and only when a query asks about targets, and the names and tags of the notes,
+		// read once per signature.
+		const std::unordered_map<uint32_t, ShaderFrameFacts> &ShaderFactsOf(const SessionModel &model,
+		                                                                    const ShaderQuery &query);
+		const ShaderNotesView *NotesViewOf(const Sha256Digest &signature);
+
 		// Tags and annotations, kept per signature so they survive everything.
 		void LoadNotesFor(uint32_t shader_id);
 		void SaveNotes();
@@ -306,6 +316,10 @@ namespace cygi
 		double m_profile_since_save = 0.0;
 		std::string m_profile_message;
 		char m_profile_filter[64] = {};
+		std::unordered_map<uint32_t, ShaderFrameFacts> m_query_facts;
+		const SessionModel *m_query_facts_model = nullptr;
+		uint64_t m_query_facts_frame = UINT64_MAX;
+		std::unordered_map<std::string, ShaderNotesView> m_notes_views;
 		bool m_profile_focus = false;
 
 		// The AI assistant, and what its panel and the AI Analysis tab keep between frames.

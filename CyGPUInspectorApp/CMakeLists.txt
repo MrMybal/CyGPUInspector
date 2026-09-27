@@ -54,6 +54,8 @@ set(CYGI_APP_SOURCES
     Source/Analysis/FrameTrack.hpp
     Source/Analysis/FrameTrack.cpp
     Source/Analysis/ShaderAnalysisService.hpp
+    Source/Analysis/ShaderQuery.hpp
+    Source/Analysis/ShaderQuery.cpp
     Source/Analysis/ShaderAnalysisService.cpp
     Source/Mcp/McpBridge.hpp
     Source/Mcp/McpBridge.cpp

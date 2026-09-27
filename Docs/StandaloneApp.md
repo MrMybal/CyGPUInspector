@@ -81,6 +81,27 @@ well: picking a pass, in the bars or in the list, scrolls Frame events to that p
 command rather than leaving the list where it was, and the resources and shaders listed beside
 the bars are themselves the selection.
 
+## Searching shaders
+
+The search field of the Shaders panel takes plain text (a piece of the signature or of the stage) or
+words that each narrow the list, all of which must match (§46):
+
+| Word | Keeps the shaders that |
+|---|---|
+| `stage:cs`, `stage:ps,vs` | are of that stage (`vs ps cs gs hs ds ms as`, or the full names) |
+| `writes:rgba16f`, `writes:depth`, `writes:hdr`, `writes:#12` | draw into a target of that format, a depth target, any float format, or that resource |
+| `reads:depth`, `reads:#7` | have that resource bound for reading — needs a deep capture of the frame |
+| `ms>0.2`, `calls>1000` | cost more than 0.2 ms of GPU time, run more than 1000 draws and dispatches in the frame |
+| `format:dxil`, `sm:6` | have that byte code format, that shader model |
+| `tag:bloom`, `name:tonemap` | carry that tag or name in their notes |
+| `used`, `disabled`, `replaced`, `new` | ran in the frame, are disabled, are replaced, are new in this game's profile |
+
+"Find the shaders writing RGBA16F" is `writes:rgba16f`; "compute shaders writing this resource" is
+`stage:cs writes:#12`. Colour targets count for the pixel shader of a draw, a depth target for its
+whole pipeline, and UAVs and shader resources come from the bindings of a deep capture. A word that
+is not understood is shown, never silently ignored. The same text is the `query` of the
+`find_shaders` MCP tool, so an agent and the AI assistant search the same way.
+
 ## HLSL editor
 
 The HLSL of the selected shader is one document, shown either in the HLSL tab or in a window of its
@@ -115,6 +136,7 @@ Everything they do is also reachable from the interface.
 |---|---|
 | `--connect[=<pid>]` | attaches to a running session at start-up. Without a pid it takes the only session there is, and refuses rather than guessing when several are running. |
 | `--level=<name>` | sets the tracking level on that session: `idle`, `tracking`, `pass-timing`, `capture`, `full-draw-timing`. Applied after `--connect`, because a level means nothing until there is a session to set it on. |
+| `--search=<query>` | fills the search of the Shaders panel, in the language above; quote it when it has several words. |
 | `--select-shader=<id>` | selects that shader as soon as the session has sent it. With `--decompile`, also runs the decompilers on it. |
 | `--show=<view>[,<view>]` | brings views forward: `hlsl`, `ai-analysis` (tabs of Shader code), `hlsl-editor` (the editor window), `assistant` (the AI assistant panel). Used for the screenshots of this documentation. |
 

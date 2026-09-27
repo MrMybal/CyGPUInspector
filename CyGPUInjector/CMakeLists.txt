@@ -24,6 +24,11 @@ set(CYGI_INJECTOR_SOURCES
 
 set_source_files_properties(${CYGI_INJECTOR_SOURCES} PROPERTIES COMPILE_DEFINITIONS "WIN32_LEAN_AND_MEAN")
 
+# rc.exe includes Version.hpp, but ninja does not see a resource compiler's includes: without
+# this, a version bump leaves the file properties of the binary at the previous version.
+set_source_files_properties(Source/CyGPUInjector.rc PROPERTIES OBJECT_DEPENDS
+    ${CMAKE_SOURCE_DIR}/CyGPUInspectorCore/Include/CyGPUInspectorCore/Version.hpp)
+
 add_library(CyGPUInjector SHARED ${CYGI_INJECTOR_SOURCES})
 
 # The two shared helpers live under CyGPUInspectorRS, so they are grouped separately rather than

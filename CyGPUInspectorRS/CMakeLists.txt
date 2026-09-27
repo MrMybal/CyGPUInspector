@@ -44,6 +44,11 @@ set(CYGI_RS_SOURCES
 
 set_source_files_properties(${CYGI_RS_SOURCES} PROPERTIES COMPILE_DEFINITIONS "WIN32_LEAN_AND_MEAN")
 
+# rc.exe includes Version.hpp, but ninja does not see a resource compiler's includes: without
+# this, a version bump leaves the file properties of the binary at the previous version.
+set_source_files_properties(Source/Addon/CyGPUInspectorRS.rc PROPERTIES OBJECT_DEPENDS
+    ${CMAKE_SOURCE_DIR}/CyGPUInspectorCore/Include/CyGPUInspectorCore/Version.hpp)
+
 add_library(CyGPUInspectorRS SHARED ${CYGI_RS_SOURCES})
 
 source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR}/Source PREFIX "Source" FILES ${CYGI_RS_SOURCES})

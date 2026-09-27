@@ -73,6 +73,11 @@ set(CYGI_APP_SOURCES
     Source/Session/SessionClient.hpp
     Source/Session/SessionClient.cpp)
 
+# rc.exe includes Version.hpp, but ninja does not see a resource compiler's includes: without
+# this, a version bump leaves the file properties of the binary at the previous version.
+set_source_files_properties(Source/CyGPUInspectorApp.rc PROPERTIES OBJECT_DEPENDS
+    ${CMAKE_SOURCE_DIR}/CyGPUInspectorCore/Include/CyGPUInspectorCore/Version.hpp)
+
 add_executable(CyGPUInspectorApp WIN32 ${CYGI_APP_SOURCES} ${CYGI_IMGUI_SOURCES} ${CYGI_TEXTEDITOR_SOURCES})
 
 source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR}/Source PREFIX "Source" FILES ${CYGI_APP_SOURCES})

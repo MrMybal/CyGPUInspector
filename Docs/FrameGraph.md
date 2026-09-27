@@ -84,8 +84,21 @@ name survives rebuilds and switches the origin to `user`.
   guess, and it is what tells one unnamed pass from another in a list — a post-processing ladder
   reads as 1708x960, then 854x480, and so on. The origin stays `unknown` and the confidence zero.
 * Only **four render targets** per binding are carried (slots 0 to 3).
-* Classification looks at one frame only: it does not yet take advantage of a pass being stable
-  from one frame to the next.
+* Classification itself looks at one frame; what it says is then weighed across rebuilds (below).
+
+## From one rebuild to the next
+
+The graph is rebuilt four times a second, and each pass is followed from one rebuild to the next by
+what it is — its kind, its shaders, the formats and sizes of its targets — rather than by its
+position, which moves whenever the game adds a pass before it:
+
+* a name one rebuild gives and the next takes back yields to the name most of the last 30 rebuilds
+  agree on, so the list does not flicker;
+* a pass given the same name in at least 90 % of the last rebuilds, over ten or more, gains 5 points
+  of confidence, never above 95 %: consistency is evidence, not proof;
+* a name the user gives follows the pass wherever it moves in the frame, until they clear it.
+
+Each pass says how many rebuilds in a row it has been seen and how often it had its name.
 
 ## Presentation
 

@@ -479,6 +479,109 @@ namespace cygi
 		return it != m_flows.end() ? &it->second : nullptr;
 	}
 
+	// ---- PassHistory ---------------------------------------------------------------------------
+
+	void PassHistory::Clear()
+	{
+		m_entries.clear();
+		m_samples = 0;
+	}
+
+	std::string PassHistory::KeyOf(const GraphPass &pass, const SessionModel &model)
+	{
+		std::string key = std::to_string(static_cast<uint32_t>(pass.kind)) + "|";
+		std::vector<uint32_t> shaders = pass.shaders;
+		std::sort(shaders.begin(), shaders.end());
+		for (const uint32_t shader : shaders)
+			key += std::to_string(shader) + ",";
+		key += "|";
+		for (const uint32_t target : pass.render_targets)
+		{
+			const ResourceInfo *resource = model.ResourceById(target);
+			key += resource != nullptr
+				? std::to_string(resource->format) + ":" + std::to_string(resource->width) + "x" + std::to_string(resource->height) + ","
+				: std::string("?,");
+		}
+		key += pass.depth_target != 0 ? "|d" : "|-";
+		return key;
+	}
+
+	void PassHistory::SetUserName(const std::string &key, const std::string &name)
+	{
+		if (name.empty())
+		{
+			auto found = m_entries.find(key);
+			if (found != m_entries.end())
+				found->second.user_name.clear();
+			return;
+		}
+		m_entries[key].user_name = name;
+	}
+
+	void PassHistory::Apply(FrameGraph &graph, const SessionModel &model)
+	{
+		++m_samples;
+		for (GraphPass &pass : graph.MutablePasses())
+		{
+			Entry &entry = m_entries[KeyOf(pass, model)];
+			entry.consecutive = entry.last_sample + 1 == m_samples ? entry.consecutive + 1 : 1;
+			entry.last_sample = m_samples;
+			pass.stable_samples = entry.consecutive;
+
+			// A name the user gave belongs to the pass, wherever it now sits in the frame.
+			if (!entry.user_name.empty())
+			{
+				pass.name = entry.user_name;
+				pass.origin = PassNameOrigin::user;
+				pass.confidence = 1.0f;
+				pass.agreement = 1.0f;
+				continue;
+			}
+			// Only derived names are steadied: an unknown pass's name is a counter and a size, facts.
+			if (pass.origin != PassNameOrigin::heuristic)
+				continue;
+
+			entry.names.push_back(pass.name);
+			entry.confidence[pass.name] = pass.confidence;
+			while (entry.names.size() > kWindow)
+				entry.names.pop_front();
+
+			std::unordered_map<std::string, size_t> votes;
+			for (const std::string &name : entry.names)
+				++votes[name];
+			std::string majority = pass.name;
+			size_t best = 0;
+			for (const auto &vote : votes)
+				if (vote.second > best || (vote.second == best && vote.first == pass.name))
+				{
+					majority = vote.first;
+					best = vote.second;
+				}
+
+			// A name this rebuild alone gives yields to the one most rebuilds agree on.
+			if (majority != pass.name && best * 2 > entry.names.size())
+			{
+				pass.name = majority;
+				pass.confidence = entry.confidence[majority];
+			}
+			pass.agreement = static_cast<float>(votes[pass.name]) / static_cast<float>(entry.names.size());
+
+			// The same name over many rebuilds is worth a little more, never certainty.
+			// (and never lowers a confidence that was already higher).
+			if (entry.names.size() >= 10 && pass.agreement >= 0.9f)
+				pass.confidence = std::max(pass.confidence, std::min(0.95f, pass.confidence + 0.05f));
+		}
+
+		// Passes the game no longer draws are forgotten after a while, user names excepted.
+		for (auto it = m_entries.begin(); it != m_entries.end();)
+		{
+			if (it->second.user_name.empty() && m_samples - it->second.last_sample > kForgetAfter)
+				it = m_entries.erase(it);
+			else
+				++it;
+		}
+	}
+
 	void FrameGraph::RenamePass(uint32_t pass_id, const std::string &name)
 	{
 		if (name.empty())

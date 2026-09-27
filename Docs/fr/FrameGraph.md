@@ -87,8 +87,24 @@ passe ; son nom survit aux reconstructions et passe en origine `user`.
   échelle de post-traitement se lit 1708x960, puis 854x480, et ainsi de suite. L'origine reste
   `unknown` et la confiance zéro.
 * Seuls **quatre render targets** par binding sont transportés (les slots 0 à 3).
-* La classification ne regarde qu'une frame : elle ne profite pas encore de la stabilité d'une
-  passe d'une frame à l'autre.
+* La classification elle-même regarde une frame ; ce qu'elle dit est ensuite pesé d'une
+  reconstruction à l'autre (ci-dessous).
+
+## D'une reconstruction à l'autre
+
+Le graphe est reconstruit quatre fois par seconde, et chaque passe est suivie d'une reconstruction à
+l'autre par ce qu'elle est — son type, ses shaders, le format et la taille de ses cibles — plutôt que
+par sa position, qui change dès que le jeu ajoute une passe avant elle :
+
+* un nom donné par une reconstruction et retiré par la suivante cède au nom sur lequel s'accordent la
+  plupart des 30 dernières reconstructions : la liste ne clignote pas ;
+* une passe qui reçoit le même nom dans au moins 90 % des dernières reconstructions, sur dix ou plus,
+  gagne 5 points de confiance, jamais au-delà de 95 % : la constance est un indice, pas une preuve ;
+* un nom donné par l'utilisateur suit la passe où qu'elle se déplace dans la frame, jusqu'à ce qu'il
+  l'efface.
+
+Chaque passe indique depuis combien de reconstructions d'affilée elle est vue et avec quelle
+fréquence elle a porté son nom.
 
 ## Rendu
 

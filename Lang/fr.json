@@ -540,6 +540,7 @@
   "skipped": "supprimé",
   "starts %.3f ms into the frame, lasts %.3f ms (%.1f%% of it)": "commence %.3f ms après le début de la frame, dure %.3f ms (%.1f%% de celle-ci)",
   "starts at %.3f ms, lasts %.3f ms (%.1f%% of the frame)": "commence à %.3f ms, dure %.3f ms (%.1f%% de la frame)",
+  "the same pass for %u rebuilds, this name in %.0f%% of them": "la même passe depuis %u reconstructions, ce nom dans %.0f%% d'entre elles",
   "typed": "saisi",
   "until the next measured command, which is what a before-only interceptor can measure": "jusqu'à la commande mesurée suivante, ce qu'un intercepteur « avant seulement » peut mesurer",
   "wait %.2f ms": "attente %.2f ms",

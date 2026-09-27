@@ -3451,6 +3451,12 @@ namespace cygi
 
 		m_graph.Build(model);
 		m_graph_frame = frame;
+		if (m_pass_history_model != &model)
+		{
+			m_pass_history.Clear();
+			m_pass_history_model = &model;
+		}
+		m_pass_history.Apply(m_graph, model);
 
 		if (m_graph.PassById(m_selected_pass) == nullptr && !m_graph.Passes().empty())
 		{
@@ -3570,6 +3576,9 @@ namespace cygi
 			if (pass.origin != PassNameOrigin::user && pass.confidence > 0.0f)
 				ImGui::TextDisabled(Tr("name: %s, confidence %.0f%%"), PassNameOriginName(pass.origin),
 					pass.confidence * 100.0f);
+			if (pass.origin == PassNameOrigin::heuristic && pass.stable_samples > 1)
+				ImGui::TextDisabled(Tr("the same pass for %u rebuilds, this name in %.0f%% of them"), pass.stable_samples,
+					pass.agreement * 100.0f);
 
 			if (m_selected_pass == pass.id)
 			{
@@ -3618,6 +3627,12 @@ namespace cygi
 				if (ImGui::InputTextWithHint("##rename", Tr("rename this pass"), m_pass_rename,
 				                             sizeof(m_pass_rename), ImGuiInputTextFlags_EnterReturnsTrue))
 				{
+					// Kept by what the pass is, so the name follows it when it moves in the frame.
+					if (SessionModel *active = ActiveModel())
+					{
+						std::lock_guard<std::mutex> lock(active->Mutex());
+						m_pass_history.SetUserName(PassHistory::KeyOf(pass, *active), m_pass_rename);
+					}
 					m_graph.RenamePass(pass.id, m_pass_rename);
 					m_pass_rename[0] = '\0';
 				}

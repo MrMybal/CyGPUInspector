@@ -463,6 +463,39 @@ int main(int argc, char **argv)
 				Check(ui != nullptr, "the UI pass is recognised");
 				Check(ui != nullptr && ui->draw_count == 40, "the UI pass holds its 40 draws");
 
+				// From one rebuild to the next: the same passes, steadier names, a user's name kept.
+				if (gbuffer != nullptr)
+				{
+					const uint32_t gbuffer_id = gbuffer->id;
+					const float first_confidence = gbuffer->confidence;
+					cygi::PassHistory history;
+					cygi::FrameGraph steady;
+					for (int i = 0; i < 12; ++i)
+					{
+						steady.Build(model);
+						history.Apply(steady, model);
+					}
+					const cygi::GraphPass *followed = steady.PassById(gbuffer_id);
+					Check(followed != nullptr && followed->stable_samples == 12 && followed->agreement == 1.0f,
+						"a pass is followed across rebuilds, with the same name every time");
+					Check(followed != nullptr && followed->confidence >= first_confidence && followed->confidence <= 0.95f + 1e-6f &&
+						(first_confidence >= 0.95f || followed->confidence > first_confidence),
+						"a name kept across rebuilds gains a little confidence, never certainty");
+
+					const std::string key = cygi::PassHistory::KeyOf(*followed, model);
+					history.SetUserName(key, "My G-buffer");
+					steady.Build(model);
+					history.Apply(steady, model);
+					followed = steady.PassById(gbuffer_id);
+					Check(followed != nullptr && followed->name == "My G-buffer" && followed->origin == cygi::PassNameOrigin::user,
+						"a name the user gave is applied to the pass at the next rebuild");
+					history.SetUserName(key, "");
+					steady.Build(model);
+					history.Apply(steady, model);
+					followed = steady.PassById(gbuffer_id);
+					Check(followed != nullptr && followed->name == "GBuffer", "and taken back when the user clears it");
+				}
+
 				// The dependency that matters: lighting reads the depth the prepass produced.
 				bool depth_edge = false;
 				for (const cygi::GraphEdge &edge : graph.Edges())

@@ -45,8 +45,9 @@ the documentation, rather than taken for bugs.
   called `Unknown Pass #N` rather than being given an invented name.
 * A draw's depth target counts as read **and** written, because the API does not say whether depth
   writing is enabled. A graph can therefore show a depth dependency slightly wider than reality.
-* The graph is rebuilt four times a second on the last frame received; it does not yet compare
-  frames with each other.
+* The graph is rebuilt four times a second on the last frame received. Names are steadied across
+  rebuilds, but each pass is still cut from one frame: a pass that only exists every other frame
+  appears and disappears with it.
 
 ## Shader chain limits (milestone 5, implemented)
 

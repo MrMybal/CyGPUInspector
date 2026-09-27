@@ -619,6 +619,7 @@
   "starts %.3f ms into the frame, lasts %.3f ms (%.1f%% of it)": "",
   "starts at %.3f ms, lasts %.3f ms (%.1f%% of the frame)": "",
   "texture": "",
+  "the same pass for %u rebuilds, this name in %.0f%% of them": "",
   "typed": "",
   "until the next measured command, which is what a before-only interceptor can measure": "",
   "wait %.2f ms": "",

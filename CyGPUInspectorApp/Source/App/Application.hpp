@@ -387,6 +387,9 @@ namespace cygi
 		std::string m_mod_message;
 
 		FrameGraph m_graph;
+		// What the successive rebuilds of m_graph said about each pass, for the model it was built on.
+		PassHistory m_pass_history;
+		const SessionModel *m_pass_history_model = nullptr;
 		uint64_t m_graph_frame = 0;
 		double m_since_graph = 0.0;
 		bool m_graph_auto = true;

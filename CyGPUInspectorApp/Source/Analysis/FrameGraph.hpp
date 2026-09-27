@@ -17,6 +17,7 @@
 #include "Session/SessionModel.hpp"
 
 #include <cstdint>
+#include <deque>
 #include <string>
 #include <unordered_map>
 #include <vector>
@@ -60,6 +61,11 @@ namespace cygi
 		std::vector<uint32_t> reads;            // resource ids this pass consumed
 		std::vector<uint32_t> shaders;          // distinct shader ids seen
 
+		// From one rebuild to the next (PassHistory): how many rebuilds in a row had this pass, and
+		// the share of the recent ones that gave it the name it has now. 0 until tracked.
+		uint32_t stable_samples = 0;
+		float agreement = 0.0f;
+
 		bool WritesResource(uint32_t resource_id) const;
 	};
 
@@ -88,6 +94,44 @@ namespace cygi
 		bool cleared = false;
 	};
 
+	class FrameGraph;
+
+	// What successive rebuilds of the graph said about each pass. A pass is followed by what it is —
+	// its kind, its shaders, the formats and sizes of its targets — not by its position in the
+	// frame, which changes whenever the game adds or removes a pass before it.
+	//
+	// It makes the names steadier and more honest. A name one rebuild gives and the next takes back
+	// yields to the name most of the recent rebuilds agree on; a pass given the same name across the
+	// last rebuilds gains a little confidence, never above 0.95; and a name the user gave follows
+	// the pass wherever it moves in the frame.
+	class PassHistory
+	{
+	public:
+		void Clear();
+		// The identity of a pass across rebuilds. The model lock is the caller's.
+		static std::string KeyOf(const GraphPass &pass, const SessionModel &model);
+		// A name given by the user to the pass with that key; empty removes it.
+		void SetUserName(const std::string &key, const std::string &name);
+		// Updates the history with a new graph and steadies its names. The model lock is the caller's.
+		void Apply(FrameGraph &graph, const SessionModel &model);
+		uint64_t Samples() const { return m_samples; }
+
+		static constexpr size_t kWindow = 30;          // rebuilds remembered per pass
+		static constexpr uint32_t kForgetAfter = 600;  // rebuilds without a pass before it is forgotten
+
+	private:
+		struct Entry
+		{
+			std::deque<std::string> names;            // the heuristic name of each recent rebuild
+			std::unordered_map<std::string, float> confidence;   // the last confidence of each name
+			std::string user_name;
+			uint32_t consecutive = 0;
+			uint64_t last_sample = 0;
+		};
+		std::unordered_map<std::string, Entry> m_entries;
+		uint64_t m_samples = 0;
+	};
+
 	class FrameGraph
 	{
 	public:
@@ -110,6 +154,8 @@ namespace cygi
 
 		// Lets the user override a derived name; the origin becomes `user`.
 		void RenamePass(uint32_t pass_id, const std::string &name);
+		// PassHistory rewrites names, origins and confidences; nothing else touches a built graph.
+		std::vector<GraphPass> &MutablePasses() { return m_passes; }
 
 		double BuildMilliseconds() const { return m_build_milliseconds; }
 

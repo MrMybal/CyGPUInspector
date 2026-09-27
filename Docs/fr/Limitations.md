@@ -51,8 +51,9 @@ documentation, plutôt que prises pour des bugs.
 * La cible de profondeur d'un draw compte comme lue **et** écrite, parce que l'API ne dit pas si
   l'écriture de profondeur est activée. Un graphe peut donc montrer une dépendance de profondeur
   un peu plus large que la réalité.
-* Le graphe est reconstruit quatre fois par seconde sur la dernière frame reçue ; il ne compare pas
-  encore les frames entre elles.
+* Le graphe est reconstruit quatre fois par seconde sur la dernière frame reçue. Les noms sont
+  stabilisés d'une reconstruction à l'autre, mais chaque passe est toujours découpée dans une frame :
+  une passe qui n'existe qu'une frame sur deux apparaît et disparaît avec elle.
 
 ## Limites de la chaîne de shaders (milestone 5, implémenté)
 

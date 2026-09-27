@@ -97,6 +97,8 @@ namespace cygi
 
 	Application::~Application()
 	{
+		// What the profile learnt in this session is written before it is lost.
+		CloseGameProfile();
 		ReleaseBufferView();
 		// Joins the writer thread after it has written what it holds.
 		m_buffer_writer.Shutdown();

@@ -64,6 +64,7 @@ CyGPUInspectorApp/Source
 | Éditeur HLSL | une fenêtre à part (Affichage > Éditeur HLSL) : l'éditeur complet, voir ci-dessous |
 | Mod export | ce qui a été remplacé ou désactivé, et le paquet vers lequel cela s'exporte |
 | Captures | enregistrement, réouverture et comparaison des captures hors ligne |
+| Profil du jeu | ce que l'outil retient du jeu : sessions, shaders nouveaux ou déjà connus, état enregistré des shaders désactivés et remplacés, captures du jeu. Voir [Database.md](Database.md) |
 | MCP | niveau de permission et journal de chaque appel |
 | Details | onglets Shader / Resource / Event / Log, avec les actions runtime et le graphe de dépendances |
 | Status | débit IPC, octets en attente, pertes, coût de l'add-on, compteurs côté jeu |

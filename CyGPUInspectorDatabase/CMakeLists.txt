@@ -1,11 +1,13 @@
 # CyGPUInspectorDatabase — persistent cache of everything derived from a shader.
-# Blobs on disk today; SQLite metadata and per game profiles come with the later milestones.
+# Blobs and JSON on disk: the shader store by signature, and a profile per game.
 
 set(CYGI_DATABASE_SOURCES
     Include/CyGPUInspectorDatabase/ShaderStore.hpp
     Include/CyGPUInspectorDatabase/ShaderNotes.hpp
+    Include/CyGPUInspectorDatabase/GameProfile.hpp
     Source/ShaderStore.cpp
-    Source/ShaderNotes.cpp)
+    Source/ShaderNotes.cpp
+    Source/GameProfile.cpp)
 
 add_library(CyGPUInspectorDatabase STATIC ${CYGI_DATABASE_SOURCES})
 

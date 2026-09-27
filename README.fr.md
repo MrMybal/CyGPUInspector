@@ -22,7 +22,7 @@ Licence : **GNU Affero General Public License v3 ou ultérieure** (AGPL-3.0-or-l
 | `CyGPUInjector` | add-on ReShade (`.addon64`) qui applique un mod exporté, sans le reste de l'outil | ✅ |
 | `CyGPUInspectorApp` | standalone Win32 + D3D11 + Dear ImGui : toute l'analyse | ✅ milestones 2–11 |
 | `CyGPUInspectorDecompiler` | désassemblage, réflexion, compilation, décompilation (4 backends) | ✅ milestones 5–6 |
-| `CyGPUInspectorDatabase` | blobs, tags et annotations par signature ; SQLite à venir | ✅ partiel |
+| `CyGPUInspectorDatabase` | blobs, tags et annotations par signature, un profil par jeu avec son état persistant, le tout en JSON | ✅ |
 | `CyGPUInspectorMCP` | serveur MCP local (lecture seule par défaut) | ✅ milestone 10 |
 | `CyGPUInspectorUnreal` | plugin Unreal Engine (5.3+) : captures depuis l'éditeur et depuis les builds Development / DebugGame | ✅ première version |
 
@@ -91,7 +91,7 @@ que le moteur de rendu démarre, comme le plugin RenderDoc d'Unreal charge Rende
 standalone si besoin, et les buffers capturés portent les noms qu'Unreal donne à ses render
 targets. Voir [Docs/fr/UnrealPlugin.md](Docs/fr/UnrealPlugin.md).
 
-Ce qui n'y est pas encore : SQLite pour les métadonnées, les profils par jeu, Vulkan et OpenGL.
+Ce qui n'y est pas encore : Vulkan et OpenGL.
 
 ## L'assistant IA
 

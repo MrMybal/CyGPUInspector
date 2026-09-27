@@ -56,8 +56,10 @@ remplacement. L'add-on n'embarque donc toujours aucun compilateur.
 
 ## État persistant
 
-Par signature, dans le profil du jeu : `disabled`, `highlighted`, tag, nom donné par l'utilisateur,
-shader de remplacement. Réappliqué au lancement suivant (§38).
+Ce qui a été désactivé, surligné ou remplacé est enregistré dans le profil du jeu avec **Enregistrer
+les changements de la session**, sous forme de paquet de mod indexé par hash sémantique, et appliqué à
+nouveau avec **Réappliquer maintenant** ou, si demandé, à la connexion du jeu (§38) ; tags et noms sont
+gardés par signature dans les notes du shader. Voir [Database.md](Database.md).
 
 ## Interface
 

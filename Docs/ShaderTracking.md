@@ -51,8 +51,8 @@ a shader and see its 381 draw calls (§19 of the brief).
 ## Still missing
 
 * Library and ray tracing shaders beyond recording their byte code.
-* Per-signature persistence in the database is implemented for blobs and notes; the SQLite index
-  is still to come — see [Database.md](Database.md).
+* Per-signature persistence is implemented for blobs and notes, and each game's profile records
+  every shader it has sent — see [Database.md](Database.md).
 
 Binding reflection (SRV / UAV / CBV per shader) is implemented and lives in
 [ShaderDecompiler.md](ShaderDecompiler.md), on the standalone side, through `D3DReflect` (DXBC) and

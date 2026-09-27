@@ -22,6 +22,8 @@ namespace cygi
 	inline constexpr McpToolDefinition kMcpTools[] = {
 		{ "get_session", "What CyGPUInspector is currently looking at: the connected game or the open capture.", "" },
 		{ "get_current_frame", "Counters of the frame currently held: draws, dispatches, events, CPU and GPU time.", "" },
+		{ "get_game_profile", "What is remembered about this game across sessions: sessions, shaders known, the shaders new in this session (never seen in an earlier one), and the saved state of disabled and replaced shaders. Optional: limit (new shaders listed, default 100).",
+		  "\"limit\":{\"type\":\"integer\"}" },
 
 		{ "list_shaders", "Every shader seen. Optional: query (text filter), used_this_frame (bool), limit.",
 		  "\"query\":{\"type\":\"string\"},\"used_this_frame\":{\"type\":\"boolean\"},\"limit\":{\"type\":\"integer\"}" },

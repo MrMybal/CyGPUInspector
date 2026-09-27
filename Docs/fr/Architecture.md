@@ -28,7 +28,7 @@ Ce fichier n'est qu'une table des matières de `Docs/`.
 | [ShaderReplacement.md](ShaderReplacement.md) | implémenté (milestone 7) |
 | [ModPackages.md](ModPackages.md) | implémenté : exporter une modification et la rejouer avec CyGPUInjector |
 | [GPUProfiling.md](GPUProfiling.md) | implémenté (milestone 8) |
-| [Database.md](Database.md) | blobs, tags et annotations implémentés ; SQLite à venir |
+| [Database.md](Database.md) | magasin de shaders, tags et annotations, profils par jeu et état persistant, en JSON |
 | [MCP.md](MCP.md) | implémenté (milestone 10) |
 | [AI.md](AI.md) | fondations implémentées (milestone 9) |
 | [Translating.md](Translating.md) | implémenté : l'interface et cette documentation, dans d'autres langues |

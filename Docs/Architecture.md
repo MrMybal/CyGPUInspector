@@ -32,7 +32,7 @@ English is the base language of this project. Every document here has a French c
 | [ShaderReplacement.md](ShaderReplacement.md) | implemented (milestone 7) |
 | [ModPackages.md](ModPackages.md) | implemented: exporting a modification and replaying it with CyGPUInjector |
 | [GPUProfiling.md](GPUProfiling.md) | implemented (milestone 8) |
-| [Database.md](Database.md) | blobs, tags and annotations implemented; SQLite still to come |
+| [Database.md](Database.md) | shader store, tags and annotations, game profiles and persistent state, in JSON |
 | [MCP.md](MCP.md) | implemented (milestone 10) |
 | [AI.md](AI.md) | foundations implemented (milestone 9) |
 | [Translating.md](Translating.md) | implemented: the interface and these documents, in other languages |

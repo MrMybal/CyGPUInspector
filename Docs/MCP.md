@@ -29,7 +29,7 @@ Three levels, `Read Only` by default, changeable **only in the standalone's inte
 
 | Level | Tools it adds |
 |---|---|
-| `Read Only` | `get_current_frame`, `list_shaders`, `inspect_shader`, `get_shader_disassembly`, `get_shader_decompiled_hlsl`, `decompile_shader`, `get_shader_draw_calls`, `get_shader_resources`, `get_shader_timing`, `list_resources`, `inspect_resource`, `get_resource_readers`, `get_resource_writers`, `get_frame_graph`, `get_passes`, `get_frame_timeline`, `get_capture_state`, `get_command_state`, `inspect_draw`, `inspect_dispatch`, `search_shaders`, `search_resources` |
+| `Read Only` | `get_current_frame`, `get_game_profile`, `list_shaders`, `inspect_shader`, `get_shader_disassembly`, `get_shader_decompiled_hlsl`, `decompile_shader`, `get_shader_draw_calls`, `get_shader_resources`, `get_shader_timing`, `list_resources`, `inspect_resource`, `get_resource_readers`, `get_resource_writers`, `get_frame_graph`, `get_passes`, `get_frame_timeline`, `get_capture_state`, `get_command_state`, `inspect_draw`, `inspect_dispatch`, `search_shaders`, `search_resources` |
 | `Debug Control` | `disable_shader`, `enable_shader`, `highlight_shader`, `capture_frame`, `start_deep_capture` |
 | `Shader Modification` | `compile_shader`, `replace_shader`, `restore_shader` |
 

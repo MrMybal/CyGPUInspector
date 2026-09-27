@@ -433,6 +433,7 @@ namespace cygi
 		// The assistant's tools are answered the same way, by the same handler.
 		UpdateAssistant(delta_seconds);
 		ApplyStartupRequests();
+		UpdateGameProfile(delta_seconds);
 
 		// Rebuilding a graph of tens of thousands of events every frame would be wasteful; four
 		// times a second is well under what the eye notices and keeps the UI thread free.
@@ -493,6 +494,7 @@ namespace cygi
 			ImGui::SetNextWindowFocus();
 		DrawConnectionsPanel();
 		DrawCapturesPanel();
+		DrawGameProfilePanel();
 		DrawMcpPanel();
 		if (pick_tabs)
 			ImGui::SetNextWindowFocus();
@@ -564,6 +566,7 @@ namespace cygi
 		// Left: what you are connected to, and what to pick from.
 		ImGui::DockBuilderDockWindow("Connections", left_top);
 		ImGui::DockBuilderDockWindow("Captures", left_top);
+		ImGui::DockBuilderDockWindow("Game profile", left_top);
 		ImGui::DockBuilderDockWindow("MCP", left_top);
 		ImGui::DockBuilderDockWindow("Shaders", left_bottom);
 		ImGui::DockBuilderDockWindow("Resources", left_bottom);
@@ -602,6 +605,8 @@ namespace cygi
 			m_code_tab_request = "AI Analysis";
 		else if (view == "assistant")
 			m_assistant_focus = true;
+		else if (view == "profile")
+			m_profile_focus = true;
 		else if (view == "hlsl-editor")
 		{
 			// The HLSL tab is what loads the shader's reconstruction into the document.
@@ -1967,7 +1972,7 @@ namespace cygi
 			return Failure("no session is connected and no capture is open");
 
 		SessionModel &model = *active;
-		std::lock_guard<std::mutex> lock(model.Mutex());
+		std::unique_lock<std::mutex> lock(model.Mutex());
 
 		const uint32_t shader_id = arguments["shader_id"].AsUInt32();
 		const uint32_t resource_id = arguments["resource_id"].AsUInt32();
@@ -2004,6 +2009,49 @@ namespace cygi
 				result["gpu_total_ms"] = Json(model.Timings().Milliseconds(model.Timings().total_ticks));
 				result["gpu_frame_index"] = Json(model.Timings().frame_index);
 			}
+			return Success(std::move(result));
+		}
+
+		if (tool == "get_game_profile")
+		{
+			if (!m_profile.IsOpen())
+				return Failure("no game profile is open: connect to a game or open a capture");
+			Json result = Json::Object();
+			result["executable"] = Json(m_profile.Executable());
+			result["folder"] = Json(m_profile.Directory().string());
+			result["first_seen"] = Json(m_profile.FirstSeen());
+			result["last_seen"] = Json(m_profile.LastSeen());
+			result["sessions"] = Json(m_profile.Sessions());
+			result["shaders_known"] = Json(static_cast<uint32_t>(m_profile.Shaders().size()));
+			result["live"] = Json(m_profile_live);
+			if (m_profile_live)
+			{
+				result["new_this_session"] = Json(m_profile_new);
+				result["known_from_earlier_sessions"] = Json(m_profile_known);
+				result["same_code_as_a_known_shader"] = Json(m_profile_known_code);
+				Json list = Json::Array();
+				const uint32_t limit = arguments["limit"].AsUInt32(100);
+				for (const ShaderInfo &shader : model.Shaders())
+				{
+					if (list.Size() >= limit)
+						break;
+					if (!shader.signature.IsZero() && !m_profile.WasKnownBefore(shader.signature))
+						list.Push(ShaderSummary(shader, model));
+				}
+				result["new_shaders"] = list;
+			}
+			Json saved = Json::Array();
+			for (size_t i = 0; i < m_profile_state.entries.size(); ++i)
+			{
+				const ModEntry &entry = m_profile_state.entries[i];
+				Json item = Json::Object();
+				item["change"] = Json(entry.Describe());
+				item["note"] = Json(entry.note);
+				item["applied_this_session"] = Json(i < m_profile_applied.size() && m_profile_applied[i]);
+				saved.Push(item);
+			}
+			result["saved_state"] = saved;
+			result["reapply_on_connect"] = Json(m_profile.ReapplyOnConnect());
 			return Success(std::move(result));
 		}
 
@@ -2516,6 +2564,11 @@ namespace cygi
 		}
 
 		// ---- actions above read only -----------------------------------------------------------
+
+		// Everything below acts on the game through the standalone's own paths, the ones the
+		// buttons use: InjectHlsl, the shader commands and the mod recorder. They take the model
+		// lock themselves, so it is let go here, or the first of them would wait for it forever.
+		lock.unlock();
 		if (tool == "disable_shader" || tool == "enable_shader" || tool == "highlight_shader" ||
 		    tool == "restore_shader")
 		{
@@ -2533,6 +2586,12 @@ namespace cygi
 				const ShaderCommand command = tool == "disable_shader" ? ShaderCommand::disable
 					: tool == "enable_shader" ? ShaderCommand::enable : ShaderCommand::restore;
 				ok = m_client->SendShaderCommand(command, shader_id);
+				// Written down like a click on the button, so an agent's changes can be exported
+				// and kept in the game's profile as well.
+				if (ok && command == ShaderCommand::disable)
+					m_mods.RecordDisable(m_client->Model(), shader_id);
+				else if (ok)
+					m_mods.Forget(m_client->Model(), shader_id);
 			}
 
 			if (!ok)
@@ -2601,17 +2660,32 @@ namespace cygi
 			result["byte_code_size"] = Json(static_cast<uint32_t>(compiled.byte_code.size()));
 			result["warnings"] = Json(compiled.messages);
 
+			// Whether it would fit the game's pipeline, checked against the original.
+			const std::vector<uint8_t> original = OriginalCode(shader_id);
+			if (!original.empty())
+			{
+				const ReplacementCheck check = CheckReplacement(original.data(), original.size(),
+					compiled.byte_code.data(), compiled.byte_code.size());
+				result["fits_original"] = Json(check.compatible);
+				Json issues = Json::Array();
+				for (const ReplacementIssue &issue : check.issues)
+					issues.Push(Json((issue.blocking ? std::string("blocking: ") : std::string("note: ")) + issue.message));
+				result["differences"] = issues;
+			}
+
 			if (tool == "compile_shader")
 				return Success(std::move(result));
 
 			if (!IsLive())
 				return Failure("a capture is open: there is no game to inject into");
 
-			std::string message;
-			if (!m_client->ReplaceShader(shader_id, compiled.byte_code, message))
-				return Failure("the add-on refused the replacement: " + message);
+			// The same path as Compile & Inject: checked, sent, and recorded for export.
+			m_inject_message.clear();
+			InjectHlsl(shader_id, hlsl, "MCP");
+			if (m_inject_message.rfind("injected", 0) != 0)
+				return Failure(m_inject_message.empty() ? std::string("the replacement was not sent") : m_inject_message);
 
-			result["replacement"] = Json(message);
+			result["replacement"] = Json(m_inject_message);
 			return Success(std::move(result));
 		}
 

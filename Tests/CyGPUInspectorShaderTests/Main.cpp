@@ -7,6 +7,7 @@
 #include <CyGPUInspectorCore/Sha256.hpp>
 #include <CyGPUInspectorCore/ModPackage.hpp>
 #include <CyGPUInspectorCore/ShaderBlob.hpp>
+#include <CyGPUInspectorDatabase/GameProfile.hpp>
 #include <CyGPUInspectorDatabase/ShaderStore.hpp>
 #include <CyGPUInspectorDecompiler/Decompiler.hpp>
 #include <CyGPUInspectorDecompiler/Disassembler.hpp>
@@ -1101,6 +1102,81 @@ float4 main(float3 position : POSITION) : SV_Position
 	}
 }
 
+namespace
+{
+	// What is remembered about a game from one session to the next (sections 38 and 63).
+	void TestGameProfile()
+	{
+		std::printf("\nGame profile\n");
+		Check(cygi::GameProfile::FolderName("C:\\Games\\Scorn-Win64-Shipping.exe") == "Scorn-Win64-Shipping",
+			"the folder of a game is its executable without .exe");
+		Check(cygi::GameProfile::FolderName("odd:name?.EXE") == "odd_name_", "and never a name Windows refuses");
+
+		std::error_code code;
+		const std::filesystem::path root = std::filesystem::temp_directory_path() / "cygi_profile_test";
+		std::filesystem::remove_all(root, code);
+
+		auto shader = [](uint8_t signature, uint8_t semantic) {
+			cygi::KnownShader known;
+			known.signature.bytes.fill(signature);
+			known.semantic_hash.bytes.fill(semantic);
+			known.stage = cygi::ShaderStage::pixel;
+			known.format = cygi::ShaderFormat::dxbc;
+			known.shader_model = 0x50;
+			return known;
+		};
+
+		std::string error;
+		{
+			cygi::GameProfile profile;
+			Check(profile.Open(root, "Game.exe", error) && profile.Sessions() == 0, "a game never seen opens empty");
+			profile.BeginSession("D3D12", "Test Adapter");
+			Check(profile.Note(shader(1, 10)) == cygi::GameProfile::Recognition::new_shader, "a first shader is new");
+			Check(profile.Note(shader(1, 10)) == cygi::GameProfile::Recognition::new_shader,
+				"and stays new for the rest of its session");
+			profile.Note(shader(2, 20));
+			profile.SetReapplyOnConnect(true);
+			Check(profile.Save(error) && std::filesystem::exists(root / "Game" / "profile.json"), "the profile is written");
+
+			cygi::ModPackage state;
+			cygi::ModEntry disabled;
+			disabled.action = cygi::ModAction::disable;
+			disabled.semantic_hash.bytes.fill(20);
+			disabled.stage = cygi::ShaderStage::pixel;
+			state.entries.push_back(disabled);
+			cygi::ModEntry replaced;
+			replaced.action = cygi::ModAction::replace;
+			replaced.semantic_hash.bytes.fill(10);
+			replaced.stage = cygi::ShaderStage::pixel;
+			replaced.source_hlsl = "float4 main() : SV_Target { return 1; }";
+			replaced.byte_code = cygi::CompileHlsl(replaced.source_hlsl, "main", "ps_5_0", "saved.hlsl").byte_code;
+			replaced.profile = "ps_5_0";
+			state.entries.push_back(replaced);
+			Check(profile.SaveState(state, error), "the persistent state is written");
+		}
+		{
+			cygi::GameProfile profile;
+			Check(profile.Open(root, "Game.exe", error) && profile.Sessions() == 1 && profile.Api() == "D3D12",
+				"the next session reads it back");
+			Check(profile.ReapplyOnConnect(), "with the choice to reapply");
+			profile.BeginSession("D3D12", "Test Adapter");
+			Check(profile.Note(shader(1, 10)) == cygi::GameProfile::Recognition::known, "a shader seen before is known");
+			Check(profile.Note(shader(3, 20)) == cygi::GameProfile::Recognition::known_code,
+				"the same code with other debug parts is recognised by its semantic hash");
+			Check(profile.Note(shader(4, 40)) == cygi::GameProfile::Recognition::new_shader, "a really new one is new");
+			Check(profile.Shaders().at(shader(1, 10).signature.ToHex()).sessions == 2, "sessions are counted per shader");
+
+			cygi::ModPackage state;
+			Check(profile.LoadState(state, error) && state.entries.size() == 2, "the persistent state is read back");
+			Check(state.entries.size() == 2 && !state.entries[1].byte_code.empty() &&
+				state.entries[1].profile == "ps_5_0", "with the replacement's byte code, source and profile");
+			Check(profile.ClearState(error) && profile.LoadState(state, error) && state.Empty(), "and can be forgotten");
+			profile.Save(error);
+		}
+		std::filesystem::remove_all(root, code);
+	}
+}
+
 int main()
 {
 	std::printf("CyGPUInspectorShaderTests\n\n");
@@ -1117,6 +1193,7 @@ int main()
 	TestDecompiler();
 	TestDxilDecompiler();
 	TestReplacementCheck();
+	TestGameProfile();
 
 	std::printf("\n%d checks, %d failure(s), %d skipped\n", g_checks, g_failures, g_skipped);
 	return g_failures == 0 ? 0 : 1;

@@ -18,4 +18,12 @@ namespace cygi
 		if (ImGui::GetItemRectMax().x + style.ItemSpacing.x + width <= right)
 			ImGui::SameLine();
 	}
+
+	// Greyed text that wraps instead of running out of a narrow panel.
+	inline void TextDisabledWrapped(const char *text)
+	{
+		ImGui::PushStyleColor(ImGuiCol_Text, ImGui::GetStyleColorVec4(ImGuiCol_TextDisabled));
+		ImGui::TextWrapped("%s", text);
+		ImGui::PopStyleColor();
+	}
 }

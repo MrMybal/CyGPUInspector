@@ -16,6 +16,7 @@
 #include "Mod/ModRecorder.hpp"
 #include "Session/CaptureArchive.hpp"
 
+#include <CyGPUInspectorDatabase/GameProfile.hpp>
 #include <CyGPUInspectorDatabase/ShaderNotes.hpp>
 #include "Session/SessionClient.hpp"
 
@@ -169,6 +170,14 @@ namespace cygi
 		bool GatherShaderData(uint32_t shader_id, Json &out, Sha256Digest &signature, std::string &error, bool &wait);
 		void StoreJobOutcome(const assistant::JobOutcome &outcome);
 
+		// The game profile and its persistent state. Defined in GameProfilePanel.cpp.
+		std::filesystem::path GamesRoot();
+		void UpdateGameProfile(double delta_seconds);
+		void CloseGameProfile();
+		void SaveProfileState();
+		void ReapplyProfileState();
+		void DrawGameProfilePanel();
+
 		// HLSL: the coloured tab and the editor window. Defined in HlslEditorPanel.cpp.
 		void DrawHlslTab(const ShaderAnalysis &analysis, bool has_analysis);
 		void DrawHlslEditorWindow();
@@ -281,6 +290,23 @@ namespace cygi
 		char m_hlsl_profile[32] = {};
 		bool m_hlsl_window = false;
 		bool m_hlsl_window_focus = false;
+
+		// The profile of the game being looked at (section 63), and its persistent state (section 38).
+		GameProfile m_profile;
+		const void *m_profile_owner = nullptr;   // the session or capture it was opened for
+		bool m_profile_live = false;             // a live session: noted and counted, not only shown
+		size_t m_profile_noted = 0;              // shaders of the model already noted
+		uint32_t m_profile_new = 0;
+		uint32_t m_profile_known = 0;
+		uint32_t m_profile_known_code = 0;
+		ModPackage m_profile_state;
+		std::vector<bool> m_profile_applied;     // per entry of m_profile_state, this session
+		bool m_profile_reapplying = false;
+		double m_profile_since_reapply = 0.0;
+		double m_profile_since_save = 0.0;
+		std::string m_profile_message;
+		char m_profile_filter[64] = {};
+		bool m_profile_focus = false;
 
 		// The AI assistant, and what its panel and the AI Analysis tab keep between frames.
 		assistant::Assistant m_assistant;

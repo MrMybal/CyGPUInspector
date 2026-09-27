@@ -26,7 +26,7 @@ CyGPUInspectorRS.addon64                           CyGPUInspectorApp.exe
  ├── GpuTimer         query heaps timestamp         ├── Resource preview (D3D11 + ImGui)
  ├── RuntimeControl   disable / highlight / replace ├── Shader disassembly + decompile
  ├── PreviewBridge    copie → texture partagée      ├── Search engine
- └── Overlay          mini panneau ReShade          ├── Database (SQLite + blobs)
+ └── Overlay          mini panneau ReShade          ├── Database (JSON + blobs)
                                                     └── Serveur de contrôle (pipe local)
         │                                                        ▲
         │  ① métadonnées : ring buffer en mémoire partagée       │  ③ JSON-RPC stdio
@@ -55,10 +55,10 @@ Quatre canaux distincts, pour quatre besoins qui n'ont pas les mêmes contrainte
 | `CyGPUInspectorRS` | `.addon64` chargé par ReShade | tracking, capture, contrôle runtime, overlay minimal |
 | `CyGPUInspectorApp` | exe Win32 + D3D11 + Dear ImGui | toute l'analyse, la visualisation, l'édition |
 | `CyGPUInspectorDecompiler` | bibliothèque statique | désassemblage, backends de décompilation, validation |
-| `CyGPUInspectorDatabase` | bibliothèque statique | SQLite + magasin de blobs, profils de jeu, cache |
+| `CyGPUInspectorDatabase` | bibliothèque statique | JSON + magasin de blobs, profils de jeu, cache |
 | `CyGPUInspectorMCP` | petit exe stdio | serveur MCP, proxy vers l'App |
 | `CyGPUInjector` | add-on ReShade | applique un mod exporté : remplace des shaders, supprime des draws. Aucun IPC, aucune analyse |
-| `ThirdParty` | — | reshade (BSD-3), imgui (MIT), sqlite (domaine public), 3Dmigoto decompiler (GPL-3), dxil-spirv (MIT), SPIRV-Cross (Apache-2.0) |
+| `ThirdParty` | — | reshade (BSD-3), imgui (MIT), ImGuiColorTextEdit (MIT), 3Dmigoto decompiler (GPL-3), dxil-spirv (MIT), SPIRV-Cross (Apache-2.0) |
 
 Règle structurante : **l'add-on ne fait qu'observer, transmettre et exécuter des ordres.**
 Il ne contient ni base de données, ni décompilateur, ni analyse, ni interface complexe.
@@ -293,19 +293,18 @@ d'événement qui l'a produite.
 
 ```
 Database/
-├── cygpuinspector.db            SQLite : shaders, tags, relations, captures, analyses
-├── shaders/<aa>/<signature>/    blobs (bytecode, désassemblage, décompilations, analyses)
-│   ├── metadata.json
-│   ├── original.dxbc | original.dxil
-│   ├── disassembly.txt
-│   ├── decompiled/<backend>-<version>.hlsl     ← un fichier par backend, jamais écrasé
-│   ├── analysis.md
-│   ├── tags.json
-│   └── replacements/<name>.hlsl + .cso
-└── Games/<Executable>/          profil par jeu : shaders connus, tags, captures, remplacements
+└── shaders/<aa>/<signature>/    blobs (bytecode, désassemblage, décompilations) et JSON
+    ├── metadata.json
+    ├── original.dxbc | original.dxil
+    ├── disassembly.txt
+    ├── decompiled/<backend>-<version>.hlsl     ← un fichier par backend, jamais écrasé
+    └── notes.json                              ← nom, tags, annotations (utilisateur, déduites, IA)
+Games/<exécutable>/
+    ├── profile.json             sessions, chaque shader vu dans le jeu
+    └── state.cygimod/           shaders laissés désactivés ou remplacés (§38), au format de CyGPUInjector
 ```
 
-SQLite pour les métadonnées et les requêtes, disque pour les gros blobs. Toute opération coûteuse
+JSON pour ce qui décrit, disque pour les gros blobs : lisible, comparable, rien à installer. Toute opération coûteuse
 (désassemblage, décompilation, nettoyage IA, classification) est mise en cache par signature, avec
 `{ outil, version, date, modèle IA, version du prompt }` afin de pouvoir régénérer plus tard
 (§58). Un shader déjà connu d'un autre lancement est reconnu par `signature`, sinon rapproché par

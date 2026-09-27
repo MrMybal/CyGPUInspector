@@ -177,7 +177,7 @@ def main():
             path = os.path.join(folder, file)
             relative = os.path.relpath(path, stage)
             if file.lower().endswith(('.pdb', '.ini', '.ilk', '.exp', '.lib', '.obj')) or \
-               re.search(r'(^|[\\/])(Captures|Database|Images|Saved|Intermediate)([\\/]|$)', relative):
+               re.search(r'(^|[\\/])(Captures|Database|Games|Images|Saved|Intermediate)([\\/]|$)', relative):
                 problems.append('should not ship: ' + relative)
             if file.lower().endswith(('.exe', '.dll', '.addon64')):
                 data = open(path, 'rb').read().lower()

@@ -26,7 +26,7 @@ CyGPUInspectorRS.addon64                           CyGPUInspectorApp.exe
  ├── GpuTimer         timestamp query heaps         ├── Resource preview (D3D11 + ImGui)
  ├── DeepCapture      the expensive one shot        ├── Shader disassembly + decompilation
  ├── RuntimeControl   disable / highlight / replace ├── Search engine
- ├── PreviewBridge    copy → shared texture         ├── Database (SQLite + blobs)
+ ├── PreviewBridge    copy → shared texture         ├── Database (JSON + blobs)
  └── Overlay          small ReShade panel           └── Control server (local pipe)
         │                                                        ▲
         │  ① metadata: shared memory ring buffer                 │  ③ JSON-RPC over stdio
@@ -56,9 +56,9 @@ Four separate channels, for four needs that do not share constraints:
 | `CyGPUInjector` | `.addon64` loaded by ReShade | applies an exported mod: replaces shaders, drops draws. No IPC, no analysis |
 | `CyGPUInspectorApp` | Win32 + D3D11 + Dear ImGui executable | all of the analysis, visualisation and editing |
 | `CyGPUInspectorDecompiler` | static library | disassembly, decompilation backends, validation |
-| `CyGPUInspectorDatabase` | static library | SQLite + blob store, game profiles, cache |
+| `CyGPUInspectorDatabase` | static library | JSON + blob store, game profiles, cache |
 | `CyGPUInspectorMCP` | small stdio executable | MCP server, proxy to the App |
-| `ThirdParty` | — | reshade (BSD-3), imgui (MIT), sqlite (public domain), 3Dmigoto decompiler (GPL-3), dxil-spirv and dxbc-spirv (MIT), SPIRV-Cross (Apache-2.0) |
+| `ThirdParty` | — | reshade (BSD-3), imgui (MIT), ImGuiColorTextEdit (MIT), 3Dmigoto decompiler (GPL-3), dxil-spirv and dxbc-spirv (MIT), SPIRV-Cross (Apache-2.0) |
 
 The structuring rule: **the add-on only observes, transmits and carries out orders.** It contains
 no database, no decompiler, no analysis and no complex interface.
@@ -292,19 +292,18 @@ produced it.
 
 ```
 Database/
-├── cygpuinspector.db            SQLite: shaders, tags, relations, captures, analyses
-├── shaders/<aa>/<signature>/    blobs (byte code, disassembly, decompilations, analyses)
-│   ├── metadata.json
-│   ├── original.dxbc | original.dxil
-│   ├── disassembly.txt
-│   ├── decompiled/<backend>-<version>.hlsl     ← one file per backend, never overwritten
-│   ├── analysis.md
-│   ├── tags.json
-│   └── replacements/<name>.hlsl + .cso
-└── Games/<Executable>/          per-game profile: known shaders, tags, captures, replacements
+└── shaders/<aa>/<signature>/    blobs (byte code, disassembly, decompilations) and JSON
+    ├── metadata.json
+    ├── original.dxbc | original.dxil
+    ├── disassembly.txt
+    ├── decompiled/<backend>-<version>.hlsl     ← one file per backend, never overwritten
+    └── notes.json                              ← name, tags, annotations (user, derived, AI)
+Games/<executable>/
+    ├── profile.json             sessions, every shader seen in the game
+    └── state.cygimod/           shaders left disabled or replaced (§38), CyGPUInjector's format
 ```
 
-SQLite for metadata and queries, disk for the large blobs. Every expensive operation (disassembly,
+JSON for what describes things, disk for the large blobs: readable, diffable, nothing to install. Every expensive operation (disassembly,
 decompilation, AI clean-up, classification) is cached by signature, with
 `{ tool, version, date, AI model, prompt version }` so it can be regenerated later (§58). A shader
 already known from another run is recognised by `signature`, otherwise matched by `semantic_hash`.

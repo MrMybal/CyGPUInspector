@@ -56,8 +56,10 @@ therefore still carries no compiler.
 
 ## Persistent state
 
-Per signature, in the game's profile: `disabled`, `highlighted`, tag, the name given by the user,
-the replacement shader. Reapplied on the next launch (§38). Exporting it for someone else is what
+What was disabled, highlighted or replaced is saved in the game's profile with **Save this
+session's changes**, as a mod package keyed by semantic hash, and applied again with **Reapply now**
+or, if asked, when the game connects (§38); tags and names are kept per signature in the shader's
+notes. See [Database.md](Database.md). Exporting it for someone else is what
 [ModPackages.md](ModPackages.md) is about.
 
 ## Interface

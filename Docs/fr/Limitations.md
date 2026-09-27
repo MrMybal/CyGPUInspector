@@ -26,7 +26,7 @@ documentation, plutôt que prises pour des bugs.
   `d3dcompiler` et `dxcompiler`.
 * `destroy_pipeline` n'est pas appelé en D3D9.
 
-## Limites de l'implémentation actuelle (v0.1.0)
+## Limites de l'implémentation actuelle (v0.2.0)
 
 * Seule la **render target 0** est associée à chaque événement de draw. Le jeu complet des cibles
   est transporté par les événements de binding, mais limité aux **quatre premiers slots**.

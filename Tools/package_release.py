@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Assembles the CyGPUInspector release zip from the sources and the build outputs.
 
-    python Tools/package_release.py --plugin-builds C:/CyGPUInspectorBuild [--dxc DIR] [--version 0.1.0]
+    python Tools/package_release.py --plugin-builds C:/CyGPUInspectorBuild [--dxc DIR] [--version X.Y.Z]
 
 Takes:
   bin/Release/                 the standalone, the MCP server, the add-ons, the tests (build first)
@@ -61,9 +61,15 @@ def header_licence(path):
     return '\n'.join(lines).strip() + '\n'
 
 
+def source_version():
+    """CYGI_VERSION_STRING: the package takes the version the binaries were built with."""
+    header = os.path.join(ROOT, 'CyGPUInspectorCore', 'Include', 'CyGPUInspectorCore', 'Version.hpp')
+    return re.search(r'#define CYGI_VERSION_STRING "([^"]+)"', open(header, encoding='utf-8').read()).group(1)
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__.split('\n\n')[0])
-    parser.add_argument('--version', default='0.1.0')
+    parser.add_argument('--version', default=source_version())
     parser.add_argument('--plugin-builds', required=True)
     parser.add_argument('--dxc')
     args = parser.parse_args()

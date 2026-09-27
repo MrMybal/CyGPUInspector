@@ -1,4 +1,4 @@
-CyGPUInspector 0.1.0
+CyGPUInspector 0.2.0
 ====================
 
 (Français : voir COMMENCER-ICI.txt)

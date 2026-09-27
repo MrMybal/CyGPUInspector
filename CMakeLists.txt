@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.21)
-project(CyGPUInspector VERSION 0.1.0 LANGUAGES CXX)
+project(CyGPUInspector VERSION 0.2.0 LANGUAGES CXX)
 
 # ---------------------------------------------------------------------------
 # CyGPUInspector — GPU frame, shader and resource inspector powered by ReShade

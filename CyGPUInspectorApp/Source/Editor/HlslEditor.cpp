@@ -17,6 +17,8 @@ namespace cygi
 		m_editor->SetShowLineNumbersEnabled(true);
 		m_editor->SetShowMatchingBrackets(true);
 		m_editor->SetShowScrollbarMiniMapEnabled(true);
+		// Dots for every space make code harder to read, not easier; View > Show whitespace.
+		m_editor->SetShowWhitespacesEnabled(false);
 	}
 
 	HlslEditor::~HlslEditor() = default;

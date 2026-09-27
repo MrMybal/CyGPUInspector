@@ -10,6 +10,7 @@
 #include <CyGPUInspectorCore/Protocol.hpp>
 #include <CyGPUInspectorCore/RingBuffer.hpp>
 #include <CyGPUInspectorCore/SessionDirectory.hpp>
+#include <CyGPUInspectorCore/ShaderBlob.hpp>
 #include <CyGPUInspectorCore/Sha256.hpp>
 #include <CyGPUInspectorCore/SharedMemory.hpp>
 #include <CyGPUInspectorCore/Version.hpp>
@@ -20,7 +21,10 @@
 #include <Windows.h>
 
 #include <d3d11.h>
+#include <d3dcompiler.h>
 #include <dxgi.h>
+
+#include "FakeShaders.hpp"
 
 #include <cmath>
 #include <cstdio>
@@ -266,6 +270,44 @@ namespace
 		std::memcpy(blob.data() + chunk_offset + 12, &shader_id, 4);
 		return blob;
 	}
+
+	// The real byte code of a fake shader, compiled by the compiler Windows ships. Empty when it is
+	// not there, and the caller falls back on the shell above: the lists still work without it.
+	std::vector<uint8_t> CompileFakeShader(uint32_t shader_id)
+	{
+		static const pD3DCompile compile = []() -> pD3DCompile {
+			const HMODULE module = LoadLibraryW(L"d3dcompiler_47.dll");
+			return module != nullptr
+				? reinterpret_cast<pD3DCompile>(reinterpret_cast<void *>(GetProcAddress(module, "D3DCompile")))
+				: nullptr;
+		}();
+		if (compile == nullptr)
+			return {};
+
+		for (const fake::ShaderSource &source : fake::kShaderSources)
+		{
+			if (source.shader_id != shader_id)
+				continue;
+			ID3DBlob *code = nullptr;
+			ID3DBlob *errors = nullptr;
+			const HRESULT hr = compile(source.hlsl, std::strlen(source.hlsl), "fake.hlsl", nullptr, nullptr, "main",
+				source.target, D3DCOMPILE_OPTIMIZATION_LEVEL3, 0, &code, &errors);
+			if (errors != nullptr)
+			{
+				if (FAILED(hr))
+					std::printf("shader %u does not compile: %s\n", shader_id,
+						static_cast<const char *>(errors->GetBufferPointer()));
+				errors->Release();
+			}
+			if (FAILED(hr) || code == nullptr)
+				return {};
+			const uint8_t *bytes = static_cast<const uint8_t *>(code->GetBufferPointer());
+			std::vector<uint8_t> result(bytes, bytes + code->GetBufferSize());
+			code->Release();
+			return result;
+		}
+		return {};
+	}
 }
 
 int main()
@@ -329,8 +371,16 @@ int main()
 	auto publish_static_data = [&]() {
 		for (const FakeShader &shader : kShaders)
 		{
-			const std::vector<uint8_t> code = MakeFakeByteCode(shader.id, shader.stage);
-			const cygi::Sha256Digest signature = cygi::Sha256::Hash(code.data(), code.size());
+			std::vector<uint8_t> code = CompileFakeShader(shader.id);
+			const bool real = !code.empty();
+			if (!real)
+				code = MakeFakeByteCode(shader.id, shader.stage);
+			// The same identities the add-on computes, so the fake shaders behave like real ones in
+			// the shader store and the notes.
+			const cygi::Sha256Digest signature = real ? cygi::ComputeShaderSignature(code.data(), code.size())
+				: cygi::Sha256::Hash(code.data(), code.size());
+			const cygi::Sha256Digest semantic = real ? cygi::ComputeShaderSemanticHash(code.data(), code.size())
+				: signature;
 
 			cygi::ShaderCodeRecord record = {};
 			record.shader_id = shader.id;
@@ -339,7 +389,7 @@ int main()
 			record.code_size = static_cast<uint32_t>(code.size());
 			record.shader_model = 0x50;
 			std::memcpy(record.signature, signature.bytes.data(), sizeof(record.signature));
-			std::memcpy(record.semantic_hash, signature.bytes.data(), sizeof(record.semantic_hash));
+			std::memcpy(record.semantic_hash, semantic.bytes.data(), sizeof(record.semantic_hash));
 			writer.Write(cygi::RecordType::shader_code, &record, sizeof(record), code.data(),
 				static_cast<uint32_t>(code.size()));
 		}

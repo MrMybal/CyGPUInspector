@@ -7,6 +7,7 @@
 
 #include <CyGPUInspectorCore/Format.hpp>
 #include <CyGPUInspectorDecompiler/Disassembler.hpp>
+#include <CyGPUInspectorDecompiler/ReplacementCheck.hpp>
 #include <CyGPUInspectorCore/ShaderBlob.hpp>
 #include <CyGPUInspectorCore/Version.hpp>
 
@@ -431,6 +432,7 @@ namespace cygi
 		m_mcp.Pump([this](const Json &request) { return HandleMcpRequest(request); });
 		// The assistant's tools are answered the same way, by the same handler.
 		UpdateAssistant(delta_seconds);
+		ApplyStartupRequests();
 
 		// Rebuilding a graph of tens of thousands of events every frame would be wasteful; four
 		// times a second is well under what the eye notices and keeps the UI thread free.
@@ -483,6 +485,7 @@ namespace cygi
 		// which is four lines of diagnostics in the widest panel on screen. From then on it is
 		// whatever was left selected, which the ini remembers.
 		const bool pick_tabs = m_default_tabs_pending > 0;
+		m_picking_tabs = pick_tabs;
 		if (m_default_tabs_pending > 0)
 			--m_default_tabs_pending;
 
@@ -583,6 +586,60 @@ namespace cygi
 
 		ImGui::DockBuilderFinish(dockspace_id);
 		m_default_tabs_pending = 3;
+	}
+
+	void Application::RequestStartupShader(uint32_t shader_id, bool decompile)
+	{
+		m_startup_shader = shader_id;
+		m_startup_decompile = decompile;
+	}
+
+	void Application::RequestStartupView(const std::string &view)
+	{
+		if (view == "hlsl")
+			m_code_tab_request = "HLSL";
+		else if (view == "ai-analysis")
+			m_code_tab_request = "AI Analysis";
+		else if (view == "assistant")
+			m_assistant_focus = true;
+		else if (view == "hlsl-editor")
+		{
+			// The HLSL tab is what loads the shader's reconstruction into the document.
+			m_code_tab_request = "HLSL";
+			m_hlsl_window = true;
+			m_hlsl_window_focus = true;
+		}
+	}
+
+	void Application::ApplyStartupRequests()
+	{
+		if (m_startup_shader == 0)
+			return;
+
+		bool known = false;
+		if (SessionModel *active = ActiveModel())
+		{
+			std::lock_guard<std::mutex> lock(active->Mutex());
+			const ShaderInfo *shader = active->ShaderById(m_startup_shader);
+			known = shader != nullptr && !shader->code.empty();
+		}
+		if (!known)
+			return;
+
+		m_selected_shader = m_startup_shader;
+		RequestAnalysis(m_startup_shader);
+		if (!m_startup_decompile)
+		{
+			m_startup_shader = 0;
+			return;
+		}
+		ShaderAnalysis analysis;
+		if (!m_analysis.Result(m_startup_shader, analysis))
+			return;
+		if (!analysis.decompilations.empty())
+			m_startup_shader = 0;
+		else if (!m_analysis.IsPending(m_startup_shader))
+			m_analysis.RequestDecompilation(m_startup_shader);
 	}
 
 	bool Application::SetTrackingLevel(TrackingLevel level, std::string &message)
@@ -1642,10 +1699,27 @@ namespace cygi
 			return;
 		}
 
+		// Checked here rather than left to the game: Direct3D 12 refuses a pipeline whose shaders do
+		// not fit together without saying why, and this can say exactly what does not fit.
+		std::string warnings;
+		const std::vector<uint8_t> original = OriginalCode(shader_id);
+		if (!original.empty())
+		{
+			const ReplacementCheck check = CheckReplacement(original.data(), original.size(),
+				compiled.byte_code.data(), compiled.byte_code.size());
+			if (!check.compatible)
+			{
+				m_inject_message = "not injected: the replacement does not fit the original's pipeline\n" + check.Describe();
+				return;
+			}
+			if (!check.issues.empty())
+				warnings = "\n" + check.Describe();
+		}
+
 		std::string message;
 		if (m_client->ReplaceShader(shader_id, compiled.byte_code, message))
 		{
-			m_inject_message = "injected as " + profile + " (" + message + ")";
+			m_inject_message = "injected as " + profile + " (" + message + ")" + warnings;
 			// Written down at the moment the user decided, so it can be exported and applied
 			// again in a later run, where none of this session's ids mean anything.
 			m_mods.RecordReplacement(m_client->Model(), shader_id, compiled.byte_code, hlsl, profile,
@@ -1655,6 +1729,16 @@ namespace cygi
 		{
 			m_inject_message = "the add-on refused the replacement: " + message;
 		}
+	}
+
+	std::vector<uint8_t> Application::OriginalCode(uint32_t shader_id)
+	{
+		SessionModel *active = ActiveModel();
+		if (active == nullptr)
+			return {};
+		std::lock_guard<std::mutex> lock(active->Mutex());
+		const ShaderInfo *shader = active->ShaderById(shader_id);
+		return shader != nullptr ? shader->code : std::vector<uint8_t>();
 	}
 
 	void Application::HighlightShader(uint32_t shader_id)
@@ -3370,13 +3454,15 @@ namespace cygi
 				ImGui::EndTabItem();
 			}
 
-			if (ImGui::BeginTabItem(TrId("HLSL")))
+			if (ImGui::BeginTabItem(TrId("HLSL"), nullptr,
+				m_code_tab_request == "HLSL" ? ImGuiTabItemFlags_SetSelected : 0))
 			{
 				DrawHlslTab(analysis, has_analysis);
 				ImGui::EndTabItem();
 			}
 
-			if (ImGui::BeginTabItem(TrId("AI Analysis")))
+			if (ImGui::BeginTabItem(TrId("AI Analysis"), nullptr,
+				m_code_tab_request == "AI Analysis" ? ImGuiTabItemFlags_SetSelected : 0))
 			{
 				DrawAiAnalysisTab();
 				ImGui::EndTabItem();
@@ -3406,6 +3492,8 @@ namespace cygi
 			}
 
 			ImGui::EndTabBar();
+			// A tab asked for from the command line is selected once, then left to the user.
+			m_code_tab_request.clear();
 		}
 
 		ImGui::End();

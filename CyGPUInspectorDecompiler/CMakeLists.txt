@@ -5,6 +5,7 @@ set(CYGI_DECOMPILER_SOURCES
     Include/CyGPUInspectorDecompiler/Disassembler.hpp
     Include/CyGPUInspectorDecompiler/Decompiler.hpp
     Source/Disassembler.cpp
+    Source/ReplacementCheck.cpp
     Source/Decompiler.cpp
     Source/DxbcTextDecompiler.cpp
     Source/MigotoDecompiler.cpp

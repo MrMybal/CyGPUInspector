@@ -107,13 +107,15 @@ own, so it never overwrites an arrangement someone has made.
 
 ## Command line
 
-Two options, both there so a scripted run does not depend on someone clicking through a combo box.
+Options for a scripted run, so it does not depend on someone clicking through the interface.
 Everything they do is also reachable from the interface.
 
 | Option | Effect |
 |---|---|
 | `--connect[=<pid>]` | attaches to a running session at start-up. Without a pid it takes the only session there is, and refuses rather than guessing when several are running. |
 | `--level=<name>` | sets the tracking level on that session: `idle`, `tracking`, `pass-timing`, `capture`, `full-draw-timing`. Applied after `--connect`, because a level means nothing until there is a session to set it on. |
+| `--select-shader=<id>` | selects that shader as soon as the session has sent it. With `--decompile`, also runs the decompilers on it. |
+| `--show=<view>[,<view>]` | brings views forward: `hlsl`, `ai-analysis` (tabs of Shader code), `hlsl-editor` (the editor window), `assistant` (the AI assistant panel). Used for the screenshots of this documentation. |
 
 ## Threads and locking
 

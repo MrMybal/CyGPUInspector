@@ -67,6 +67,27 @@ HLSL tab: an editor over the reconstruction of the chosen backend, then `[ Compi
 Shader tab: `Disable` / `Enable`, `Highlight`, `Restore`.
 Draws that went through a replacement come back marked `replaced` in the event list.
 
+## Checked before it is sent
+
+Direct3D 12 checks, when a pipeline is created, that its shaders fit together and fit its root
+signature, and refuses the pipeline with nothing an add-on can read: the add-on can only report
+"the graphics API refused the replacement pipeline". So the standalone compares the compiled
+replacement with the original first, the way CyRSAssistant checks a replacement before activating it,
+and says what does not fit instead of sending it:
+
+| Refused before sending | Why the game would refuse it |
+|---|---|
+| an input the original does not have | nothing before this stage provides it |
+| an input in another register, with more components or another type | the previous stage's output does not match it |
+| a texture, sampler, buffer or UAV register the original does not declare | the root signature has no place for it |
+| for a vertex, hull, domain or geometry shader, an output of the original no longer written | the next stage reads it |
+| another stage, or DXBC instead of DXIL | not the same kind of shader |
+
+Differences the game accepts are shown as notes: a pixel shader writing fewer or other targets, a
+constant buffer declared larger than the original's. The check runs on Compile & Inject, on the
+`replace_shader` MCP tool and for the AI assistant, and in the HLSL editor when it compiles for the
+shader's own profile, where the differences appear in the list under the compiler's messages.
+
 ## Limits
 
 * The time for a replaced draw includes binding the replacement pipeline and putting the original

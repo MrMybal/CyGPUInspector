@@ -11,8 +11,10 @@
 //
 // Copyright (C) 2026 Cyberalien. Licensed under the GNU AGPL v3 or later.
 #include "Application.hpp"
+#include "LayoutHelpers.hpp"
 
 #include <CyGPUInspectorCore/Localization.hpp>
+#include <CyGPUInspectorDecompiler/ReplacementCheck.hpp>
 
 #ifndef WIN32_LEAN_AND_MEAN
 #define WIN32_LEAN_AND_MEAN
@@ -125,8 +127,29 @@ namespace cygi
 		const CompileResult result = CompileHlsl(m_hlsl_editor.GetText(), entry, profile, "edited.hlsl");
 		m_hlsl_messages = m_hlsl_editor.MarkCompilerMessages(result.messages.empty() ? result.error : result.messages);
 
+		// Compiled for the shader's own profile, it can also be checked against the original: what
+		// the game would refuse is said here, before anything is sent.
+		size_t blocking = 0;
+		if (result.ok && m_hlsl_shader != 0 && profile == ProfileOf(m_hlsl_shader))
+		{
+			const std::vector<uint8_t> original = OriginalCode(m_hlsl_shader);
+			if (!original.empty())
+				for (const ReplacementIssue &issue : CheckReplacement(original.data(), original.size(),
+					result.byte_code.data(), result.byte_code.size()).issues)
+				{
+					CompilerMessage message;
+					message.error = issue.blocking;
+					message.text = std::string(issue.blocking ? Tr("does not fit the game: ") : Tr("note: ")) + issue.message;
+					m_hlsl_messages.push_back(std::move(message));
+					blocking += issue.blocking ? 1 : 0;
+				}
+		}
+
 		char status[256];
-		if (result.ok)
+		if (result.ok && blocking != 0)
+			std::snprintf(status, sizeof(status), Tr("Compiles as %s, but %zu difference(s) with the original would make the game refuse it."),
+				profile.c_str(), blocking);
+		else if (result.ok)
 			std::snprintf(status, sizeof(status), Tr("Compiles as %s with %s in %.1f ms, %zu warning(s)."),
 				profile.c_str(), result.tool.c_str(), result.milliseconds, m_hlsl_messages.size());
 		else
@@ -146,6 +169,11 @@ namespace cygi
 		const std::string entry = m_hlsl_entry[0] != '\0' ? std::string(m_hlsl_entry) : std::string("main");
 		const CompileResult check = CompileHlsl(m_hlsl_editor.GetText(), entry, profile, "edited.hlsl");
 		m_hlsl_messages = m_hlsl_editor.MarkCompilerMessages(check.messages.empty() ? check.error : check.messages);
+		if (check.ok)
+		{
+			// The same check as the injection makes, listed here with the compiler's messages.
+			CompileEditorHlsl();
+		}
 		if (!check.ok)
 		{
 			char status[256];
@@ -279,7 +307,7 @@ namespace cygi
 					m_hlsl_shader);
 				if (ImGui::SmallButton(TrId("Load this shader instead")))
 					OpenHlslEditor(m_selected_shader, result.hlsl, result.backend_id + " " + result.backend_version, false);
-				ImGui::SameLine();
+				SameLineIfFits(TrId("Show the HLSL editor"));
 				if (ImGui::SmallButton(TrId("Show the HLSL editor")))
 				{
 					m_hlsl_window = true;
@@ -291,21 +319,21 @@ namespace cygi
 				// Edit, compile and inject: the point of a reconstruction is to change it.
 				if (ImGui::SmallButton(TrId("Reset to backend output")))
 					OpenHlslEditor(m_selected_shader, result.hlsl, result.backend_id + " " + result.backend_version, false);
-				ImGui::SameLine();
+				SameLineIfFits(TrId("Compile"));
 				if (ImGui::SmallButton(TrId("Compile")))
 					CompileEditorHlsl();
-				ImGui::SameLine();
+				SameLineIfFits(TrId("Compile & Inject"));
 				ImGui::BeginDisabled(!IsLive());
 				if (ImGui::SmallButton(TrId("Compile & Inject")))
 					InjectEditorHlsl();
-				ImGui::SameLine();
+				SameLineIfFits(TrId("Restore original"));
 				if (ImGui::SmallButton(TrId("Restore original")))
 				{
 					m_client->SendShaderCommand(ShaderCommand::restore, m_selected_shader);
 					m_inject_message = "the original shader is back";
 				}
 				ImGui::EndDisabled();
-				ImGui::SameLine();
+				SameLineIfFits(TrId("Open in a window"));
 				if (ImGui::SmallButton(TrId("Open in a window")))
 				{
 					m_hlsl_window = true;

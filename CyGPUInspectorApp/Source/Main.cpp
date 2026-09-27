@@ -353,6 +353,36 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, LPWSTR, int)
 
 					std::string message;
 					application.SetTrackingLevel(level, message);
+					continue;
+				}
+
+				// --select-shader=<id> [--decompile] --show=<view>[,<view>]: open straight on a view,
+				// for a script or a screenshot, without moving anyone's cursor.
+				if (argument.rfind(L"--select-shader=", 0) == 0)
+				{
+					const uint32_t shader_id = static_cast<uint32_t>(std::wcstoul(argument.c_str() + 16, nullptr, 10));
+					bool decompile = false;
+					for (int j = 1; j < count; ++j)
+						decompile = decompile || std::wstring(arguments[j]) == L"--decompile";
+					application.RequestStartupShader(shader_id, decompile);
+					continue;
+				}
+				if (argument.rfind(L"--show=", 0) == 0)
+				{
+					std::wstring views = argument.substr(7);
+					size_t start = 0;
+					while (start <= views.size())
+					{
+						size_t end = views.find(L',', start);
+						if (end == std::wstring::npos)
+							end = views.size();
+						// The view names are ASCII.
+						std::string view;
+						for (size_t k = start; k < end; ++k)
+							view += static_cast<char>(views[k]);
+						application.RequestStartupView(view);
+						start = end + 1;
+					}
 				}
 			}
 			LocalFree(arguments);

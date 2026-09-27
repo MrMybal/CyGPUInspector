@@ -31,6 +31,7 @@ set(CYGI_APP_SOURCES
     Source/App/CaptureFiles.cpp
     Source/App/AssistantPanel.cpp
     Source/App/HlslEditorPanel.cpp
+    Source/App/LayoutHelpers.hpp
     Source/Assistant/AssistantText.hpp
     Source/Assistant/AssistantText.cpp
     Source/Assistant/AssistantProvider.hpp

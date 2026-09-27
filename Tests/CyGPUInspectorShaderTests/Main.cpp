@@ -10,6 +10,7 @@
 #include <CyGPUInspectorDatabase/ShaderStore.hpp>
 #include <CyGPUInspectorDecompiler/Decompiler.hpp>
 #include <CyGPUInspectorDecompiler/Disassembler.hpp>
+#include <CyGPUInspectorDecompiler/ReplacementCheck.hpp>
 
 #include "Render/CaptureBufferWriter.hpp"
 #include "Render/PreviewRenderer.hpp"
@@ -995,6 +996,111 @@ void main(uint3 id : SV_DispatchThreadID)
 	}
 }
 
+namespace
+{
+	// What makes Direct3D 12 refuse a replacement pipeline, caught before anything is sent.
+	void TestReplacementCheck()
+	{
+		std::printf("\nReplacement check\n");
+
+		const char *const original_ps = R"(
+Texture2D SceneColor : register(t0);
+SamplerState LinearClamp : register(s0);
+cbuffer Tonemap : register(b0) { float Exposure; float3 Padding; };
+struct Output { float4 color : SV_Target0; float4 extra : SV_Target1; };
+Output main(float4 position : SV_Position, float2 uv : TEXCOORD0)
+{
+    Output output;
+    output.color = SceneColor.Sample(LinearClamp, uv) * Exposure;
+    output.extra = float4(uv, 0, 1);
+    return output;
+}
+)";
+		auto compile = [](const char *source, const char *profile) {
+			return cygi::CompileHlsl(source, "main", profile, "check.hlsl");
+		};
+		auto check = [](const cygi::CompileResult &a, const cygi::CompileResult &b) {
+			return cygi::CheckReplacement(a.byte_code.data(), a.byte_code.size(), b.byte_code.data(), b.byte_code.size());
+		};
+
+		const cygi::CompileResult original = compile(original_ps, "ps_5_0");
+		if (!original.ok)
+		{
+			Skip("replacement check", "FXC is not available: " + original.error);
+			return;
+		}
+
+		const cygi::CompileResult same = compile(original_ps, "ps_5_0");
+		const cygi::ReplacementCheck identical = check(original, same);
+		Check(identical.compatible && identical.issues.empty(), "the same shader recompiled fits, with nothing to say");
+
+		const cygi::CompileResult wider = compile(R"(
+Texture2D SceneColor : register(t0);
+SamplerState LinearClamp : register(s0);
+float4 main(float4 position : SV_Position, float4 uv : TEXCOORD0) : SV_Target0
+{
+    return SceneColor.Sample(LinearClamp, uv.xy + uv.zw);
+}
+)", "ps_5_0");
+		const cygi::ReplacementCheck widened = check(original, wider);
+		Check(!widened.compatible && Contains(widened.Describe(), "TEXCOORD0"),
+			"an input read with more components than the original has is refused, and named");
+
+		const cygi::CompileResult extra_texture = compile(R"(
+Texture2D SceneColor : register(t0);
+Texture2D Bloom : register(t1);
+SamplerState LinearClamp : register(s0);
+float4 main(float4 position : SV_Position, float2 uv : TEXCOORD0) : SV_Target0
+{
+    return SceneColor.Sample(LinearClamp, uv) + Bloom.Sample(LinearClamp, uv);
+}
+)", "ps_5_0");
+		const cygi::ReplacementCheck texture = check(original, extra_texture);
+		Check(!texture.compatible && Contains(texture.Describe(), "t1"),
+			"a texture the original does not declare is refused: the pipeline has no place for it");
+
+		const cygi::CompileResult extra_input = compile(R"(
+float4 main(float4 position : SV_Position, float2 uv : TEXCOORD0, float4 tint : COLOR0) : SV_Target0
+{
+    return float4(uv, 0, 1) * tint;
+}
+)", "ps_5_0");
+		Check(!check(original, extra_input).compatible, "an input nothing provides is refused");
+
+		const cygi::CompileResult one_target = compile(R"(
+float4 main(float4 position : SV_Position, float2 uv : TEXCOORD0) : SV_Target0
+{
+    return float4(uv, 0, 1);
+}
+)", "ps_5_0");
+		const cygi::ReplacementCheck fewer = check(original, one_target);
+		Check(fewer.compatible && Contains(fewer.Describe(), "SV_Target1"),
+			"a pixel shader writing fewer targets fits, with a warning");
+
+		const char *const original_vs = R"(
+struct Output { float4 position : SV_Position; float2 uv : TEXCOORD0; };
+Output main(float3 position : POSITION, float2 uv : TEXCOORD0)
+{
+    Output output;
+    output.position = float4(position, 1);
+    output.uv = uv;
+    return output;
+}
+)";
+		const cygi::CompileResult vs = compile(original_vs, "vs_5_0");
+		const cygi::CompileResult vs_without_uv = compile(R"(
+float4 main(float3 position : POSITION) : SV_Position
+{
+    return float4(position, 1);
+}
+)", "vs_5_0");
+		Check(vs.ok && vs_without_uv.ok && !check(vs, vs_without_uv).compatible,
+			"a vertex shader that stops writing an output the pixel shader reads is refused");
+
+		Check(!check(original, vs).compatible, "a shader of another stage is refused");
+	}
+}
+
 int main()
 {
 	std::printf("CyGPUInspectorShaderTests\n\n");
@@ -1010,6 +1116,7 @@ int main()
 	TestCaptureBufferWriter();
 	TestDecompiler();
 	TestDxilDecompiler();
+	TestReplacementCheck();
 
 	std::printf("\n%d checks, %d failure(s), %d skipped\n", g_checks, g_failures, g_skipped);
 	return g_failures == 0 ? 0 : 1;

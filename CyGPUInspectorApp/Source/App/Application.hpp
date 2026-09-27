@@ -59,8 +59,15 @@ namespace cygi
 		// on someone clicking through a combo box.
 		bool SetTrackingLevel(TrackingLevel level, std::string &message);
 
+		// Also for scripted runs, and for the screenshots of the documentation: select a shader as
+		// soon as the session has sent it, decompile it if asked, and bring a view forward —
+		// "hlsl", "ai-analysis", "hlsl-editor" or "assistant". No click, no cursor moved.
+		void RequestStartupShader(uint32_t shader_id, bool decompile);
+		void RequestStartupView(const std::string &view);
+
 	private:
 		void BuildDefaultLayout(unsigned int dockspace_id);
+		void ApplyStartupRequests();
 		void DrawMenuBar();
 		void DrawAboutWindow();
 		void DrawConnectionsPanel();
@@ -132,6 +139,8 @@ namespace cygi
 		                const char *origin = "edited HLSL", bool exportable = true,
 		                const std::string &entry_point = "main");
 		std::string ProfileOf(uint32_t shader_id) const;
+		// The original byte code of a shader, as the game gave it. Empty when it is not known.
+		std::vector<uint8_t> OriginalCode(uint32_t shader_id);
 
 		// The model the panels read: a live session, or an opened capture. Null when neither.
 		SessionModel *ActiveModel();
@@ -361,7 +370,11 @@ namespace cygi
 		// frame a dock node is created, docking a window into it also claims its tab bar, so a
 		// focus request made on that same frame is overwritten by the next window docked.
 		int m_default_tabs_pending = 0;
+		bool m_picking_tabs = false;           // this frame is one of those
 		bool m_show_demo = false;
+		uint32_t m_startup_shader = 0;
+		bool m_startup_decompile = false;
+		std::string m_code_tab_request;        // a tab of Shader code to select once: "HLSL", "AI Analysis"
 		bool m_show_about = false;
 		ID3D11ShaderResourceView *m_logo = nullptr;
 		bool m_wants_exit = false;

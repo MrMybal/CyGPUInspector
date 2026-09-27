@@ -106,13 +106,15 @@ quelqu'un a faite.
 
 ## Ligne de commande
 
-Deux options, toutes deux présentes pour qu'un lancement scripté ne dépende pas de quelqu'un qui
-clique dans une liste déroulante. Tout ce qu'elles font est aussi accessible depuis l'interface.
+Des options pour qu'un lancement scripté ne dépende pas de quelqu'un qui clique dans l'interface.
+Tout ce qu'elles font est aussi accessible depuis l'interface.
 
 | Option | Effet |
 |---|---|
 | `--connect[=<pid>]` | s'attache à une session en cours au démarrage. Sans pid elle prend la seule session présente, et refuse plutôt que de deviner quand il y en a plusieurs. |
 | `--level=<nom>` | règle le niveau de suivi sur cette session : `idle`, `tracking`, `pass-timing`, `capture`, `full-draw-timing`. Appliquée après `--connect`, parce qu'un niveau ne veut rien dire tant qu'il n'y a pas de session sur laquelle le régler. |
+| `--select-shader=<id>` | sélectionne ce shader dès que la session l'a envoyé. Avec `--decompile`, lance aussi les décompilateurs dessus. |
+| `--show=<vue>[,<vue>]` | met des vues au premier plan : `hlsl`, `ai-analysis` (onglets de Shader code), `hlsl-editor` (la fenêtre de l'éditeur), `assistant` (le panneau Assistant IA). Sert aux captures d'écran de cette documentation. |
 
 ## Threads et verrouillage
 

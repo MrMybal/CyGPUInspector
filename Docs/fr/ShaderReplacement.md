@@ -66,6 +66,28 @@ Onglet HLSL : éditeur sur la reconstruction du backend choisi, puis `[ Compile 
 Onglet Shader : `Disable` / `Enable`, `Highlight`, `Restore`.
 Les draws passés par un remplacement reviennent marqués `replaced` dans la liste des événements.
 
+## Contrôlé avant l'envoi
+
+À la création d'un pipeline, Direct3D 12 vérifie que ses shaders s'accordent entre eux et avec sa
+root signature, et refuse le pipeline sans rien qu'un add-on puisse lire : l'add-on ne peut que
+rapporter « the graphics API refused the replacement pipeline ». Le standalone compare donc d'abord
+le remplacement compilé à l'original, comme CyRSAssistant vérifie un remplacement avant de
+l'activer, et dit ce qui ne va pas au lieu de l'envoyer :
+
+| Refusé avant l'envoi | Pourquoi le jeu le refuserait |
+|---|---|
+| une entrée que l'original n'a pas | rien avant cet étage ne la fournit |
+| une entrée dans un autre registre, avec plus de composantes ou un autre type | la sortie de l'étage précédent ne lui correspond pas |
+| un registre de texture, sampler, buffer ou UAV que l'original ne déclare pas | la root signature n'a pas de place pour lui |
+| pour un vertex, hull, domain ou geometry shader, une sortie de l'original qui n'est plus écrite | l'étage suivant la lit |
+| un autre étage, ou du DXBC au lieu du DXIL | ce n'est pas le même type de shader |
+
+Les différences que le jeu accepte sont affichées comme notes : un pixel shader qui écrit moins de
+cibles ou d'autres cibles, un constant buffer déclaré plus grand que celui de l'original. Le contrôle
+s'applique à Compiler et injecter, à l'outil MCP `replace_shader` et à l'assistant IA, et dans
+l'éditeur HLSL quand il compile pour le profil propre au shader : les différences apparaissent alors
+dans la liste, sous les messages du compilateur.
+
 ## Limites
 
 * Le temps d'un draw remplacé inclut la liaison du pipeline de remplacement et le retour à

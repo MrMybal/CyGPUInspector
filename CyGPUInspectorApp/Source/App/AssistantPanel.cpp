@@ -7,6 +7,7 @@
 //
 // Copyright (C) 2026 Cyberalien. Licensed under the GNU AGPL v3 or later.
 #include "Application.hpp"
+#include "LayoutHelpers.hpp"
 
 #include <CyGPUInspectorCore/Localization.hpp>
 
@@ -372,7 +373,8 @@ namespace cygi
 		// time instead of floating over the frame.
 		if (ImGuiWindow *details = ImGui::FindWindowByName(TrId("Details")); details != nullptr && details->DockId != 0)
 			ImGui::SetNextWindowDockID(details->DockId, ImGuiCond_FirstUseEver);
-		if (m_assistant_focus)
+		// Not while a fresh default layout is still choosing the tab of each group: it would win.
+		if (m_assistant_focus && !m_picking_tabs)
 		{
 			ImGui::SetNextWindowFocus();
 			m_assistant_focus = false;
@@ -499,7 +501,7 @@ namespace cygi
 			m_assistant_input[0] = '\0';
 		}
 		ImGui::EndDisabled();
-		ImGui::SameLine();
+		SameLineIfFits(TrId("Copy conversation"));
 
 		const std::vector<ChatMessage> conversation = m_assistant.Conversation();
 		auto label = [](const ChatMessage &message) {
@@ -516,7 +518,7 @@ namespace cygi
 				transcript += std::string(label(message)) + ": " + body(message) + "\n\n";
 			ImGui::SetClipboardText(transcript.c_str());
 		}
-		ImGui::SameLine();
+		SameLineIfFits(TrId("About chat history"));
 		if (ImGui::SmallButton(TrId("About chat history")))
 			ImGui::OpenPopup("chat_privacy");
 		if (ImGui::BeginPopup("chat_privacy"))
@@ -531,8 +533,13 @@ namespace cygi
 
 		Approval approval;
 		const bool approval_pending = m_assistant.PendingApproval(approval);
-		const float reserved = approval_pending ? 340.0f : 185.0f;
-		ImGui::BeginChild("conversation", ImVec2(0.0f, std::max(120.0f, ImGui::GetContentRegionAvail().y - reserved)),
+		// Everything below the conversation has to stay on screen, however small the panel is docked:
+		// the message field gives up height first, then the conversation, never the Send button.
+		const float line = ImGui::GetFrameHeightWithSpacing();
+		const float available = ImGui::GetContentRegionAvail().y;
+		const float input_height = std::clamp(available * 0.22f, line * 2.2f, 90.0f);
+		const float below = input_height + line * 4.6f + (approval_pending ? line * 4.0f : 0.0f);
+		ImGui::BeginChild("conversation", ImVec2(0.0f, std::max(line * 3.0f, available - below)),
 			ImGuiChildFlags_Borders);
 		if (conversation.empty())
 			ImGui::TextWrapped(Tr("Hello! Ask a question about the frame: which pass is the bloom, what a shader does, "
@@ -588,15 +595,15 @@ namespace cygi
 		// The questions of section 84 of the brief, one click away. They fill the message; sending
 		// stays a separate decision.
 		ImGui::TextDisabled(Tr("Examples:"));
-		ImGui::SameLine();
+		SameLineIfFits(TrId("Find the bloom"));
 		const char *example = nullptr;
 		if (ImGui::SmallButton(TrId("Find the bloom")))
 			example = Tr("Which part of the rendering seems to produce the bloom? Give the passes, shaders, "
 			             "resources and timings, with your reasoning.");
-		ImGui::SameLine();
+		SameLineIfFits(TrId("Explain the pipeline"));
 		if (ImGui::SmallButton(TrId("Explain the pipeline")))
 			example = Tr("Explain how this frame is rendered, pass by pass, from the frame graph and the timings.");
-		ImGui::SameLine();
+		SameLineIfFits(TrId("The selected shader"));
 		if (ImGui::SmallButton(TrId("The selected shader")))
 			example = Tr("What does the selected shader do, and which pass is it part of?");
 		if (example != nullptr)
@@ -611,7 +618,7 @@ namespace cygi
 			ImGui::SetKeyboardFocusHere();
 			m_assistant_refocus = false;
 		}
-		ImGui::InputTextMultiline("##prompt", m_assistant_input, sizeof(m_assistant_input), ImVec2(-1.0f, 90.0f));
+		ImGui::InputTextMultiline("##prompt", m_assistant_input, sizeof(m_assistant_input), ImVec2(-1.0f, input_height));
 		const bool shortcut = ImGui::IsItemFocused() && ImGui::GetIO().KeyCtrl &&
 			ImGui::IsKeyPressed(ImGuiKey_Enter, false);
 		const bool can_send = ready && !pending &&
@@ -631,7 +638,7 @@ namespace cygi
 			}
 		}
 		ImGui::EndDisabled();
-		ImGui::SameLine();
+		SameLineIfFits(Tr("Ctrl+Enter: send | Enter: new line"));
 		ImGui::TextDisabled(Tr("Ctrl+Enter: send | Enter: new line"));
 		if (pending)
 		{
@@ -679,9 +686,11 @@ namespace cygi
 		if (ImGui::Button(TrId("Explain")))
 			RequestShaderJob(JobKind::explanation, shader_id);
 		ImGui::EndDisabled();
-		ImGui::TextDisabled(Tr("Each one sends this shader's description, disassembly and decompiled HLSL to the "
-		                       "provider. The result is an AI reconstruction, labelled with its model and kept with "
-		                       "the shader."));
+		ImGui::PushStyleColor(ImGuiCol_Text, ImGui::GetStyleColorVec4(ImGuiCol_TextDisabled));
+		ImGui::TextWrapped("%s", Tr("Each one sends this shader's description, disassembly and decompiled HLSL to the "
+		                            "provider. The result is an AI reconstruction, labelled with its model and kept with "
+		                            "the shader."));
+		ImGui::PopStyleColor();
 
 		if (m_ai_request.active)
 			ImGui::TextDisabled(Tr("Waiting for the disassembly and the decompilation..."));

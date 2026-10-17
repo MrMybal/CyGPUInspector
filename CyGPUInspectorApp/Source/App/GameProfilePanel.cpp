@@ -8,6 +8,7 @@
 //
 // Copyright (C) 2026 Cyberalien. Licensed under the GNU AGPL v3 or later.
 #include "Application.hpp"
+#include <cyui/CyUI.h>
 #include "LayoutHelpers.hpp"
 
 #include <CyGPUInspectorCore/Localization.hpp>
@@ -312,7 +313,7 @@ namespace cygi
 			ImGui::SetNextWindowFocus();
 			m_profile_focus = false;
 		}
-		if (!ImGui::Begin(TrId("Game profile")))
+		if (!BeginPanel("Game profile"))
 		{
 			ImGui::End();
 			return;
@@ -348,7 +349,7 @@ namespace cygi
 			ImGui::TextWrapped("%s", m_profile_message.c_str());
 
 		// ---- persistent state ---------------------------------------------------------------
-		ImGui::SeparatorText(Tr("Saved state"));
+		cyui::sectionTitle(Tr("Saved state"));
 		TextDisabledWrapped(Tr("The shaders you left disabled or replaced in this game, kept by what they are rather "
 		                       "than by their number in one session. Saved as state.cygimod, the format CyGPUInjector "
 		                       "reads."));
@@ -412,7 +413,7 @@ namespace cygi
 		}
 
 		// ---- captures ----------------------------------------------------------------------
-		ImGui::SeparatorText(Tr("Captures of this game"));
+		cyui::sectionTitle(Tr("Captures of this game"));
 		{
 			const std::string folder = GameProfile::FolderName(m_profile.Executable());
 			int shown = 0;
@@ -438,7 +439,7 @@ namespace cygi
 		}
 
 		// ---- shaders -----------------------------------------------------------------------
-		ImGui::SeparatorText(Tr("Shaders of this game"));
+		cyui::sectionTitle(Tr("Shaders of this game"));
 		ImGui::Text(Tr("%zu shader(s) known in this game."), m_profile.Shaders().size());
 		if (m_profile_live)
 		{
@@ -447,7 +448,7 @@ namespace cygi
 			TextDisabledWrapped(line);
 		}
 
-		ImGui::SetNextItemWidth(220.0f);
+		ImGui::SetNextItemWidth(cyui::dp(220.0f));
 		ImGui::InputTextWithHint("##profilefilter", Tr("filter by signature or stage"), m_profile_filter,
 			sizeof(m_profile_filter));
 
@@ -511,7 +512,7 @@ namespace cygi
 					if (!here)
 						ImGui::TextDisabled("-");
 					else if (m_profile_live && !m_profile.WasKnownBefore(shader.signature))
-						ImGui::TextColored(ImVec4(0.55f, 0.9f, 0.55f, 1.0f), Tr("#%u, new"), id->second);
+						ImGui::TextColored(cyui::vec(cyui::palette().success), Tr("#%u, new"), id->second);
 					else
 						ImGui::Text("#%u", id->second);
 				}

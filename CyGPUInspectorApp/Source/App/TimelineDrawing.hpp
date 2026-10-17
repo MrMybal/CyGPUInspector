@@ -12,7 +12,7 @@
 
 #include <CyGPUInspectorCore/Protocol.hpp>
 
-#include <imgui.h>
+#include <cyui/CyUI.h>
 
 #include <algorithm>
 
@@ -45,20 +45,20 @@ namespace cygi::timeline_drawing
 	{
 		switch (kind)
 		{
-		case PassKind::compute: return ImVec4(0.35f, 0.55f, 0.85f, 1.0f);
-		case PassKind::transfer: return ImVec4(0.65f, 0.55f, 0.35f, 1.0f);
-		case PassKind::graphics: return ImVec4(0.35f, 0.65f, 0.45f, 1.0f);
-		default: return ImVec4(0.45f, 0.45f, 0.45f, 1.0f);
+		case PassKind::compute: return cyui::vec(cyui::mix(cyui::palette().text, cyui::categorical(0), 0.6f));
+		case PassKind::transfer: return cyui::vec(cyui::mix(cyui::palette().text, cyui::categorical(1), 0.6f));
+		case PassKind::graphics: return cyui::vec(cyui::mix(cyui::palette().text, cyui::categorical(2), 0.6f));
+		default: return cyui::vec(cyui::palette().bg4);
 		}
 	}
 
 	inline ImVec4 ColourOfCommand(EventKind kind)
 	{
 		if (kind == EventKind::draw || kind == EventKind::draw_indexed || kind == EventKind::draw_indirect)
-			return ImVec4(0.38f, 0.60f, 0.86f, 1.0f);
+			return cyui::vec(cyui::mix(cyui::palette().text, cyui::categorical(0), 0.6f));
 		if (IsDrawOrDispatch(kind))
-			return ImVec4(0.62f, 0.46f, 0.86f, 1.0f);
-		return ImVec4(0.62f, 0.56f, 0.44f, 1.0f);
+			return cyui::vec(cyui::mix(cyui::palette().text, cyui::categorical(2), 0.6f));
+		return cyui::vec(cyui::mix(cyui::palette().text, cyui::categorical(1), 0.6f));
 	}
 
 	// One bar, with its label clipped to the bar so that text never spills into the neighbour it
@@ -71,20 +71,21 @@ namespace cygi::timeline_drawing
 		if (right < clip_x0 || left > clip_x1)
 			return false;
 		// A pass shorter than a pixel still exists: it gets one.
-		const float drawn_right = std::max(right, left + 1.0f);
+		const float drawn_right = std::max(right, left + cyui::dp(1.0f));
 
-		draw->AddRectFilled(ImVec2(left, y0), ImVec2(drawn_right, y1), fill);
-		if (drawn_right - left > 4.0f)
-			draw->AddRect(ImVec2(left, y0), ImVec2(drawn_right, y1), IM_COL32(0, 0, 0, 90));
+		draw->AddRectFilled(ImVec2(left, y0), ImVec2(drawn_right, y1),
+			cyui::mix(cyui::palette().bg3, fill, 0.35f));
+		if (drawn_right - left > cyui::dp(4.0f))
+			draw->AddRect(ImVec2(left, y0), ImVec2(drawn_right, y1), cyui::palette().lineStrong);
 		if (outline)
-			draw->AddRect(ImVec2(left - 1.0f, y0 - 1.0f), ImVec2(drawn_right + 1.0f, y1 + 1.0f),
-				IM_COL32(255, 255, 255, 230), 0.0f, 0, 2.0f);
+			draw->AddRect(ImVec2(left - cyui::dp(1.0f), y0 - cyui::dp(1.0f)), ImVec2(drawn_right + cyui::dp(1.0f), y1 + cyui::dp(1.0f)),
+				cyui::palette().accent, 0.0f, 0, cyui::dp(2.0f));
 
-		if (label != nullptr && drawn_right - left > 18.0f)
+		if (label != nullptr && drawn_right - left > cyui::dp(18.0f))
 		{
-			draw->PushClipRect(ImVec2(left + 3.0f, y0), ImVec2(drawn_right - 2.0f, y1), true);
-			draw->AddText(ImVec2(left + 4.0f, y0 + (y1 - y0 - ImGui::GetFontSize()) * 0.5f),
-				IM_COL32(245, 245, 245, 255), label);
+			draw->PushClipRect(ImVec2(left + cyui::dp(3.0f), y0), ImVec2(drawn_right - cyui::dp(2.0f), y1), true);
+			draw->AddText(ImVec2(left + cyui::dp(4.0f), y0 + (y1 - y0 - ImGui::GetFontSize()) * 0.5f),
+				cyui::palette().text, label);
 			draw->PopClipRect();
 		}
 		return true;
@@ -97,22 +98,22 @@ namespace cygi::timeline_drawing
 	{
 		const float left = std::max(x0, clip_x0);
 		const float right = std::min(x1, clip_x1);
-		if (right - left < 1.0f)
+		if (right - left < cyui::dp(1.0f))
 			return;
 
-		draw->AddRectFilled(ImVec2(left, y0), ImVec2(right, y1), IM_COL32(38, 40, 46, 255));
+		draw->AddRectFilled(ImVec2(left, y0), ImVec2(right, y1), cyui::palette().bg2);
 		draw->PushClipRect(ImVec2(left, y0), ImVec2(right, y1), true);
 		const float height = y1 - y0;
-		for (float x = left - height; x < right; x += 7.0f)
-			draw->AddLine(ImVec2(x, y1), ImVec2(x + height, y0), IM_COL32(255, 255, 255, 22));
+		for (float x = left - height; x < right; x += cyui::dp(7.0f))
+			draw->AddLine(ImVec2(x, y1), ImVec2(x + height, y0), cyui::palette().grid);
 		draw->PopClipRect();
-		draw->AddRect(ImVec2(left, y0), ImVec2(right, y1), IM_COL32(255, 255, 255, 18));
+		draw->AddRect(ImVec2(left, y0), ImVec2(right, y1), cyui::palette().line);
 
-		if (label != nullptr && right - left > 40.0f)
+		if (label != nullptr && right - left > cyui::dp(40.0f))
 		{
-			draw->PushClipRect(ImVec2(left + 3.0f, y0), ImVec2(right - 2.0f, y1), true);
-			draw->AddText(ImVec2(left + 5.0f, y0 + (y1 - y0 - ImGui::GetFontSize()) * 0.5f),
-				IM_COL32(200, 200, 200, 170), label);
+			draw->PushClipRect(ImVec2(left + cyui::dp(3.0f), y0), ImVec2(right - cyui::dp(2.0f), y1), true);
+			draw->AddText(ImVec2(left + cyui::dp(5.0f), y0 + (y1 - y0 - ImGui::GetFontSize()) * 0.5f),
+				cyui::palette().textDim, label);
 			draw->PopClipRect();
 		}
 	}

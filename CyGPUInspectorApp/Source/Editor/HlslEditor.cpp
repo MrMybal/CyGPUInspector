@@ -4,6 +4,7 @@
 #include "HlslEditor.hpp"
 
 #include <TextEditor.h>
+#include <cyui/CyUI.h>
 
 #include <algorithm>
 
@@ -41,6 +42,21 @@ namespace cygi
 
 	void HlslEditor::Render(const char *id, const ImVec2 &size)
 	{
+		const auto &p = cyui::palette();
+		TextEditor::Palette palette;
+		const auto syntax = [&](ImU32 colour) { return cyui::mix(p.text, colour, 0.55f); };
+		const ImU32 colours[] = {
+			p.text, syntax(p.accent), syntax(p.info), syntax(p.warning), syntax(p.success), p.textDim,
+			syntax(p.info), p.text, syntax(p.accent),
+			p.textDim, p.bg0, p.text, p.selection, p.textFaint, p.selection, p.accent,
+			p.info, p.success, p.warning, p.error, p.textFaint, p.text,
+			cyui::alpha(p.selection, 0.35f), p.line,
+		};
+		static_assert(IM_ARRAYSIZE(colours) == static_cast<size_t>(TextEditor::Color::count));
+		std::copy(std::begin(colours), std::end(colours), palette.begin());
+		if (palette != m_editor->GetPalette())
+			m_editor->SetPalette(palette);
+		cyui::ScopedFont mono(cyui::monoFont());
 		m_editor->Render(id, size);
 	}
 
@@ -60,8 +76,8 @@ namespace cygi
 		{
 			if (message.line == 0 || message.line > m_editor->GetLineCount())
 				continue;
-			const ImU32 number = message.error ? IM_COL32(230, 80, 70, 255) : IM_COL32(230, 180, 60, 255);
-			const ImU32 text = message.error ? IM_COL32(230, 80, 70, 60) : IM_COL32(230, 180, 60, 45);
+			const ImU32 number = message.error ? cyui::palette().error : cyui::palette().warning;
+			const ImU32 text = cyui::alpha(number, 0.2f);
 			m_editor->AddMarker(message.line - 1, number, text, message.text, message.text);
 		}
 		return parsed;

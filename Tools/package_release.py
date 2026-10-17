@@ -33,6 +33,32 @@ import zipfile
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 BIN = os.path.join(ROOT, 'bin', 'Release')
+PLUGIN_ROOT = os.path.join(ROOT, 'CyGPUInspectorUnreal', 'CyGPUInspector')
+
+# The complete, unchanged notices of the components actually used by this product.
+# CyToolsCore and CyUEMCPSDK are not dependencies of its native assistant/MCP server.
+LICENCE_FILES = {
+    'CyUI/LICENSE.txt': 'ThirdParty/CyUI/LICENSE',
+    'CyGPUInspector-AGPL-3.0.txt': 'LICENSE',
+    'ReShade-SDK/LICENSE.md': 'ThirdParty/reshade/LICENSE.md',
+    'ReShade/LICENSE-ReShade.txt': 'CyGPUInspectorUnreal/CyGPUInspector/Binaries/ThirdParty/CyGPUInspector/Win64/LICENSE-ReShade.txt',
+    'ReShade/NOTICES-ReShade.txt': 'CyGPUInspectorUnreal/CyGPUInspector/Binaries/ThirdParty/CyGPUInspector/Win64/NOTICES-ReShade.txt',
+    'DearImGui/LICENSE.txt': 'ThirdParty/imgui/LICENSE.txt',
+    'DearImGui-ReShade/LICENSE.txt': 'ThirdParty/reshade_imgui/LICENSE.txt',
+    'ImGuiColorTextEdit/LICENSE': 'ThirdParty/ImGuiColorTextEdit/LICENSE',
+    'ImGuiColorTextEdit/ORIGIN.md': 'ThirdParty/ImGuiColorTextEdit/ORIGIN.md',
+    '3Dmigoto/LICENSE.GPL.txt': 'ThirdParty/hlsldecompiler/LICENSE.GPL.txt',
+    '3Dmigoto/ORIGIN.md': 'ThirdParty/hlsldecompiler/ORIGIN.md',
+    'dxil-spirv/LICENSE.MIT': 'ThirdParty/dxil-spirv/LICENSE.MIT',
+    'dxbc-spirv/LICENSE': 'ThirdParty/dxil-spirv/subprojects/dxbc-spirv/LICENSE',
+    'SPIRV-Headers/LICENSE': 'ThirdParty/dxil-spirv/third_party/spirv-headers/LICENSE',
+    'SPIRV-Cross/LICENSE': 'ThirdParty/SPIRV-Cross/LICENSE',
+}
+PLUGIN_LICENCES = (
+    'CyGPUInspector-AGPL-3.0.txt', 'ReShade-SDK/LICENSE.md',
+    'ReShade/LICENSE-ReShade.txt', 'ReShade/NOTICES-ReShade.txt',
+    'DearImGui-ReShade/LICENSE.txt',
+)
 
 
 def copy(source, target):
@@ -53,11 +79,12 @@ def copy_tree(source, target, skip=()):
 def header_licence(path):
     """The licence comment at the top of a source file, without the comment markers."""
     lines = []
-    for line in open(path, encoding='utf-8', errors='replace'):
-        stripped = line.strip()
-        if not (stripped.startswith(('//', '/*', '*')) or stripped == ''):
-            break
-        lines.append(re.sub(r'^\s*(/\*+|\*+/|\*|//)\s?', '', line.rstrip()).rstrip('*/ ').rstrip())
+    with open(path, encoding='utf-8', errors='replace') as source:
+        for line in source:
+            stripped = line.strip()
+            if not (stripped.startswith(('//', '/*', '*')) or stripped == ''):
+                break
+            lines.append(re.sub(r'^\s*(/\*+|\*+/|\*|//)\s?', '', line.rstrip()).rstrip('*/ ').rstrip())
     return '\n'.join(lines).strip() + '\n'
 
 
@@ -67,18 +94,87 @@ def source_version():
     return re.search(r'#define CYGI_VERSION_STRING "([^"]+)"', open(header, encoding='utf-8').read()).group(1)
 
 
+def licence_contents(plugin=False):
+    """Expected full texts, compared byte for byte with their authoritative sources."""
+    files = PLUGIN_LICENCES if plugin else LICENCE_FILES
+    contents = {}
+    for name in files:
+        with open(os.path.join(ROOT, LICENCE_FILES[name]), 'rb') as source:
+            contents[name] = source.read()
+    if not plugin:
+        for name, source in {
+            'RenderDoc-bitcode-reader/LICENSE.txt': 'ThirdParty/dxil-spirv/third_party/bc-decoder/llvm_bitreader.h',
+            'glslang-SPIR-V-builder/LICENSE.txt': 'ThirdParty/dxil-spirv/third_party/glslang-spirv/Logger.h',
+        }.items():
+            contents[name] = header_licence(os.path.join(ROOT, source)).encode('utf-8')
+        source_root = os.path.join(ROOT, 'ThirdParty', 'SPIRV-Cross', 'LICENSES')
+        for folder, _, names in os.walk(source_root):
+            for name in names:
+                path = os.path.join(folder, name)
+                relative = os.path.relpath(path, source_root).replace('\\', '/')
+                with open(path, 'rb') as source:
+                    contents['SPIRV-Cross/LICENSES/' + relative] = source.read()
+    source_root = PLUGIN_ROOT if plugin else ROOT
+    with open(os.path.join(source_root, 'LICENCES', 'SOURCES.txt'), 'rb') as source:
+        contents['SOURCES.txt'] = source.read()
+    return contents
+
+
+def validate_licences(read, plugins, dxc=False, dxc_contents=None):
+    """Validate the staging tree OR the actual ZIP using the same relative-path reader."""
+    problems = []
+    for prefix, plugin in [('', False)] + [(p.rstrip('/') + '/', True) for p in plugins]:
+        for name, expected in licence_contents(plugin).items():
+            path = prefix + 'LICENCES/' + name
+            try:
+                actual = read(path)
+            except (FileNotFoundError, KeyError):
+                problems.append('missing licence: ' + path)
+                continue
+            if actual != expected:
+                problems.append('licence differs from its source: ' + path)
+        if plugin:
+            # These notices must also accompany the DLL when staged into a game.
+            for name in ('LICENSE-ReShade.txt', 'NOTICES-ReShade.txt'):
+                path = prefix + 'Binaries/ThirdParty/CyGPUInspector/Win64/' + name
+                expected = licence_contents(True)['ReShade/' + name]
+                try:
+                    if read(path) != expected:
+                        problems.append('ReShade notice differs from its source: ' + path)
+                except (FileNotFoundError, KeyError):
+                    problems.append('missing ReShade notice: ' + path)
+    if dxc:
+        for name in ('LICENCE-MIT.txt', 'LICENSE-LLVM.txt', 'LICENSE-MS.txt', 'ORIGIN.txt'):
+            path = 'LICENCES/DirectXShaderCompiler/' + name
+            try:
+                actual = read(path)
+                if not actual.strip():
+                    problems.append('empty DXC notice: ' + path)
+                elif dxc_contents is not None and actual != dxc_contents[name]:
+                    problems.append('DXC notice differs from its source: ' + path)
+            except (FileNotFoundError, KeyError):
+                problems.append('missing DXC notice: ' + path)
+    return problems
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__.split('\n\n')[0])
     parser.add_argument('--version', default=source_version())
     parser.add_argument('--plugin-builds', required=True)
     parser.add_argument('--dxc')
+    parser.add_argument('--output-root', default=os.path.join(ROOT, 'build', 'Release'),
+                        help='Package output directory; use a separate directory to preserve an earlier release.')
     args = parser.parse_args()
 
     name = 'CyGPUInspector-{}-win64'.format(args.version)
-    out_root = os.path.join(ROOT, 'build', 'Release')
+    out_root = os.path.abspath(args.output_root)
     stage = os.path.join(out_root, name)
-    if os.path.isdir(stage):
-        shutil.rmtree(stage)
+    if os.path.dirname(os.path.abspath(stage)) != out_root:
+        parser.error('The version must be a filename component, not a path.')
+    if os.path.exists(stage):
+        parser.error('The staging directory already exists. Select a new --output-root to preserve its contents.')
+    if os.path.exists(stage + '.zip'):
+        parser.error('The release archive already exists. Select a new --output-root to preserve it.')
     os.makedirs(stage)
 
     # Application, add-ons, tests.
@@ -98,7 +194,12 @@ def main():
 
     # The DirectX Shader Compiler, when given, with the licences that come with it. --dxc is either
     # the folder of the two DLLs or the root of an official release zip, extracted (bin/x64/).
+    dxc_contents = None
     if args.dxc:
+        dxc_contents = {}
+        for notice in ('LICENCE-MIT.txt', 'LICENSE-LLVM.txt', 'LICENSE-MS.txt', 'ORIGIN.txt'):
+            with open(os.path.join(args.dxc, notice), 'rb') as file:
+                dxc_contents[notice] = file.read()
         dlls = os.path.join(args.dxc, 'bin', 'x64')
         if not os.path.isdir(dlls):
             dlls = args.dxc
@@ -106,11 +207,13 @@ def main():
             copy(os.path.join(dlls, dll), os.path.join(stage, 'App', dll))
         for entry in os.listdir(args.dxc):
             if re.match(r'(?i)(license|licence|notice|third|origin)', entry) and os.path.isfile(os.path.join(args.dxc, entry)):
-                copy(os.path.join(args.dxc, entry), os.path.join(stage, 'Licenses', 'DirectXShaderCompiler', entry))
+                for notices in ('LICENCES', 'Licenses'):
+                    copy(os.path.join(args.dxc, entry), os.path.join(stage, notices, 'DirectXShaderCompiler', entry))
     else:
         print('Warning: no --dxc: the package has no Shader Model 6 support.')
 
     # The Unreal plugin, one per engine version, without symbols or intermediate files.
+    packaged_plugins = []
     for engine in sorted(os.listdir(args.plugin_builds)):
         plugin = os.path.join(args.plugin_builds, engine, 'CyGPUInspector')
         if not os.path.isfile(os.path.join(plugin, 'CyGPUInspector.uplugin')):
@@ -119,7 +222,10 @@ def main():
         copy(os.path.join(plugin, 'CyGPUInspector.uplugin'), os.path.join(target, 'CyGPUInspector.uplugin'))
         copy_tree(os.path.join(plugin, 'Resources'), os.path.join(target, 'Resources'))
         copy_tree(os.path.join(plugin, 'Source'), os.path.join(target, 'Source'))
+        copy_tree(os.path.join(plugin, 'LICENCES'), os.path.join(target, 'LICENCES'))
+        copy(os.path.join(plugin, 'Config', 'FilterPlugin.ini'), os.path.join(target, 'Config', 'FilterPlugin.ini'))
         copy_tree(os.path.join(plugin, 'Binaries'), os.path.join(target, 'Binaries'), skip=('.pdb',))
+        packaged_plugins.append(os.path.relpath(target, stage).replace('\\', '/'))
         third_party = os.path.join(target, 'Binaries', 'ThirdParty', 'CyGPUInspector', 'Win64')
         for required in ('ReShade64.dll', 'CyGPUInspectorRS.addon64', 'LICENSE-ReShade.txt', 'NOTICES-ReShade.txt'):
             if not os.path.isfile(os.path.join(third_party, required)):
@@ -148,9 +254,11 @@ def main():
             with open(path, 'w', encoding='utf-8', newline='') as file:
                 file.write(text.replace(line, replacement))
     copy_tree(os.path.join(ROOT, 'Docs'), os.path.join(stage, 'Docs'))
+    copy_tree(os.path.join(ROOT, 'LICENCES'), os.path.join(stage, 'LICENCES'))
 
     # The licences of what is compiled into the binaries.
     licences = {
+        'CyUI/LICENSE.txt': 'ThirdParty/CyUI/LICENSE',
         'ReShade-SDK/LICENSE.md': 'ThirdParty/reshade/LICENSE.md',
         'ReShade/LICENSE-ReShade.txt': 'CyGPUInspectorUnreal/CyGPUInspector/Binaries/ThirdParty/CyGPUInspector/Win64/LICENSE-ReShade.txt',
         'ReShade/NOTICES-ReShade.txt': 'CyGPUInspectorUnreal/CyGPUInspector/Binaries/ThirdParty/CyGPUInspector/Win64/NOTICES-ReShade.txt',
@@ -177,12 +285,20 @@ def main():
             file.write(header_licence(os.path.join(ROOT, source)))
 
     # Checks: nothing that must not ship, no local path inside a binary.
-    problems = []
+    def read_staged(path):
+        with open(os.path.join(stage, path), 'rb') as file:
+            return file.read()
+
+    problems = validate_licences(read_staged, packaged_plugins, bool(args.dxc), dxc_contents)
+    if not packaged_plugins:
+        problems.append('no Unreal plugins were packaged')
     for folder, _, files in os.walk(stage):
         for file in files:
             path = os.path.join(folder, file)
             relative = os.path.relpath(path, stage)
-            if file.lower().endswith(('.pdb', '.ini', '.ilk', '.exp', '.lib', '.obj')) or \
+            plugin_filter = relative.replace('\\', '/') in {
+                prefix + '/Config/FilterPlugin.ini' for prefix in packaged_plugins}
+            if (file.lower().endswith(('.pdb', '.ini', '.ilk', '.exp', '.lib', '.obj')) and not plugin_filter) or \
                re.search(r'(^|[\\/])(Captures|Database|Games|Images|Saved|Intermediate)([\\/]|$)', relative):
                 problems.append('should not ship: ' + relative)
             if file.lower().endswith(('.exe', '.dll', '.addon64')):
@@ -196,6 +312,7 @@ def main():
                         problems.append('{} contains a path with "{}"'.format(relative, text))
     if problems:
         print('\n'.join(problems))
+        return 1
 
     # The zip and its checksum.
     archive = os.path.join(out_root, name + '.zip')
@@ -206,6 +323,15 @@ def main():
             for file in sorted(files):
                 path = os.path.join(folder, file)
                 zip_file.write(path, os.path.join(name, os.path.relpath(path, stage)))
+    with zipfile.ZipFile(archive) as zip_file:
+        corrupt = zip_file.testzip()
+        if corrupt:
+            problems.append('corrupt ZIP entry: ' + corrupt)
+        problems.extend(validate_licences(lambda path: zip_file.read(name + '/' + path),
+                                          packaged_plugins, bool(args.dxc), dxc_contents))
+    if problems:
+        print('\n'.join(problems))
+        return 1
     digest = hashlib.sha256(open(archive, 'rb').read()).hexdigest()
     with open(archive + '.sha256', 'w', encoding='ascii', newline='\n') as file:
         file.write('{}  {}\n'.format(digest, os.path.basename(archive)))

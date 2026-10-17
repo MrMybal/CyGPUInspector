@@ -9,8 +9,10 @@
 #include "Resource.h"
 
 #include <CyGPUInspectorCore/Version.hpp>
+#include <cyui/CyUI.h>
 
 #include <imgui.h>
+#include <imgui_internal.h>
 #include <imgui_impl_dx11.h>
 #include <imgui_impl_win32.h>
 
@@ -27,6 +29,7 @@
 
 #include <chrono>
 #include <filesystem>
+#include <fstream>
 #include <string>
 #include <vector>
 
@@ -220,6 +223,64 @@ namespace
 		if (g_context != nullptr) { g_context->Release(); g_context = nullptr; }
 		if (g_device != nullptr) { g_device->Release(); g_device = nullptr; }
 	}
+
+	// Render verification captures the application's actual back buffer, even without a visible
+	// desktop. No screen scraping or user input is involved, and no layout is saved in this mode.
+	bool SaveUiCapture(const std::filesystem::path &path)
+	{
+		ID3D11Texture2D *back_buffer = nullptr;
+		if (FAILED(g_swapchain->GetBuffer(0, IID_PPV_ARGS(&back_buffer))))
+			return false;
+		D3D11_TEXTURE2D_DESC desc = {};
+		back_buffer->GetDesc(&desc);
+		desc.Usage = D3D11_USAGE_STAGING;
+		desc.BindFlags = 0;
+		desc.CPUAccessFlags = D3D11_CPU_ACCESS_READ;
+		desc.MiscFlags = 0;
+		ID3D11Texture2D *staging = nullptr;
+		const HRESULT created = g_device->CreateTexture2D(&desc, nullptr, &staging);
+		if (SUCCEEDED(created))
+			g_context->CopyResource(staging, back_buffer);
+		back_buffer->Release();
+		if (FAILED(created))
+			return false;
+		D3D11_MAPPED_SUBRESOURCE mapped = {};
+		if (FAILED(g_context->Map(staging, 0, D3D11_MAP_READ, 0, &mapped)))
+		{
+			staging->Release();
+			return false;
+		}
+		BITMAPINFOHEADER info = {};
+		info.biSize = sizeof(info);
+		info.biWidth = static_cast<LONG>(desc.Width);
+		info.biHeight = -static_cast<LONG>(desc.Height);
+		info.biPlanes = 1;
+		info.biBitCount = 32;
+		info.biSizeImage = desc.Width * desc.Height * 4;
+		BITMAPFILEHEADER header = {};
+		header.bfType = 0x4d42;
+		header.bfOffBits = sizeof(header) + sizeof(info);
+		header.bfSize = header.bfOffBits + info.biSizeImage;
+		std::ofstream file(path, std::ios::binary);
+		file.write(reinterpret_cast<const char *>(&header), sizeof(header));
+		file.write(reinterpret_cast<const char *>(&info), sizeof(info));
+		std::vector<uint8_t> row(static_cast<size_t>(desc.Width) * 4);
+		for (UINT y = 0; y < desc.Height; ++y)
+		{
+			const auto *source = static_cast<const uint8_t *>(mapped.pData) + static_cast<size_t>(y) * mapped.RowPitch;
+			for (UINT x = 0; x < desc.Width; ++x)
+			{
+				row[x * 4] = source[x * 4 + 2];
+				row[x * 4 + 1] = source[x * 4 + 1];
+				row[x * 4 + 2] = source[x * 4];
+				row[x * 4 + 3] = 255;
+			}
+			file.write(reinterpret_cast<const char *>(row.data()), static_cast<std::streamsize>(row.size()));
+		}
+		g_context->Unmap(staging, 0);
+		staging->Release();
+		return file.good();
+	}
 }
 
 extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
@@ -243,6 +304,13 @@ namespace
 			if ((wparam & 0xfff0) == SC_KEYMENU) // disable the ALT application menu
 				return 0;
 			break;
+		case WM_DPICHANGED:
+		{
+			const RECT &rect = *reinterpret_cast<const RECT *>(lparam);
+			SetWindowPos(window, nullptr, rect.left, rect.top, rect.right - rect.left, rect.bottom - rect.top,
+				SWP_NOZORDER | SWP_NOACTIVATE);
+			return 0;
+		}
 		case WM_DESTROY:
 			PostQuitMessage(0);
 			return 0;
@@ -255,6 +323,15 @@ namespace
 
 int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, LPWSTR, int)
 {
+	ImGui_ImplWin32_EnableDpiAwareness();
+	std::filesystem::path ui_capture;
+	if (int count = 0; LPWSTR *args = CommandLineToArgvW(GetCommandLineW(), &count))
+	{
+		for (int i = 1; i < count; ++i)
+			if (std::wstring(args[i]).rfind(L"--capture-ui=", 0) == 0)
+				ui_capture = std::wstring(args[i]).substr(13);
+		LocalFree(args);
+	}
 	// The logo in the title bar and the taskbar, at the sizes each of them asks for.
 	const HICON icon = static_cast<HICON>(LoadImageW(instance, MAKEINTRESOURCEW(IDI_CYGPUINSPECTOR), IMAGE_ICON,
 		GetSystemMetrics(SM_CXICON), GetSystemMetrics(SM_CYICON), LR_DEFAULTCOLOR));
@@ -276,7 +353,8 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, LPWSTR, int)
 		return 1;
 	}
 
-	ShowWindow(window, SW_SHOWDEFAULT);
+	if (ui_capture.empty())
+		ShowWindow(window, SW_SHOWDEFAULT);
 	UpdateWindow(window);
 
 	IMGUI_CHECKVERSION();
@@ -295,25 +373,40 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, LPWSTR, int)
 		return (std::filesystem::path(executable).parent_path() / "CyGPUInspectorApp.ini").string();
 	}();
 	io.IniFilename = ini_path.c_str();                  // the layout the user builds is remembered
-
-	ImGui::StyleColorsDark();
-	ImGuiStyle &style = ImGui::GetStyle();
-	if (io.ConfigFlags & ImGuiConfigFlags_ViewportsEnable)
+	std::string ui_diagnostics;
+	if (!ui_capture.empty())
 	{
-		style.WindowRounding = 0.0f;
-		style.Colors[ImGuiCol_WindowBg].w = 1.0f;
+		io.IniFilename = nullptr;
+		io.ConfigFlags &= ~ImGuiConfigFlags_ViewportsEnable;
+		io.ConfigErrorRecoveryEnableAssert = false;
+		ImGui::GetCurrentContext()->ErrorCallbackUserData = &ui_diagnostics;
+		ImGui::GetCurrentContext()->ErrorCallback = [](ImGuiContext *, void *data, const char *message) {
+			static_cast<std::string *>(data)->append(message).append("\n");
+		};
 	}
+
+	cyui::Config ui_config;
+	ui_config.themeKey = "navy";
+	ui_config.density = cyui::Density::compact;
+	ui_config.dpiScale = ImGui_ImplWin32_GetDpiScaleForHwnd(window);
+	ui_config.squareWindows = true;
+	cyui::apply(ui_config);
+	cyui::loadFonts();
 
 	ImGui_ImplWin32_Init(window);
 	ImGui_ImplDX11_Init(g_device, g_context);
 
 	// Created here and released after the application is gone, which only draws it.
 	ID3D11ShaderResourceView *logo = nullptr;
+	int ui_capture_errors = 0;
 	{
 		cygi::Application application(g_device, g_context);
 		application.SetAdapterName(g_adapter_name);
 		logo = LoadLogo(instance, g_device);
 		application.SetLogo(logo);
+		std::string capture_theme = cyui::currentThemeKey();
+		int capture_density = cyui::density() == cyui::Density::comfortable ? 1 : 0;
+		float capture_scale = cyui::dpi() / ImGui_ImplWin32_GetDpiScaleForHwnd(window);
 
 		// --connect[=<pid>] attaches to a running session at start-up, and --level=<name> sets the
 		// tracking level on it, so a demo launcher or a script does not need someone to click.
@@ -324,6 +417,34 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, LPWSTR, int)
 			for (int i = 1; i < count; ++i)
 			{
 				const std::wstring argument = arguments[i];
+				if (!ui_capture.empty() && argument.rfind(L"--ui-theme=", 0) == 0)
+				{
+					capture_theme = std::filesystem::path(argument.substr(11)).string();
+					continue;
+				}
+				if (!ui_capture.empty() && argument == L"--ui-comfortable")
+				{
+					capture_density = 1;
+					continue;
+				}
+				if (!ui_capture.empty() && argument.rfind(L"--ui-scale=", 0) == 0)
+				{
+					capture_scale = std::wcstof(argument.c_str() + 11, nullptr);
+					continue;
+				}
+				if (!ui_capture.empty() && argument.rfind(L"--ui-size=", 0) == 0)
+				{
+					unsigned int width = 0, height = 0;
+					if (std::swscanf(argument.c_str() + 10, L"%ux%u", &width, &height) == 2 &&
+						width >= 640 && height >= 480 && width <= 3840 && height <= 2160)
+					{
+						RECT rect = { 0, 0, static_cast<LONG>(width), static_cast<LONG>(height) };
+						AdjustWindowRect(&rect, WS_OVERLAPPEDWINDOW, FALSE);
+						SetWindowPos(window, nullptr, 0, 0, rect.right - rect.left, rect.bottom - rect.top,
+							SWP_NOMOVE | SWP_NOZORDER | SWP_NOACTIVATE);
+					}
+					continue;
+				}
 				if (!connected && argument.rfind(L"--connect", 0) == 0)
 				{
 					uint32_t process_id = 0;
@@ -399,8 +520,12 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, LPWSTR, int)
 			}
 			LocalFree(arguments);
 		}
+		if (!ui_capture.empty())
+			application.SetAppearance(capture_theme, capture_density, capture_scale, false);
 
 		auto previous = std::chrono::steady_clock::now();
+		const auto capture_start = previous;
+		int rendered_frames = 0;
 		bool running = true;
 		while (running)
 		{
@@ -416,7 +541,7 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, LPWSTR, int)
 				break;
 
 			// Do not burn a core while the window is hidden or occluded.
-			if (g_swapchain_occluded && g_swapchain->Present(0, DXGI_PRESENT_TEST) == DXGI_STATUS_OCCLUDED)
+			if (ui_capture.empty() && g_swapchain_occluded && g_swapchain->Present(0, DXGI_PRESENT_TEST) == DXGI_STATUS_OCCLUDED)
 			{
 				Sleep(10);
 				continue;
@@ -436,19 +561,31 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, LPWSTR, int)
 			const double delta = std::chrono::duration<double>(now - previous).count();
 			previous = now;
 
+			application.UpdateDisplayDpi(ImGui_ImplWin32_GetDpiScaleForHwnd(window));
 			ImGui_ImplDX11_NewFrame();
 			ImGui_ImplWin32_NewFrame();
 			ImGui::NewFrame();
 
 			application.Draw(delta);
+			cyui::renderNotifications();
 			if (application.WantsExit())
 				running = false;
 
 			ImGui::Render();
-			constexpr float kClearColor[4] = { 0.09f, 0.09f, 0.11f, 1.0f };
+			if (!ui_capture.empty())
+				ui_capture_errors += ImGui::GetCurrentContext()->ErrorCountCurrentFrame;
+			const ImVec4 ground = cyui::vec(cyui::palette().bg0);
+			const float kClearColor[4] = { ground.x, ground.y, ground.z, ground.w };
 			g_context->OMSetRenderTargets(1, &g_render_target, nullptr);
 			g_context->ClearRenderTargetView(g_render_target, kClearColor);
 			ImGui_ImplDX11_RenderDrawData(ImGui::GetDrawData());
+			if (!ui_capture.empty() && ++rendered_frames >= 60 &&
+				std::chrono::duration<double>(now - capture_start).count() >= 2.0)
+			{
+				if (!SaveUiCapture(ui_capture))
+					++ui_capture_errors;
+				running = false;
+			}
 
 			if (io.ConfigFlags & ImGuiConfigFlags_ViewportsEnable)
 			{
@@ -470,5 +607,10 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, LPWSTR, int)
 	CleanupDeviceD3D();
 	DestroyWindow(window);
 	UnregisterClassW(window_class.lpszClassName, instance);
-	return 0;
+	if (!ui_capture.empty() && !ui_diagnostics.empty())
+	{
+		std::ofstream log(std::filesystem::path(ui_capture.wstring() + L".errors.txt"));
+		log << ui_diagnostics;
+	}
+	return ui_capture_errors == 0 ? 0 : 2;
 }

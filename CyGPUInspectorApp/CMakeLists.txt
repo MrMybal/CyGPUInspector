@@ -24,6 +24,7 @@ set(CYGI_APP_SOURCES
     Source/CyGPUInspectorApp.rc
     Source/App/Application.hpp
     Source/App/Application.cpp
+    Source/App/Appearance.cpp
     Source/App/CapturePanels.cpp
     Source/App/ContinuousTimeline.cpp
     Source/App/TimelineDrawing.hpp
@@ -78,7 +79,13 @@ set(CYGI_APP_SOURCES
 set_source_files_properties(Source/CyGPUInspectorApp.rc PROPERTIES OBJECT_DEPENDS
     ${CMAKE_SOURCE_DIR}/CyGPUInspectorCore/Include/CyGPUInspectorCore/Version.hpp)
 
-add_executable(CyGPUInspectorApp WIN32 ${CYGI_APP_SOURCES} ${CYGI_IMGUI_SOURCES} ${CYGI_TEXTEDITOR_SOURCES})
+add_library(CyGPUInspectorImGui STATIC ${CYGI_IMGUI_SOURCES})
+target_include_directories(CyGPUInspectorImGui PUBLIC ${CYGI_THIRDPARTY}/imgui ${CYGI_THIRDPARTY}/imgui/backends)
+set(CYUI_IMGUI_TARGET CyGPUInspectorImGui CACHE STRING "Dear ImGui target for CyUI" FORCE)
+set(CYUI_BUILD_DEMO OFF CACHE BOOL "Build only the embedded CyUI library" FORCE)
+add_subdirectory(${CYGI_THIRDPARTY}/CyUI ${CMAKE_CURRENT_BINARY_DIR}/CyUI)
+
+add_executable(CyGPUInspectorApp WIN32 ${CYGI_APP_SOURCES} ${CYGI_TEXTEDITOR_SOURCES})
 
 source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR}/Source PREFIX "Source" FILES ${CYGI_APP_SOURCES})
 source_group("ThirdParty\\imgui" FILES ${CYGI_IMGUI_SOURCES})
@@ -94,7 +101,7 @@ target_include_directories(CyGPUInspectorApp PRIVATE
 target_compile_definitions(CyGPUInspectorApp PRIVATE WIN32_LEAN_AND_MEAN UNICODE _UNICODE)
 
 target_link_libraries(CyGPUInspectorApp PRIVATE CyGPUInspectorCore CyGPUInspectorDecompiler CyGPUInspectorDatabase
-    d3d11 dxgi dxguid user32 gdi32 shell32 advapi32 ole32 windowscodecs winhttp comdlg32)
+    CyUI::CyUI d3d11 dxgi dxguid user32 gdi32 shell32 advapi32 ole32 windowscodecs winhttp comdlg32)
 
 set_target_properties(CyGPUInspectorApp PROPERTIES
     RUNTIME_OUTPUT_DIRECTORY "${CYGI_OUTPUT_DIR}"

@@ -4,6 +4,34 @@
 
 **State: milestones 2 to 11 implemented.**
 
+## Appearance and navigation
+
+The standalone uses **CyUI 1.0.0**, vendored in `ThirdParty/CyUI`, with the existing
+Dear ImGui docking build. The default is the blue **Navy** theme. **View > Appearance**
+offers five themes, Compact/Comfortable density and 85–175% interface scaling. These
+preferences are saved under `appearance` in the existing settings JSON, preserving
+language, provider settings and other keys. DPI changes follow the monitor.
+
+The top bar selects Inspect, Captures, Shaders or AI assistant by bringing the relevant
+existing tabs forward; it preserves the saved docking layout. **View > Panels** reaches
+every panel. Capture frame, deep capture and connection refresh are available from the
+top bar. The bottom strip shows the session, current frame and GPU time. F5 refreshes
+connections and Ctrl+S saves a frame when the HLSL editor or a text input is not focused.
+The editor keeps its own shortcuts. Narrow tables scroll horizontally, and preview
+display controls are grouped under **Display settings**.
+
+For repeatable visual checks without saving a layout or appearance changes:
+
+```powershell
+bin/Release/CyGPUInspectorApp.exe --capture-ui=preview.bmp --ui-theme=navy --ui-size=1280x800
+```
+
+This renders the actual D3D11 interface for at least 60 frames and two seconds, writes
+the back buffer as BMP and exits. Add `--ui-scale=1.25`, `--ui-comfortable` or existing
+session/shader arguments. A nonzero exit indicates a capture or ImGui layout error;
+layout diagnostics, when present, are written beside the image. No screenshot of the
+desktop or account/provider request is made.
+
 ## Technology
 
 Win32 + Direct3D 11 + Dear ImGui (docking branch, MIT). The choice is reasoned, not a default:

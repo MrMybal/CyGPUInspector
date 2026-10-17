@@ -7,6 +7,7 @@
 //
 // Copyright (C) 2026 Cyberalien. Licensed under the GNU AGPL v3 or later.
 #include "Application.hpp"
+#include <cyui/CyUI.h>
 
 #include <CyGPUInspectorCore/Localization.hpp>
 
@@ -174,7 +175,7 @@ namespace cygi
 
 	void Application::DrawModExportPanel()
 	{
-		if (!ImGui::Begin(TrId("Mod export")))
+		if (!BeginPanel("Mod export"))
 		{
 			ImGui::End();
 			return;
@@ -220,12 +221,12 @@ namespace cygi
 
 		if (ImGui::BeginTable("mods", 5, ImGuiTableFlags_RowBg | ImGuiTableFlags_Borders |
 		                                 ImGuiTableFlags_SizingStretchProp |
-		                                 ImGuiTableFlags_ScrollY, ImVec2(0.0f, 220.0f)))
+		                                 ImGuiTableFlags_ScrollY, cyui::dp(0.0f, 220.0f)))
 		{
-			ImGui::TableSetupColumn("", ImGuiTableColumnFlags_WidthFixed, 26.0f);
-			ImGui::TableSetupColumn(TrId("Shader"), ImGuiTableColumnFlags_WidthFixed, 110.0f);
-			ImGui::TableSetupColumn(TrId("Action"), ImGuiTableColumnFlags_WidthFixed, 90.0f);
-			ImGui::TableSetupColumn(TrId("Origin"), ImGuiTableColumnFlags_WidthFixed, 120.0f);
+			ImGui::TableSetupColumn("", ImGuiTableColumnFlags_WidthFixed, cyui::dp(26.0f));
+			ImGui::TableSetupColumn(TrId("Shader"), ImGuiTableColumnFlags_WidthFixed, cyui::dp(110.0f));
+			ImGui::TableSetupColumn(TrId("Action"), ImGuiTableColumnFlags_WidthFixed, cyui::dp(90.0f));
+			ImGui::TableSetupColumn(TrId("Origin"), ImGuiTableColumnFlags_WidthFixed, cyui::dp(120.0f));
 			ImGui::TableSetupColumn(TrId("Note"));
 			ImGui::TableHeadersRow();
 
@@ -258,9 +259,9 @@ namespace cygi
 
 				ImGui::TableNextColumn();
 				if (mod.entry.action == ModAction::replace)
-					ImGui::TextColored(ImVec4(0.55f, 0.85f, 0.55f, 1.0f), Tr("replace"));
+					ImGui::TextColored(cyui::vec(cyui::palette().success), Tr("replace"));
 				else
-					ImGui::TextColored(ImVec4(0.9f, 0.7f, 0.45f, 1.0f), Tr("disable"));
+					ImGui::TextColored(cyui::vec(cyui::palette().warning), Tr("disable"));
 
 				ImGui::TableNextColumn();
 				ImGui::TextDisabled("%s", mod.origin.c_str());
@@ -289,7 +290,7 @@ namespace cygi
 		ImGui::InputTextWithHint(TrId("Folder"), Tr("left empty: next to the captures"), m_mod_directory,
 			sizeof(m_mod_directory));
 
-		if (ImGui::Button(TrId("Export package"), ImVec2(160.0f, 0.0f)))
+		if (ImGui::Button(TrId("Export package"), cyui::dp(160.0f, 0.0f)))
 			ExportModPackage();
 		ImGui::SameLine();
 		Help(Tr("Writes a .cygimod folder: a readable mod.json plus one .cso per replaced shader, and "

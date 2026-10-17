@@ -11,6 +11,7 @@ and an AGPL v3 work to be linked into a single one.
 |---|---|---|---|---|
 | **ReShade SDK** (headers only) | 6.8.x, API 20 | BSD-3-Clause | the add-on | `ThirdParty/reshade/` |
 | **Dear ImGui** (docking) | 1.93 WIP | MIT | the standalone | `ThirdParty/imgui/` |
+| **CyUI** | 1.0.0, snapshot 2026-10-17 | MIT | standalone themes, layout and widgets; uses the same ImGui instance | `ThirdParty/CyUI/` |
 | **Dear ImGui** (headers only) | 1.92.5 | MIT | the add-on overlay, matching ReShade's own version | `ThirdParty/reshade_imgui/` |
 | **ImGuiColorTextEdit** | commit `99fcb0d` | MIT | the HLSL editor of the standalone: colouring, undo, find, error marks | `ThirdParty/ImGuiColorTextEdit/` |
 | **3Dmigoto HLSL decompiler** | commit `8f329bd` | **GPL-3.0** | the `hlsldecompiler` decompilation backend | `ThirdParty/hlsldecompiler/` |
@@ -94,7 +95,8 @@ present, and their absence is reported in the application rather than being fata
 `dxcompiler.dll` and `dxil.dll` **are** copied next to the application in a binary distribution,
 because without them Shader Model 6 cannot be disassembled, reflected or compiled at all. They are
 taken unmodified from an official release of Microsoft's DirectXShaderCompiler on GitHub, and the
-release zip carries its licence files in `Licenses/DirectXShaderCompiler/`, with `ORIGIN.txt` giving
+release zip carries its licence files in `LICENCES/DirectXShaderCompiler/` (also retained in
+`Licenses/DirectXShaderCompiler/` for compatibility), with `ORIGIN.txt` giving
 the version and the checksum of the archive. The two files do not have the same licence:
 
 * `dxcompiler.dll` is open source, under the University of Illinois / NCSA licence (LLVM) and MIT;
@@ -111,3 +113,10 @@ the version and the checksum of the archive. The two files do not have the same 
 | `d3dcompiler_47.dll` | Microsoft, part of Windows | DXBC disassembly, reflection and compilation |
 | `dxcompiler.dll` | University of Illinois / NCSA, MIT | DXIL disassembly, reflection and compilation |
 | `dxil.dll` | Microsoft Software License Terms | DXIL validation and signing |
+
+## Distribution index
+
+Complete notices and source links ship in root `LICENCES/`. Each separately copyable
+Unreal plugin carries its own `LICENCES/` for the components it includes. See
+[Docs/Licensing.md](Docs/Licensing.md) for packaging, update and rollback instructions.
+CyToolsCore and CyUEMCPSDK are not included dependencies of this product.

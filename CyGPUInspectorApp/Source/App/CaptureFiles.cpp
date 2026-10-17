@@ -13,6 +13,7 @@
 //
 // Copyright (C) 2026 Cyberalien. Licensed under the GNU AGPL v3 or later.
 #include "Application.hpp"
+#include <cyui/CyUI.h>
 
 #include <CyGPUInspectorCore/Format.hpp>
 #include <CyGPUInspectorCore/Localization.hpp>
@@ -315,11 +316,11 @@ namespace cygi
 			if (ImGui::BeginTable("buffers", 5, flags))
 			{
 				ImGui::TableSetupScrollFreeze(0, 1);
-				ImGui::TableSetupColumn("#", ImGuiTableColumnFlags_WidthFixed, 26.0f);
-				ImGui::TableSetupColumn(Tr("Role"), ImGuiTableColumnFlags_WidthStretch, 1.3f);
-				ImGui::TableSetupColumn(Tr("Size"), ImGuiTableColumnFlags_WidthStretch, 1.0f);
-				ImGui::TableSetupColumn(Tr("Format"), ImGuiTableColumnFlags_WidthStretch, 1.7f);
-				ImGui::TableSetupColumn(Tr("File"), ImGuiTableColumnFlags_WidthStretch, 1.0f);
+				ImGui::TableSetupColumn("#", ImGuiTableColumnFlags_WidthFixed, cyui::dp(26.0f));
+				ImGui::TableSetupColumn(Tr("Role"), ImGuiTableColumnFlags_WidthStretch, cyui::dp(1.3f));
+				ImGui::TableSetupColumn(Tr("Size"), ImGuiTableColumnFlags_WidthStretch, cyui::dp(1.0f));
+				ImGui::TableSetupColumn(Tr("Format"), ImGuiTableColumnFlags_WidthStretch, cyui::dp(1.7f));
+				ImGui::TableSetupColumn(Tr("File"), ImGuiTableColumnFlags_WidthStretch, cyui::dp(1.0f));
 				ImGui::TableHeadersRow();
 
 				for (size_t i = 0; i < items.size(); ++i)

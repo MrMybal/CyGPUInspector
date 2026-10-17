@@ -1,0 +1,23 @@
+CyGPUInspector Unreal plugin 0.3.0 - sources and component notices
+Copyright (C) 2026 Cyberalien.
+
+Source: https://github.com/MrMybal/CyGPUInspector
+Integration: https://github.com/MrMybal/CyGPUInspector/blob/main/Docs/UnrealPlugin.md
+Build instructions: https://github.com/MrMybal/CyGPUInspector/blob/main/README.md
+
+The plugin and CyGPUInspectorRS add-on are licensed under GNU AGPL v3 or later.
+The complete product license is in CyGPUInspector-AGPL-3.0.txt.
+Preserve this LICENCES folder when copying or redistributing the plugin alone.
+
+Included third-party components:
+- ReShade 6.8.0, official full add-on support build: https://reshade.me
+  Source: https://github.com/crosire/reshade/tree/v6.8.0
+  BSD-3-Clause; full license and dependency notices are in ReShade/ and also
+  next to ReShade64.dll in Binaries/ThirdParty/CyGPUInspector/Win64/.
+- ReShade SDK 6.8.x, API 20: https://github.com/crosire/reshade
+  BSD-3-Clause; full text: ReShade-SDK/LICENSE.md.
+- Dear ImGui 1.92.5 headers for the add-on overlay:
+  https://github.com/ocornut/imgui/tree/v1.92.5
+  MIT; full text: DearImGui-ReShade/LICENSE.txt.
+
+Repository links supplement, and never replace, the complete license texts.

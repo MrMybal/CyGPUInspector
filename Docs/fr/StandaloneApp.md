@@ -4,6 +4,23 @@
 
 **État : milestones 2 à 5 implémentés.**
 
+## Apparence et navigation
+
+L’interface utilise **CyUI 1.0.0**, inclus dans le projet avec le Dear ImGui existant.
+Le thème bleu **Navy** est choisi par défaut. **Affichage > Apparence** permet de
+changer de thème, de densité et de taille d’affichage (85 à 175 %). Ces préférences
+s’ajoutent au fichier de réglages existant, sans remplacer la langue ni les paramètres
+des fournisseurs IA. L’affichage suit également le DPI du moniteur.
+
+La barre supérieure donne accès aux vues Inspecter, Captures, Shaders et Assistant IA,
+ainsi qu’aux actions de capture. Les vues sélectionnent les onglets utiles sans déplacer
+vos panneaux. **Affichage > Panneaux** permet de retrouver chaque panneau. La barre
+inférieure affiche la session, la frame et le temps GPU. Les tableaux étroits peuvent
+défiler horizontalement ; les contrôles de prévisualisation sont regroupés dans
+**Réglages d’affichage**. F5 actualise les connexions et Ctrl+S enregistre une frame
+lorsque vous ne travaillez pas dans un champ texte ou dans l’éditeur HLSL, qui conserve
+ses propres raccourcis.
+
 ## Technologie
 
 Win32 + Direct3D 11 + Dear ImGui (branche docking, MIT). Ce choix est motivé, pas par défaut :

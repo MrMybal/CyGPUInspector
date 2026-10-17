@@ -69,10 +69,22 @@ namespace cygi
 		// Fills the search of the Shaders panel, in the query language of find_shaders.
 		void SetShaderSearch(const std::string &query);
 
+		// Appearance changes are additive preferences; existing layouts and provider settings survive.
+		void UpdateDisplayDpi(float dpi);
+		void SetAppearance(const std::string &theme, int density, float scale, bool save = true);
+
 	private:
 		void BuildDefaultLayout(unsigned int dockspace_id);
 		void ApplyStartupRequests();
 		void DrawMenuBar();
+		void DrawActionBar();
+		void DrawSessionBar();
+		void DrawAppearanceMenu();
+		void LoadAppearance();
+		void FocusWorkspace(int workspace);
+		void FocusPanel(const char *name);
+		bool BeginPanel(const char *name);
+		void DrawNoSessionState();
 		void DrawAboutWindow();
 		void DrawConnectionsPanel();
 		void DrawShadersPanel();
@@ -426,6 +438,14 @@ namespace cygi
 		int m_default_tabs_pending = 0;
 		bool m_picking_tabs = false;           // this frame is one of those
 		bool m_show_demo = false;
+		bool m_show_cyui_gallery = false;
+		int m_workspace = 0;
+		std::string m_theme = "navy";
+		int m_density = 0;
+		float m_ui_scale = 1.0f;
+		float m_display_dpi = 1.0f;
+		std::string m_last_notified_status;
+		std::vector<std::pair<std::string, int>> m_panel_focus_requests;
 		uint32_t m_startup_shader = 0;
 		bool m_startup_decompile = false;
 		bool m_startup_time = false;

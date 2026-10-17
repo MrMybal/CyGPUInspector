@@ -11,6 +11,7 @@
 //
 // Copyright (C) 2026 Cyberalien. Licensed under the GNU AGPL v3 or later.
 #include "Application.hpp"
+#include <cyui/CyUI.h>
 #include "TimelineDrawing.hpp"
 
 #include <CyGPUInspectorCore/Localization.hpp>
@@ -183,10 +184,10 @@ namespace cygi
 		}
 
 		// ---- geometry --------------------------------------------------------------------------
-		constexpr float kLabels = 74.0f;
-		constexpr float kRuler = 18.0f;
-		constexpr float kRow = 22.0f;
-		constexpr float kGap = 3.0f;
+		const float kLabels = cyui::dp(74.0f);
+		const float kRuler = cyui::dp(18.0f);
+		const float kRow = cyui::dp(22.0f);
+		const float kGap = cyui::dp(3.0f);
 		const int rows = 1 + lanes + (show_commands ? 1 : 0);
 		const float width = ImGui::GetContentRegionAvail().x;
 		const float height = kRuler + static_cast<float>(rows) * (kRow + kGap) + 2.0f;
@@ -241,19 +242,19 @@ namespace cygi
 		{
 			const float x = x_of(tick);
 			draw->AddLine(ImVec2(x, origin.y + kRuler - 5.0f), ImVec2(x, origin.y + kRuler),
-				IM_COL32(255, 255, 255, 60));
+				cyui::palette().gridStrong);
 			if (x + 3.0f < area_x0)
 				continue;
 			char text[32];
 			FormatSeconds(text, sizeof(text), tick, step);
-			draw->AddText(ImVec2(x + 3.0f, origin.y + 1.0f), IM_COL32(255, 255, 255, 140), text);
+			draw->AddText(ImVec2(x + 3.0f, origin.y + 1.0f), cyui::palette().textDim, text);
 		}
 
 		// Where each frame starts, across every row: the boundaries a profiler draws.
 		for (auto frame = first_visible; frame != frames.end() && frame->begin <= view_end; ++frame)
 		{
 			const float x = x_of(frame->begin);
-			draw->AddLine(ImVec2(x, origin.y + kRuler), ImVec2(x, origin.y + height), IM_COL32(255, 255, 255, 40));
+			draw->AddLine(ImVec2(x, origin.y + kRuler), ImVec2(x, origin.y + height), cyui::palette().grid);
 		}
 		draw->PopClipRect();
 
@@ -295,7 +296,7 @@ namespace cygi
 			const float x1 = x_of(frame->end);
 			std::snprintf(label, sizeof(label), Tr("Frame %llu  %.2f ms"),
 				static_cast<unsigned long long>(frame->index), frame->Busy());
-			DrawBar(draw, x0, x1, row_frames, row_frames + kRow, area_x0, area_x1, IM_COL32(70, 78, 96, 255),
+			DrawBar(draw, x0, x1, row_frames, row_frames + kRow, area_x0, area_x1, cyui::palette().bg4,
 				label, frame->index == m_track_selected_frame);
 			if (inside(x0, x1, row_frames))
 			{
@@ -373,7 +374,7 @@ namespace cygi
 		// Dragging the view moves it too, but a bar that shows where the window is among the
 		// seconds kept, and can be grabbed, is what makes it obvious that there is more to see.
 		{
-			constexpr float kBar = 12.0f;
+			const float kBar = cyui::dp(12.0f);
 			const ImVec2 bar_origin = ImGui::GetCursorScreenPos();
 			ImGui::InvisibleButton("continuous-scrollbar", ImVec2(width, kBar), ImGuiButtonFlags_MouseButtonLeft);
 			const bool bar_active = ImGui::IsItemActive();
@@ -535,7 +536,7 @@ namespace cygi
 			ImGui::TextDisabled(Tr("(the newest: click a frame to pick another)"));
 		}
 		if (!frame->own_structure)
-			ImGui::TextColored(ImVec4(1.0f, 0.7f, 0.35f, 1.0f),
+			ImGui::TextColored(cyui::vec(cyui::palette().warning),
 				Tr("Its own commands were no longer held when its timings arrived: its passes were cut with the "
 				   "commands of a later frame."));
 
@@ -547,12 +548,12 @@ namespace cygi
 
 		ImGui::TableSetupScrollFreeze(0, 1);
 		ImGui::TableSetupColumn(TrId("Pass"), ImGuiTableColumnFlags_WidthStretch | ImGuiTableColumnFlags_NoSort);
-		ImGui::TableSetupColumn(TrId("Cmds"), ImGuiTableColumnFlags_WidthFixed, 46.0f);
-		ImGui::TableSetupColumn(TrId("Starts at"), ImGuiTableColumnFlags_WidthFixed, 72.0f);
+		ImGui::TableSetupColumn(TrId("Cmds"), ImGuiTableColumnFlags_WidthFixed, cyui::dp(46.0f));
+		ImGui::TableSetupColumn(TrId("Starts at"), ImGuiTableColumnFlags_WidthFixed, cyui::dp(72.0f));
 		ImGui::TableSetupColumn(TrId("GPU ms"), ImGuiTableColumnFlags_WidthFixed |
-			ImGuiTableColumnFlags_DefaultSort | ImGuiTableColumnFlags_PreferSortDescending, 62.0f);
+			ImGuiTableColumnFlags_DefaultSort | ImGuiTableColumnFlags_PreferSortDescending, cyui::dp(62.0f));
 		ImGui::TableSetupColumn(TrId("%"), ImGuiTableColumnFlags_WidthFixed |
-			ImGuiTableColumnFlags_PreferSortDescending, 44.0f);
+			ImGuiTableColumnFlags_PreferSortDescending, cyui::dp(44.0f));
 		ImGui::TableHeadersRow();
 
 		std::vector<size_t> order(frame->passes.size());

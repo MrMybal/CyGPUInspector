@@ -3,7 +3,7 @@
 // Copyright (C) 2026 Cyberalien. Licensed under the GNU AGPL v3 or later.
 #pragma once
 
-#include <imgui.h>
+#include <cyui/CyUI.h>
 
 namespace cygi
 {
@@ -22,8 +22,7 @@ namespace cygi
 	// Greyed text that wraps instead of running out of a narrow panel.
 	inline void TextDisabledWrapped(const char *text)
 	{
-		ImGui::PushStyleColor(ImGuiCol_Text, ImGui::GetStyleColorVec4(ImGuiCol_TextDisabled));
+		cyui::ScopedColor colour(ImGuiCol_Text, cyui::palette().textDim);
 		ImGui::TextWrapped("%s", text);
-		ImGui::PopStyleColor();
 	}
 }

@@ -1,0 +1,6 @@
+# Notices extracted from source headers are generated with LF on every platform.
+LICENCES/RenderDoc-bitcode-reader/LICENSE.txt text eol=lf
+LICENCES/glslang-SPIR-V-builder/LICENSE.txt text eol=lf
+# Preserve whitespace from unmodified upstream license notices.
+LICENCES/** -whitespace
+CyGPUInspectorUnreal/CyGPUInspector/LICENCES/** -whitespace

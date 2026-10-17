@@ -2,6 +2,7 @@
 //
 // Copyright (C) 2026 Cyberalien. Licensed under the GNU AGPL v3 or later.
 #include "Application.hpp"
+#include <cyui/CyUI.h>
 #include "LayoutHelpers.hpp"
 
 #include <CyGPUInspectorCore/Localization.hpp>
@@ -92,6 +93,7 @@ namespace cygi
 		// from a run has to reflect what was actually shown.
 		i18n::ScanLanguages();
 		i18n::SetLanguage(LoadPreferredLanguage());
+		LoadAppearance();
 		LoadAssistantPreferences();
 
 		m_directory.Open();
@@ -461,26 +463,28 @@ namespace cygi
 			m_since_throughput = 0.0;
 		}
 
+		DrawMenuBar();
+		DrawActionBar();
+		DrawSessionBar();
+
 		const ImGuiViewport *viewport = ImGui::GetMainViewport();
 		ImGui::SetNextWindowPos(viewport->WorkPos);
 		ImGui::SetNextWindowSize(viewport->WorkSize);
 		ImGui::SetNextWindowViewport(viewport->ID);
 		ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0.0f);
 		ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
-		ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.0f, 0.0f));
+		ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, cyui::dp(0.0f, 0.0f));
 
-		constexpr ImGuiWindowFlags kHostFlags = ImGuiWindowFlags_MenuBar | ImGuiWindowFlags_NoDocking |
+		constexpr ImGuiWindowFlags kHostFlags = ImGuiWindowFlags_NoDocking |
 			ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize |
 			ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoBringToFrontOnFocus | ImGuiWindowFlags_NoNavFocus;
 
 		ImGui::Begin("CyGPUInspectorHost", nullptr, kHostFlags);
 		ImGui::PopStyleVar(3);
 
-		DrawMenuBar();
-
 		const ImGuiID dockspace_id = ImGui::GetID("CyGPUInspectorDockspace");
 		BuildDefaultLayout(dockspace_id);
-		ImGui::DockSpace(dockspace_id, ImVec2(0.0f, 0.0f), ImGuiDockNodeFlags_PassthruCentralNode);
+		ImGui::DockSpace(dockspace_id, cyui::dp(0.0f, 0.0f), ImGuiDockNodeFlags_PassthruCentralNode);
 		ImGui::End();
 
 		// The submission order is the tab order within each dock group, so this follows the layout:
@@ -530,6 +534,13 @@ namespace cygi
 			ImGui::ShowDemoWindow(&m_show_demo);
 		if (m_show_about)
 			DrawAboutWindow();
+		if (m_show_cyui_gallery)
+			cyui::showGallery(&m_show_cyui_gallery);
+		if (!m_status.empty() && m_status != m_last_notified_status)
+		{
+			cyui::notify(m_status.c_str());
+			m_last_notified_status = m_status;
+		}
 	}
 
 	// A first run used to open on a dozen panels stacked in the top left corner, which is not a
@@ -606,7 +617,22 @@ namespace cygi
 
 	void Application::RequestStartupView(const std::string &view)
 	{
-		if (view == "hlsl")
+		if (view == "resources")
+			FocusPanel("Resources");
+		else if (view == "captures")
+			FocusWorkspace(1);
+		else if (view == "preview")
+			FocusPanel("Preview");
+		else if (view == "deep-capture")
+			FocusPanel("Deep capture");
+		else if (view == "graph")
+			FocusPanel("Frame graph");
+		else if (view == "continuous")
+		{
+			m_timeline_continuous = true;
+			FocusPanel("Frame timeline");
+		}
+		else if (view == "hlsl")
 			m_code_tab_request = "HLSL";
 		else if (view == "ai-analysis")
 			m_code_tab_request = "AI Analysis";
@@ -682,13 +708,13 @@ namespace cygi
 
 	void Application::DrawMenuBar()
 	{
-		if (!ImGui::BeginMenuBar())
+		if (!ImGui::BeginMainMenuBar())
 			return;
 
 		// The logo, at the height of the menu text, before the first menu.
 		if (m_logo != nullptr)
 		{
-			const float size = ImGui::GetFontSize() + 2.0f;
+			const float size = ImGui::GetFontSize() + cyui::dp(2.0f);
 			ImGui::Image(reinterpret_cast<ImTextureID>(m_logo), ImVec2(size, size));
 			if (ImGui::IsItemClicked())
 				m_show_about = true;
@@ -717,6 +743,16 @@ namespace cygi
 
 		if (ImGui::BeginMenu(TrId("View")))
 		{
+			DrawAppearanceMenu();
+			if (ImGui::BeginMenu(TrId("Panels")))
+			{
+				for (const char *panel : { "Connections", "Captures", "Game profile", "Shaders", "Resources",
+					"Frame timeline", "Frame graph", "Preview", "Frame events", "Deep capture", "Details",
+					"Shader code", "Mod export", "AI assistant", "MCP", "Status" })
+					if (ImGui::MenuItem(TrId(panel)))
+						FocusPanel(panel);
+				ImGui::EndMenu();
+			}
 			if (ImGui::BeginMenu(TrId("Language")))
 			{
 				for (const i18n::LanguageInfo &language : i18n::Languages())
@@ -758,6 +794,7 @@ namespace cygi
 				m_layout_built = false;
 			}
 			ImGui::MenuItem(TrId("ImGui demo window"), nullptr, &m_show_demo);
+			ImGui::MenuItem(TrId("CyUI gallery"), nullptr, &m_show_cyui_gallery);
 			ImGui::EndMenu();
 		}
 
@@ -771,14 +808,14 @@ namespace cygi
 			ImGui::EndMenu();
 		}
 
-		ImGui::EndMenuBar();
+		ImGui::EndMainMenuBar();
 	}
 
 	void Application::DrawAboutWindow()
 	{
 		const ImGuiViewport *viewport = ImGui::GetMainViewport();
 		ImGui::SetNextWindowPos(ImVec2(viewport->WorkPos.x + viewport->WorkSize.x * 0.5f,
-			viewport->WorkPos.y + viewport->WorkSize.y * 0.5f), ImGuiCond_Appearing, ImVec2(0.5f, 0.5f));
+			viewport->WorkPos.y + viewport->WorkSize.y * 0.5f), ImGuiCond_Appearing, cyui::dp(0.5f, 0.5f));
 		if (!ImGui::Begin(TrId("About CyGPUInspector"), &m_show_about,
 		                  ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoDocking))
 		{
@@ -788,7 +825,7 @@ namespace cygi
 
 		if (m_logo != nullptr)
 		{
-			ImGui::Image(reinterpret_cast<ImTextureID>(m_logo), ImVec2(128.0f, 128.0f));
+			ImGui::Image(reinterpret_cast<ImTextureID>(m_logo), cyui::dp(128.0f, 128.0f));
 			ImGui::SameLine();
 		}
 		ImGui::BeginGroup();
@@ -806,22 +843,23 @@ namespace cygi
 
 	void Application::DrawConnectionsPanel()
 	{
-		if (!ImGui::Begin(TrId("Connections")))
+		if (!BeginPanel("Connections"))
 		{
 			ImGui::End();
 			return;
 		}
 
-		ImGui::TextUnformatted(Tr("Applications running CyGPUInspectorRS"));
+		cyui::panelHeader(Tr("Connections"), Tr("Applications running CyGPUInspectorRS"));
+		if (cyui::iconButton(cyui::icon::refresh, Tr("Refresh connections (F5)")))
+			RefreshSessions();
 		ImGui::SameLine();
-		HelpMarker(Tr("Every ReShade add-on instance publishes itself in a shared table. A session "
-		              "disappears from this list when its process exits."));
-		ImGui::Separator();
+		cyui::textDim(Tr("%zu available"), m_sessions.size());
+		cyui::divider();
 
 		if (m_sessions.empty())
 		{
-			ImGui::TextDisabled(Tr("No application connected."));
-			ImGui::TextWrapped(Tr("Copy CyGPUInspectorRS.addon64 next to a game that runs ReShade "
+			cyui::callout(cyui::Tone::info, Tr("No application connected."));
+			TextDisabledWrapped(Tr("Copy CyGPUInspectorRS.addon64 next to a game that runs ReShade "
 			                      "(add-on enabled build) and start it."));
 		}
 
@@ -832,26 +870,27 @@ namespace cygi
 			const bool is_current = m_client && m_client->Entry().process_id == entry.process_id &&
 			                        m_client->Entry().device_index == entry.device_index;
 
-			ImGui::BulletText("%s", entry.Describe().c_str());
-			ImGui::Indent();
-			ImGui::TextDisabled(Tr("frame %llu, %s, %s"), static_cast<unsigned long long>(entry.frame_index),
+			cyui::beginCard("##session", nullptr, 0, is_current ? cyui::Tone::accent : cyui::Tone::neutral);
+			cyui::heading(entry.process_name.c_str(), 3);
+			cyui::textDim("PID %u  |  %s", entry.process_id, GraphicsApiName(entry.api));
+			cyui::textDim(Tr("frame %llu, %s, %s"), static_cast<unsigned long long>(entry.frame_index),
 				TrackingLevelName(entry.level), entry.IsFresh() ? "alive" : "no heartbeat");
 
 			if (is_current)
 			{
-				ImGui::TextColored(ImVec4(0.4f, 0.9f, 0.4f, 1.0f), Tr("connected"));
-				ImGui::SameLine();
-				if (ImGui::SmallButton(TrId("Disconnect")))
+				cyui::badge(Tr("connected"), cyui::Tone::success);
+				SameLineIfFits(Tr("Disconnect"));
+				if (cyui::ghostButton(TrId("Disconnect")))
 				{
 					m_client.reset();
 					m_status = "Disconnected";
 				}
 			}
-			else if (ImGui::SmallButton(TrId("Connect")))
+			else if (cyui::button(TrId("Connect")))
 			{
 				ConnectTo(entry);
 			}
-			ImGui::Unindent();
+			cyui::endCard();
 			ImGui::PopID();
 		}
 
@@ -868,20 +907,33 @@ namespace cygi
 			if (model.HasSession())
 			{
 				const SessionInfoRecord &session = model.Session();
-				ImGui::Text(Tr("Add-on:   %s"), session.addon_version);
-				ImGui::Text(Tr("Adapter:  %s"), session.adapter_name);
-				ImGui::Text(Tr("Caps:     %s%s%s%s"),
-					(session.capability_flags & kCapSharedResource) ? "shared " : "",
-					(session.capability_flags & kCapSharedResourceNtHandle) ? "shared-nt " : "",
-					(session.capability_flags & kCapSharedFence) ? "fence " : "",
-					(session.capability_flags & kCapTimestampQueries) ? "timestamps" : "");
+				cyui::sectionTitle(Tr("Session settings"));
+				if (cyui::beginProperties("##session-tracking"))
+				{
+					int level_index = static_cast<int>(session.level);
+					const char *levels[] = { "Idle", "Tracking", "Pass Timing", "Capture", "Full Draw Timing" };
+					cyui::property(Tr("Tracking level"));
+					if (ImGui::Combo("###Tracking level", &level_index, levels, IM_ARRAYSIZE(levels)))
+						requested_level = level_index;
+					cyui::endProperties();
+				}
+				if (cyui::beginSection(Tr("Session details"), false))
+				{
+					if (cyui::beginProperties("##session-properties"))
+					{
+						cyui::property(Tr("Add-on")); ImGui::TextWrapped("%s", session.addon_version);
+						cyui::property(Tr("Adapter")); ImGui::TextWrapped("%s", session.adapter_name);
+						cyui::property(Tr("Capabilities"));
+						ImGui::TextWrapped("%s%s%s%s",
+							(session.capability_flags & kCapSharedResource) ? "shared " : "",
+							(session.capability_flags & kCapSharedResourceNtHandle) ? "shared-nt " : "",
+							(session.capability_flags & kCapSharedFence) ? "fence " : "",
+							(session.capability_flags & kCapTimestampQueries) ? "timestamps" : "");
+						cyui::endProperties();
+					}
+					cyui::endSection();
+				}
 
-				int level_index = static_cast<int>(session.level);
-				static const char *const kLevels[] = { "Idle", "Tracking", "Pass Timing", "Capture",
-					"Full Draw Timing" };
-				ImGui::SetNextItemWidth(200.0f);
-				if (ImGui::Combo(TrId("Tracking level"), &level_index, kLevels, IM_ARRAYSIZE(kLevels)))
-					requested_level = level_index;
 			}
 			}
 
@@ -897,7 +949,7 @@ namespace cygi
 
 	void Application::DrawShadersPanel()
 	{
-		if (!ImGui::Begin(TrId("Shaders")))
+		if (!BeginPanel("Shaders"))
 		{
 			ImGui::End();
 			return;
@@ -905,7 +957,7 @@ namespace cygi
 
 		if (ActiveModel() == nullptr)
 		{
-			ImGui::TextDisabled(Tr("Not connected, and no capture open."));
+			DrawNoSessionState();
 			ImGui::End();
 			return;
 		}
@@ -913,9 +965,10 @@ namespace cygi
 		SessionModel &model = *ActiveModel();
 		std::lock_guard<std::mutex> lock(model.Mutex());
 
-		ImGui::SetNextItemWidth(260.0f);
-		ImGui::InputTextWithHint("##shaderfilter", Tr("search: text, stage:ps writes:rgba16f ms>0.2..."), m_shader_filter,
-			sizeof(m_shader_filter));
+		cyui::panelHeader(Tr("Shaders"), Tr("Search and inspect GPU programs"));
+		cyui::searchField("##shaderfilter", m_shader_filter, sizeof(m_shader_filter),
+			Tr("search: text, stage:ps writes:rgba16f ms>0.2..."),
+			std::max(cyui::dp(40), ImGui::GetContentRegionAvail().x - ImGui::GetFrameHeight()));
 		ImGui::SameLine();
 		ImGui::TextDisabled("(?)");
 		if (ImGui::BeginItemTooltip())
@@ -936,10 +989,9 @@ namespace cygi
 			ImGui::PopTextWrapPos();
 			ImGui::EndTooltip();
 		}
-		ImGui::SameLine();
 		ImGui::Checkbox(TrId("Used this frame"), &m_only_used_this_frame);
-		ImGui::SameLine();
-		ImGui::Text(Tr("%zu shaders"), model.Shaders().size());
+		SameLineIfFits(Tr("%zu shaders"));
+		cyui::textDim(Tr("%zu shaders"), model.Shaders().size());
 
 		const ShaderQuery query = ShaderQuery::Parse(m_shader_filter);
 		if (!query.errors.empty())
@@ -947,13 +999,13 @@ namespace cygi
 			std::string words;
 			for (const std::string &word : query.errors)
 				words += (words.empty() ? "" : ", ") + word;
-			ImGui::TextColored(ImVec4(1.0f, 0.6f, 0.3f, 1.0f), Tr("Not understood: %s"), words.c_str());
+			ImGui::TextColored(cyui::vec(cyui::palette().warning), Tr("Not understood: %s"), words.c_str());
 		}
 		if (query.NeedsBindings() && !model.LastFrame().HasDeepCapture())
-			ImGui::TextColored(ImVec4(1.0f, 0.8f, 0.35f, 1.0f), "%s",
+			ImGui::TextColored(cyui::vec(cyui::palette().warning), "%s",
 				Tr("reads: needs a deep capture of this frame, which records what each command binds."));
 		if (query.NeedsTiming() && !model.Timings().IsValid())
-			ImGui::TextColored(ImVec4(1.0f, 0.8f, 0.35f, 1.0f), "%s",
+			ImGui::TextColored(cyui::vec(cyui::palette().warning), "%s",
 				Tr("ms: needs GPU timings: set the tracking level to Pass Timing or higher."));
 		const std::unordered_map<uint32_t, ShaderFrameFacts> &facts = ShaderFactsOf(model, query);
 
@@ -961,7 +1013,7 @@ namespace cygi
 			ImGuiTableFlags_BordersOuter | ImGuiTableFlags_BordersV | ImGuiTableFlags_Resizable |
 			ImGuiTableFlags_Hideable | ImGuiTableFlags_Sortable | ImGuiTableFlags_SizingFixedFit;
 
-		if (ImGui::BeginTable("shaders", 8, kFlags))
+		if (ImGui::BeginTable("shaders", 8, kFlags | ImGuiTableFlags_ScrollX, cyui::dp(0, 0), cyui::dp(420)))
 		{
 			// Eight columns in a side panel means eight clipped columns. Bytes, the shader model
 			// and the signature are read in Details, where there is room; what stays here is what
@@ -969,15 +1021,15 @@ namespace cygi
 			// context menu still brings any of them back.
 			ImGui::TableSetupScrollFreeze(0, 1);
 			ImGui::TableSetupColumn(TrId("Id"), ImGuiTableColumnFlags_WidthFixed |
-				ImGuiTableColumnFlags_DefaultSort, 34.0f);
-			ImGui::TableSetupColumn(TrId("Stage"), ImGuiTableColumnFlags_WidthFixed, 96.0f);
-			ImGui::TableSetupColumn(TrId("Format"), ImGuiTableColumnFlags_WidthFixed, 56.0f);
+				ImGuiTableColumnFlags_DefaultSort, cyui::dp(34.0f));
+			ImGui::TableSetupColumn(TrId("Stage"), ImGuiTableColumnFlags_WidthFixed, cyui::dp(96.0f));
+			ImGui::TableSetupColumn(TrId("Format"), ImGuiTableColumnFlags_WidthFixed, cyui::dp(56.0f));
 			ImGui::TableSetupColumn(TrId("SM"), ImGuiTableColumnFlags_DefaultHide);
 			ImGui::TableSetupColumn(TrId("Bytes"), ImGuiTableColumnFlags_DefaultHide);
 			ImGui::TableSetupColumn(TrId("Draws/frame"), ImGuiTableColumnFlags_WidthFixed |
-				ImGuiTableColumnFlags_PreferSortDescending, 82.0f);
+				ImGuiTableColumnFlags_PreferSortDescending, cyui::dp(82.0f));
 			ImGui::TableSetupColumn(TrId("GPU ms"), ImGuiTableColumnFlags_WidthFixed |
-				ImGuiTableColumnFlags_PreferSortDescending, 62.0f);
+				ImGuiTableColumnFlags_PreferSortDescending, cyui::dp(62.0f));
 			ImGui::TableSetupColumn(TrId("Signature"),
 				ImGuiTableColumnFlags_WidthStretch | ImGuiTableColumnFlags_DefaultHide);
 			ImGui::TableHeadersRow();
@@ -1046,7 +1098,7 @@ namespace cygi
 
 				ImGui::TableNextColumn();
 				if (shader.disabled)
-					ImGui::TextColored(ImVec4(1.0f, 0.5f, 0.4f, 1.0f), Tr("%s (off)"), ShaderStageName(shader.stage));
+					ImGui::TextColored(cyui::vec(cyui::palette().error), Tr("%s (off)"), ShaderStageName(shader.stage));
 				else
 					ImGui::TextUnformatted(ShaderStageName(shader.stage));
 
@@ -1074,7 +1126,7 @@ namespace cygi
 
 	void Application::DrawResourcesPanel()
 	{
-		if (!ImGui::Begin(TrId("Resources")))
+		if (!BeginPanel("Resources"))
 		{
 			ImGui::End();
 			return;
@@ -1082,7 +1134,7 @@ namespace cygi
 
 		if (ActiveModel() == nullptr)
 		{
-			ImGui::TextDisabled(Tr("Not connected, and no capture open."));
+			DrawNoSessionState();
 			ImGui::End();
 			return;
 		}
@@ -1093,19 +1145,18 @@ namespace cygi
 		{
 		std::lock_guard<std::mutex> lock(model.Mutex());
 
-		ImGui::SetNextItemWidth(220.0f);
-		ImGui::InputTextWithHint("##resourcefilter", Tr("filter by format or kind"), m_resource_filter,
-			sizeof(m_resource_filter));
-		ImGui::SameLine();
+		cyui::panelHeader(Tr("Resources"), Tr("Double-click a texture to preview it"));
+		cyui::searchField("##resourcefilter", m_resource_filter, sizeof(m_resource_filter),
+			Tr("filter by format or kind"), -1);
 		ImGui::Checkbox(TrId("Render targets only"), &m_only_render_targets);
-		ImGui::SameLine();
-		ImGui::Text(Tr("%zu resources"), model.Resources().size());
+		SameLineIfFits(Tr("%zu resources"));
+		cyui::textDim(Tr("%zu resources"), model.Resources().size());
 
 		constexpr ImGuiTableFlags kFlags = ImGuiTableFlags_ScrollY | ImGuiTableFlags_RowBg |
 			ImGuiTableFlags_BordersOuter | ImGuiTableFlags_BordersV | ImGuiTableFlags_Resizable |
 			ImGuiTableFlags_Sortable | ImGuiTableFlags_SizingFixedFit;
 
-		if (ImGui::BeginTable("resources", 8, kFlags))
+		if (ImGui::BeginTable("resources", 8, kFlags | ImGuiTableFlags_ScrollX | ImGuiTableFlags_Hideable, cyui::dp(0, 0), cyui::dp(640)))
 		{
 			ImGui::TableSetupScrollFreeze(0, 1);
 			ImGui::TableSetupColumn(TrId("Id"), ImGuiTableColumnFlags_DefaultSort);
@@ -1246,7 +1297,7 @@ namespace cygi
 
 	void Application::DrawEventsPanel()
 	{
-		if (!ImGui::Begin(TrId("Frame events")))
+		if (!BeginPanel("Frame events"))
 		{
 			ImGui::End();
 			return;
@@ -1254,7 +1305,7 @@ namespace cygi
 
 		if (ActiveModel() == nullptr)
 		{
-			ImGui::TextDisabled(Tr("Not connected, and no capture open."));
+			DrawNoSessionState();
 			ImGui::End();
 			return;
 		}
@@ -1267,7 +1318,7 @@ namespace cygi
 			static_cast<unsigned long long>(frame.index), frame.draw_count, frame.dispatch_count,
 			frame.events.size());
 		if (frame.dropped_events != 0)
-			ImGui::TextColored(ImVec4(1.0f, 0.6f, 0.2f, 1.0f), Tr("%u events dropped in the game process"),
+			ImGui::TextColored(cyui::vec(cyui::palette().warning), Tr("%u events dropped in the game process"),
 				frame.dropped_events);
 
 		if (model.Timings().IsValid())
@@ -1288,7 +1339,7 @@ namespace cygi
 		{
 			shader_events = model.EventsUsingShader(m_selected_shader);
 			ImGui::SameLine();
-			ImGui::TextColored(ImVec4(0.5f, 0.8f, 1.0f, 1.0f), Tr("| shader #%u: %zu events"), m_selected_shader,
+			ImGui::TextColored(cyui::vec(cyui::palette().info), Tr("| shader #%u: %zu events"), m_selected_shader,
 				shader_events.size());
 		}
 
@@ -1336,10 +1387,10 @@ namespace cygi
 			ImGuiTableFlags_BordersOuter | ImGuiTableFlags_BordersV | ImGuiTableFlags_Resizable |
 			ImGuiTableFlags_SizingFixedFit;
 
-		if (ImGui::BeginTable("events", 8, kFlags))
+		if (ImGui::BeginTable("events", 8, kFlags | ImGuiTableFlags_ScrollX, cyui::dp(0, 0), cyui::dp(680)))
 		{
 			ImGui::TableSetupScrollFreeze(0, 1);
-			ImGui::TableSetupColumn("#", ImGuiTableColumnFlags_WidthFixed, 52.0f);
+			ImGui::TableSetupColumn("#", ImGuiTableColumnFlags_WidthFixed, cyui::dp(52.0f));
 			ImGui::TableSetupColumn(TrId("Kind"));
 			ImGui::TableSetupColumn(TrId("Pipeline"));
 			ImGui::TableSetupColumn(TrId("Target"));
@@ -1393,7 +1444,7 @@ namespace cygi
 					}
 					if (m_selected_shader != 0 &&
 					    std::binary_search(shader_events.begin(), shader_events.end(), event.index))
-						ImGui::TableSetBgColor(ImGuiTableBgTarget_RowBg0, ImGui::GetColorU32(ImVec4(0.1f, 0.3f, 0.5f, 0.5f)));
+						ImGui::TableSetBgColor(ImGuiTableBgTarget_RowBg0, ImGui::GetColorU32(cyui::vec(cyui::palette().selection)));
 
 					ImGui::TableNextColumn();
 					char label[32];
@@ -1442,9 +1493,9 @@ namespace cygi
 					}
 					ImGui::TableNextColumn();
 					if (event.flags & kEventReplaced)
-						ImGui::TextColored(ImVec4(0.6f, 0.8f, 1.0f, 1.0f), Tr("replaced"));
+						ImGui::TextColored(cyui::vec(cyui::palette().info), Tr("replaced"));
 					else if (event.flags & kEventSkipped)
-						ImGui::TextColored(ImVec4(1.0f, 0.5f, 0.4f, 1.0f), Tr("skipped"));
+						ImGui::TextColored(cyui::vec(cyui::palette().error), Tr("skipped"));
 					else if (event.flags & kEventIndirect)
 						ImGui::TextDisabled(Tr("indirect"));
 					else
@@ -1459,7 +1510,7 @@ namespace cygi
 
 	void Application::DrawPreviewPanel()
 	{
-		if (!ImGui::Begin(TrId("Preview")))
+		if (!BeginPanel("Preview"))
 		{
 			ImGui::End();
 			return;
@@ -1467,7 +1518,7 @@ namespace cygi
 
 		if (ActiveModel() == nullptr)
 		{
-			ImGui::TextDisabled(Tr("Not connected, and no capture open."));
+			DrawNoSessionState();
 			ImGui::End();
 			return;
 		}
@@ -1503,93 +1554,87 @@ namespace cygi
 		if (m_preview_frozen_sent)
 		{
 			ImGui::SameLine();
-			ImGui::TextColored(ImVec4(0.55f, 0.8f, 1.0f, 1.0f), Tr("frozen at frame %llu while Follow is off"),
+			ImGui::TextColored(cyui::vec(cyui::palette().info), Tr("frozen at frame %llu while Follow is off"),
 				static_cast<unsigned long long>(m_preview_frozen_frame));
 		}
 		if (!m_preview_saved.empty())
 			ImGui::TextDisabled("%s", m_preview_saved.c_str());
 
-		// Mip and slice are part of the request: changing them asks the add-on for another copy.
-		bool reselect = false;
-		int mip = static_cast<int>(m_preview_mip);
-		int slice = static_cast<int>(m_preview_slice);
-		uint32_t mip_count = 1;
-		uint32_t slice_count = 1;
+		// Display settings stay available without displacing the texture on narrow panels.
+		if (cyui::beginSection(Tr("Display settings"), false))
 		{
-			std::lock_guard<std::mutex> lock(m_client->Model().Mutex());
-			if (const ResourceInfo *resource = m_client->Model().ResourceById(m_preview_resource))
+			if (cyui::beginProperties("##preview-properties"))
 			{
-				mip_count = resource->mip_levels != 0 ? resource->mip_levels : 1;
-				slice_count = resource->depth_or_layers != 0 ? resource->depth_or_layers : 1;
+				int mip = static_cast<int>(m_preview_mip);
+				int slice = static_cast<int>(m_preview_slice);
+				uint32_t mip_count = 1, slice_count = 1;
+				{
+					std::lock_guard<std::mutex> lock(m_client->Model().Mutex());
+					if (const ResourceInfo *resource = m_client->Model().ResourceById(m_preview_resource))
+					{
+						mip_count = std::max(1u, resource->mip_levels);
+						slice_count = std::max(1u, resource->depth_or_layers);
+					}
+				}
+				bool reselect = false;
+				if (mip_count > 1)
+				{
+					cyui::property(Tr("Mip"));
+					reselect |= ImGui::SliderInt("###Mip", &mip, 0, static_cast<int>(mip_count) - 1);
+				}
+				if (slice_count > 1)
+				{
+					cyui::property(Tr("Slice"));
+					reselect |= ImGui::SliderInt("###Slice", &slice, 0, static_cast<int>(slice_count) - 1);
+				}
+				if (reselect)
+				{
+					m_preview_mip = static_cast<uint32_t>(mip);
+					m_preview_slice = static_cast<uint32_t>(slice);
+					StartPreview(m_preview_resource);
+				}
+				cyui::property(Tr("Fit"));
+				cyui::toggleSwitch("###Fit", &m_preview_fit);
+				if (!m_preview_fit)
+				{
+					cyui::property(Tr("Zoom"));
+					ImGui::SliderFloat("###Zoom", &m_preview_zoom, 0.1f, 8.0f, "%.2fx");
+				}
+				if (m_preview_renderer_ready)
+				{
+					const char *modes[] = { "RGB", "R", "G", "B", "A", Tr("Depth (raw)"), Tr("Depth (linearised)") };
+					int mode = static_cast<int>(m_preview_settings.mode);
+					cyui::property(Tr("Channel"));
+					if (ImGui::Combo("###Channel", &mode, modes, IM_ARRAYSIZE(modes)))
+						m_preview_settings.mode = static_cast<PreviewChannelMode>(mode);
+					cyui::property(Tr("Range"));
+					ImGui::DragFloatRange2("###Range", &m_preview_settings.range_min, &m_preview_settings.range_max,
+						0.01f, -16.0f, 16.0f, "%.3f", "%.3f");
+					cyui::property(Tr("Reset range"));
+					if (cyui::ghostButton("0..1"))
+					{
+						m_preview_settings.range_min = 0.0f;
+						m_preview_settings.range_max = 1.0f;
+					}
+					if (m_preview_settings.mode == PreviewChannelMode::depth_linear)
+					{
+						cyui::property(Tr("Near"));
+						ImGui::DragFloat("###Near", &m_preview_settings.near_plane, 0.01f, 0.001f, 100.0f);
+						cyui::property(Tr("Far"));
+						ImGui::DragFloat("###Far", &m_preview_settings.far_plane, 1.0f, 1.0f, 100000.0f);
+						cyui::property(Tr("Reverse-Z"));
+						cyui::toggleSwitch("###Reverse-Z", &m_preview_settings.reverse_z);
+					}
+				}
+				else
+					ImGui::TextDisabled(Tr("channel selection unavailable: %s"), m_preview_renderer.LastError().c_str());
+				cyui::endProperties();
 			}
-		}
-
-		if (mip_count > 1)
-		{
-			ImGui::SetNextItemWidth(160.0f);
-			if (ImGui::SliderInt(TrId("Mip"), &mip, 0, static_cast<int>(mip_count) - 1))
-				reselect = true;
-		}
-		if (slice_count > 1)
-		{
-			ImGui::SetNextItemWidth(160.0f);
-			if (ImGui::SliderInt(TrId("Slice"), &slice, 0, static_cast<int>(slice_count) - 1))
-				reselect = true;
-		}
-		if (reselect)
-		{
-			m_preview_mip = static_cast<uint32_t>(mip);
-			m_preview_slice = static_cast<uint32_t>(slice);
-			StartPreview(m_preview_resource);
-		}
-
-		ImGui::Checkbox(TrId("Fit"), &m_preview_fit);
-		if (!m_preview_fit)
-		{
-			ImGui::SameLine();
-			ImGui::SetNextItemWidth(160.0f);
-			ImGui::SliderFloat(TrId("Zoom"), &m_preview_zoom, 0.1f, 8.0f, "%.2fx");
-		}
-
-		// Channel selection and depth linearisation, applied by our own display pass.
-		if (m_preview_renderer_ready)
-		{
-			static const char *const kModes[] = { "RGB", "R", "G", "B", "A", "Depth (raw)",
-				"Depth (linearised)" };
-			int mode = static_cast<int>(m_preview_settings.mode);
-			ImGui::SetNextItemWidth(170.0f);
-			if (ImGui::Combo(TrId("Channel"), &mode, kModes, IM_ARRAYSIZE(kModes)))
-				m_preview_settings.mode = static_cast<PreviewChannelMode>(mode);
-
-			ImGui::SetNextItemWidth(220.0f);
-			ImGui::DragFloatRange2("Range", &m_preview_settings.range_min, &m_preview_settings.range_max,
-				0.01f, -16.0f, 16.0f, "%.3f", "%.3f");
-			ImGui::SameLine();
-			if (ImGui::SmallButton("0..1"))
-			{
-				m_preview_settings.range_min = 0.0f;
-				m_preview_settings.range_max = 1.0f;
-			}
-
-			if (m_preview_settings.mode == PreviewChannelMode::depth_linear)
-			{
-				ImGui::SetNextItemWidth(90.0f);
-				ImGui::DragFloat(TrId("Near"), &m_preview_settings.near_plane, 0.01f, 0.001f, 100.0f);
-				ImGui::SameLine();
-				ImGui::SetNextItemWidth(90.0f);
-				ImGui::DragFloat(TrId("Far"), &m_preview_settings.far_plane, 1.0f, 1.0f, 100000.0f);
-				ImGui::SameLine();
-				ImGui::Checkbox(TrId("Reverse-Z"), &m_preview_settings.reverse_z);
-			}
-		}
-		else
-		{
-			ImGui::TextDisabled(Tr("channel selection unavailable: %s"),
-				m_preview_renderer.LastError().c_str());
+			cyui::endSection();
 		}
 
 		if (!m_preview_message.empty())
-			ImGui::TextColored(ImVec4(1.0f, 0.7f, 0.3f, 1.0f), "%s", m_preview_message.c_str());
+			ImGui::TextColored(cyui::vec(cyui::palette().warning), "%s", m_preview_message.c_str());
 
 		// A shared texture only opens on the adapter that created it. Said here, with both names,
 		// rather than left as an opening error nobody can act on.
@@ -1603,7 +1648,7 @@ namespace cygi
 			}
 			if (!game_adapter.empty() && game_adapter.find(m_adapter_name) == std::string::npos &&
 			    m_adapter_name.find(game_adapter) == std::string::npos)
-				ImGui::TextColored(ImVec4(1.0f, 0.55f, 0.4f, 1.0f),
+				ImGui::TextColored(cyui::vec(cyui::palette().error),
 					Tr("The game renders on %s and this application on %s: an image can only be shared on the "
 					   "same graphics card."), game_adapter.c_str(), m_adapter_name.c_str());
 		}
@@ -1666,10 +1711,10 @@ namespace cygi
 			ImGui::Text(Tr("Resource #%u"), m_preview_resource);
 		ImGui::SameLine();
 		if (m_preview_capture_hold)
-			ImGui::TextColored(ImVec4(0.55f, 0.8f, 1.0f, 1.0f), Tr("(captured frame %llu)"),
+			ImGui::TextColored(cyui::vec(cyui::palette().info), Tr("(captured frame %llu)"),
 				static_cast<unsigned long long>(m_preview_frozen_frame));
 		else if (m_preview_frozen_sent)
-			ImGui::TextColored(ImVec4(0.55f, 0.8f, 1.0f, 1.0f), Tr("(frozen, frame %llu)"),
+			ImGui::TextColored(cyui::vec(cyui::palette().info), Tr("(frozen, frame %llu)"),
 				static_cast<unsigned long long>(m_preview_frozen_frame));
 		else
 			ImGui::TextDisabled(Tr("(live)"));
@@ -2994,11 +3039,11 @@ namespace cygi
 		if (m_notes_shader != shader_id)
 			return;
 
-		ImGui::SeparatorText("Tags and notes");
+		cyui::sectionTitle("Tags and notes");
 
 		char name[128] = {};
 		std::strncpy(name, m_notes.user_name.c_str(), sizeof(name) - 1);
-		ImGui::SetNextItemWidth(240.0f);
+		ImGui::SetNextItemWidth(cyui::dp(240.0f));
 		if (ImGui::InputTextWithHint("##name", Tr("give this shader a name"), name, sizeof(name),
 		                             ImGuiInputTextFlags_EnterReturnsTrue))
 		{
@@ -3033,16 +3078,16 @@ namespace cygi
 		{
 			// The origin of a sentence is never dropped: a model's guess must not read like a fact.
 			const ImVec4 colour = annotation.source == AnnotationSource::ai
-				? ImVec4(0.8f, 0.7f, 1.0f, 1.0f)
-				: annotation.source == AnnotationSource::heuristic ? ImVec4(0.9f, 0.85f, 0.5f, 1.0f)
-				                                                   : ImVec4(0.7f, 0.9f, 0.7f, 1.0f);
+				? cyui::vec(cyui::palette().info)
+				: annotation.source == AnnotationSource::heuristic ? cyui::vec(cyui::palette().warning)
+				                                                   : cyui::vec(cyui::palette().success);
 			ImGui::TextColored(colour, Tr("[%s]"), annotation.Describe().c_str());
 			ImGui::SameLine();
 			ImGui::TextWrapped("%s", annotation.text.c_str());
 		}
 
 		static const char *const kKinds[] = { "note", "classification", "cleanup", "explanation" };
-		ImGui::SetNextItemWidth(140.0f);
+		ImGui::SetNextItemWidth(cyui::dp(140.0f));
 		ImGui::Combo("##kind", &m_note_kind, kKinds, IM_ARRAYSIZE(kKinds));
 		ImGui::SameLine();
 		ImGui::SetNextItemWidth(-90.0f);
@@ -3219,7 +3264,7 @@ namespace cygi
 
 	void Application::DrawMcpPanel()
 	{
-		if (!ImGui::Begin(TrId("MCP")))
+		if (!BeginPanel("MCP"))
 		{
 			ImGui::End();
 			return;
@@ -3231,10 +3276,10 @@ namespace cygi
 		ImGui::Text(Tr("Proxy connected: %s"), m_mcp.IsClientConnected() ? "yes" : "no");
 		ImGui::Text(Tr("Tool calls: %llu"), static_cast<unsigned long long>(m_mcp.CallCount()));
 
-		ImGui::SeparatorText("Permission");
+		cyui::sectionTitle("Permission");
 		static const char *const kLevels[] = { "Read Only", "Debug Control", "Shader Modification" };
 		int level = static_cast<int>(m_mcp.Permission());
-		ImGui::SetNextItemWidth(220.0f);
+		ImGui::SetNextItemWidth(cyui::dp(220.0f));
 		if (ImGui::Combo("##permission", &level, kLevels, IM_ARRAYSIZE(kLevels)))
 			m_mcp.SetPermission(static_cast<McpPermission>(level));
 		ImGui::SameLine();
@@ -3245,24 +3290,24 @@ namespace cygi
 		              "agent launched it from."));
 
 		if (m_mcp.Permission() != McpPermission::read_only)
-			ImGui::TextColored(ImVec4(1.0f, 0.7f, 0.3f, 1.0f),
+			ImGui::TextColored(cyui::vec(cyui::palette().warning),
 				Tr("An agent can change what the game renders at this level."));
 
-		ImGui::SeparatorText("How to connect an agent");
+		cyui::sectionTitle("How to connect an agent");
 		ImGui::TextWrapped(Tr("Point an MCP client at CyGPUInspectorMCP.exe, which is next to this "
 		                      "application. It speaks MCP on stdio and forwards every call here."));
 
-		ImGui::SeparatorText("Activity");
+		cyui::sectionTitle("Activity");
 		if (ImGui::SmallButton(TrId("Clear")))
 			m_mcp.ClearLog();
 
-		ImGui::BeginChild("mcplog", ImVec2(0.0f, 0.0f));
+		ImGui::BeginChild("mcplog", cyui::dp(0.0f, 0.0f));
 		for (const std::string &line : m_mcp.Log())
 		{
 			if (line.find("REFUSED") != std::string::npos)
-				ImGui::TextColored(ImVec4(1.0f, 0.6f, 0.4f, 1.0f), "%s", line.c_str());
+				ImGui::TextColored(cyui::vec(cyui::palette().error), "%s", line.c_str());
 			else if (line.find("  ! ") != std::string::npos)
-				ImGui::TextColored(ImVec4(1.0f, 0.85f, 0.4f, 1.0f), "%s", line.c_str());
+				ImGui::TextColored(cyui::vec(cyui::palette().warning), "%s", line.c_str());
 			else
 				ImGui::TextUnformatted(line.c_str());
 		}
@@ -3275,34 +3320,39 @@ namespace cygi
 
 	void Application::DrawCapturesPanel()
 	{
-		if (!ImGui::Begin(TrId("Captures")))
+		if (!BeginPanel("Captures"))
 		{
 			ImGui::End();
 			return;
 		}
 
-		if (ImGui::Button(TrId("Capture frame")))
+		cyui::panelHeader(Tr("Captures"), Tr("Save, reopen and compare frames"));
+		ImGui::BeginDisabled(ActiveModel() == nullptr);
+		if (cyui::primaryButton(TrId("Capture frame")))
 			SaveCapture();
+		ImGui::EndDisabled();
 		ImGui::SameLine();
 		HelpMarker(Tr("Freezes the frame currently received, its derived graph and the byte code of "
 		              "every shader it used, into a directory you can reopen without the game. The "
 		              "runtime actions become unavailable, everything else keeps working."));
-		ImGui::SameLine();
-		if (ImGui::Button(TrId("AI analysis snapshot")))
+		SameLineIfFits(Tr("AI analysis snapshot"));
+		ImGui::BeginDisabled(ActiveModel() == nullptr);
+		if (cyui::button(TrId("AI analysis snapshot")))
 			CreateAnalysisSnapshot();
+		ImGui::EndDisabled();
 		ImGui::SameLine();
 		HelpMarker(Tr("A capture plus everything an analysis needs to read: the derived passes in "
 		              "prose with their confidence, the shaders of the frame, and whatever has "
 		              "already been disassembled or reconstructed. This is exactly what gets handed "
 		              "to a model, so it can be read and corrected first."));
-		ImGui::SameLine();
-		if (ImGui::Button(TrId("Refresh list")))
+		SameLineIfFits(Tr("Refresh list"));
+		if (cyui::ghostButton(TrId("Refresh list")))
 			RefreshCaptures();
 
 		if (m_capture_model != nullptr)
 		{
 			ImGui::Separator();
-			ImGui::TextColored(ImVec4(0.5f, 0.9f, 1.0f, 1.0f), Tr("Viewing a capture (read only)"));
+			ImGui::TextColored(cyui::vec(cyui::palette().info), Tr("Viewing a capture (read only)"));
 			ImGui::TextWrapped("%s", m_capture_info.Describe().c_str());
 			if (ImGui::SmallButton(TrId("Close capture")))
 			{
@@ -3320,14 +3370,14 @@ namespace cygi
 
 		ImGui::Separator();
 		if (m_captures.empty())
-			ImGui::TextDisabled(Tr("No capture in %s"), CaptureArchive::DefaultRoot().string().c_str());
+			cyui::emptyState(Tr("No saved captures"), Tr("Capture a frame from a connected game"), cyui::icon::folder);
 
 		for (const CaptureInfo &info : m_captures)
 		{
 			ImGui::PushID(info.path.string().c_str());
 
-			ImGui::BulletText("%s", info.Describe().c_str());
-			ImGui::Indent();
+			cyui::beginCard("##saved-capture");
+			ImGui::TextWrapped("%s", info.Describe().c_str());
 			ImGui::TextDisabled(Tr("%u events, %u passes, %u resources%s"), info.event_count,
 				info.pass_count, info.resource_count,
 				info.gpu_milliseconds > 0.0 ? "" : ", no GPU timings");
@@ -3336,7 +3386,7 @@ namespace cygi
 
 			if (ImGui::SmallButton(TrId("Open")))
 				OpenCapture(info);
-			ImGui::SameLine();
+			SameLineIfFits(Tr("Compare with the open one"));
 			if (ImGui::SmallButton(TrId("Compare with the open one")))
 			{
 				if (m_capture_model == nullptr)
@@ -3361,20 +3411,20 @@ namespace cygi
 					}
 				}
 			}
-			ImGui::Unindent();
+			cyui::endCard();
 			ImGui::PopID();
 		}
 
 		if (m_has_diff)
 		{
-			ImGui::SeparatorText("Difference");
+			cyui::sectionTitle("Difference");
 			ImGui::TextWrapped(Tr("A: %s"), m_capture_info.Describe().c_str());
 			ImGui::TextWrapped(Tr("B: %s"), m_compare_info.Describe().c_str());
 			ImGui::Spacing();
 
 			auto delta = [](const char *label, int32_t value) {
-				const ImVec4 colour = value > 0 ? ImVec4(0.9f, 0.7f, 0.4f, 1.0f)
-					: value < 0 ? ImVec4(0.5f, 0.8f, 1.0f, 1.0f) : ImVec4(0.7f, 0.7f, 0.7f, 1.0f);
+				const ImVec4 colour = value > 0 ? cyui::vec(cyui::palette().warning)
+					: value < 0 ? cyui::vec(cyui::palette().info) : cyui::vec(cyui::palette().textDim);
 				ImGui::TextColored(colour, Tr("%+d %s"), value, label);
 			};
 			delta("draw calls", m_diff.draw_delta);
@@ -3408,7 +3458,7 @@ namespace cygi
 			auto changes = [&](const char *title, const std::vector<CaptureDiff::ShaderChange> &list) {
 				if (list.empty())
 					return;
-				ImGui::SeparatorText(Tr(title));
+				cyui::sectionTitle(Tr(title));
 				for (size_t i = 0; i < list.size() && i < 20; ++i)
 				{
 					const CaptureDiff::ShaderChange &change = list[i];
@@ -3431,7 +3481,7 @@ namespace cygi
 			changes("Shaders that ran differently", m_diff.changed);
 			if (!m_diff.resources_only_in_a.empty() || !m_diff.resources_only_in_b.empty())
 			{
-				ImGui::SeparatorText(Tr("Resources in only one of them"));
+				cyui::sectionTitle(Tr("Resources in only one of them"));
 				for (int side = 0; side < 2; ++side)
 					for (const CaptureDiff::ResourceChange &change : side == 0 ? m_diff.resources_only_in_a : m_diff.resources_only_in_b)
 						ImGui::Text("%s  %u x %s %s %ux%u %s", side == 0 ? "A" : "B", change.count, ResourceKindName(change.kind),
@@ -3493,7 +3543,7 @@ namespace cygi
 
 	void Application::DrawFrameGraphPanel()
 	{
-		if (!ImGui::Begin(TrId("Frame graph")))
+		if (!BeginPanel("Frame graph"))
 		{
 			ImGui::End();
 			return;
@@ -3501,7 +3551,7 @@ namespace cygi
 
 		if (ActiveModel() == nullptr)
 		{
-			ImGui::TextDisabled(Tr("Not connected, and no capture open."));
+			DrawNoSessionState();
 			ImGui::End();
 			return;
 		}
@@ -3536,7 +3586,7 @@ namespace cygi
 			timings = m_client->Model().Timings();
 		}
 
-		ImGui::BeginChild("passes", ImVec2(0.0f, 0.0f));
+		ImGui::BeginChild("passes", cyui::dp(0.0f, 0.0f));
 		for (const GraphPass &pass : m_graph.Passes())
 		{
 			ImGui::PushID(static_cast<int>(pass.id));
@@ -3544,11 +3594,11 @@ namespace cygi
 			// Confidence is shown as colour: a guess must never look like a fact.
 			ImVec4 colour(0.65f, 0.65f, 0.65f, 1.0f);
 			if (pass.origin == PassNameOrigin::user)
-				colour = ImVec4(0.5f, 0.9f, 1.0f, 1.0f);
+				colour = cyui::vec(cyui::palette().info);
 			else if (pass.confidence >= 0.7f)
-				colour = ImVec4(0.55f, 0.9f, 0.55f, 1.0f);
+				colour = cyui::vec(cyui::palette().success);
 			else if (pass.confidence >= 0.4f)
-				colour = ImVec4(0.9f, 0.85f, 0.5f, 1.0f);
+				colour = cyui::vec(cyui::palette().warning);
 
 			char label[160];
 			std::snprintf(label, sizeof(label), "%s##pass%u", pass.name.c_str(), pass.id);
@@ -3635,7 +3685,7 @@ namespace cygi
 					}
 				}
 
-				ImGui::SetNextItemWidth(180.0f);
+				ImGui::SetNextItemWidth(cyui::dp(180.0f));
 				if (ImGui::InputTextWithHint("##rename", Tr("rename this pass"), m_pass_rename,
 				                             sizeof(m_pass_rename), ImGuiInputTextFlags_EnterReturnsTrue))
 				{
@@ -3659,7 +3709,7 @@ namespace cygi
 
 	void Application::DrawShaderCodePanel()
 	{
-		if (!ImGui::Begin(TrId("Shader code")))
+		if (!BeginPanel("Shader code"))
 		{
 			ImGui::End();
 			return;
@@ -3667,7 +3717,7 @@ namespace cygi
 
 		if (ActiveModel() == nullptr)
 		{
-			ImGui::TextDisabled(Tr("Not connected, and no capture open."));
+			DrawNoSessionState();
 			ImGui::End();
 			return;
 		}
@@ -3696,7 +3746,7 @@ namespace cygi
 				}
 				else if (!analysis.disassembly.ok)
 				{
-					ImGui::TextColored(ImVec4(1.0f, 0.6f, 0.3f, 1.0f), "%s",
+					ImGui::TextColored(cyui::vec(cyui::palette().warning), "%s",
 						analysis.disassembly.error.c_str());
 
 					// A missing DXIL backend is the common case: say exactly what to install.
@@ -3711,54 +3761,54 @@ namespace cygi
 				}
 				else
 				{
-					ImGui::SetNextItemWidth(220.0f);
-					ImGui::InputTextWithHint("##disasmfilter", Tr("filter lines"), m_disassembly_filter,
-						sizeof(m_disassembly_filter));
-					ImGui::SameLine();
+					cyui::searchField("##disasmfilter", m_disassembly_filter,
+						sizeof(m_disassembly_filter), Tr("filter lines"), -1);
 					ImGui::Checkbox(TrId("Wrap"), &m_disassembly_wrap);
-					ImGui::SameLine();
+					SameLineIfFits(Tr("Copy all"));
 					if (ImGui::SmallButton(TrId("Copy all")))
 						ImGui::SetClipboardText(analysis.disassembly.text.c_str());
-					ImGui::SameLine();
-					ImGui::TextDisabled(Tr("%zu lines, %s%s"), m_disassembly_lines.size(),
+					cyui::textDim(Tr("%zu lines, %s%s"), m_disassembly_lines.size(),
 						analysis.from_cache ? "from cache" : analysis.disassembly.tool.c_str(),
 						analysis.from_cache ? "" : "");
 
 					ImGui::Separator();
 
 					const bool filtering = m_disassembly_filter[0] != '\0';
-					ImGui::BeginChild("disasmtext", ImVec2(0.0f, 0.0f), ImGuiChildFlags_None,
+					ImGui::BeginChild("disasmtext", cyui::dp(0.0f, 0.0f), ImGuiChildFlags_None,
 						m_disassembly_wrap ? 0 : ImGuiWindowFlags_HorizontalScrollbar);
+					{
+						cyui::ScopedFont mono(cyui::monoFont());
 
-					if (filtering)
-					{
-						// A filtered view is short by construction: no clipper needed.
-						for (size_t i = 0; i < m_disassembly_lines.size(); ++i)
+						if (filtering)
 						{
-							if (!ContainsInsensitive(m_disassembly_lines[i], m_disassembly_filter))
-								continue;
-							ImGui::TextDisabled("%5zu", i);
-							ImGui::SameLine();
-							if (m_disassembly_wrap)
-								ImGui::TextWrapped("%s", m_disassembly_lines[i].c_str());
-							else
-								ImGui::TextUnformatted(m_disassembly_lines[i].c_str());
-						}
-					}
-					else
-					{
-						ImGuiListClipper clipper;
-						clipper.Begin(static_cast<int>(m_disassembly_lines.size()));
-						while (clipper.Step())
-						{
-							for (int row = clipper.DisplayStart; row < clipper.DisplayEnd; ++row)
+							// A filtered view is short by construction: no clipper needed.
+							for (size_t i = 0; i < m_disassembly_lines.size(); ++i)
 							{
-								ImGui::TextDisabled("%5d", row);
+								if (!ContainsInsensitive(m_disassembly_lines[i], m_disassembly_filter))
+									continue;
+								ImGui::TextDisabled("%5zu", i);
 								ImGui::SameLine();
 								if (m_disassembly_wrap)
-									ImGui::TextWrapped("%s", m_disassembly_lines[static_cast<size_t>(row)].c_str());
+									ImGui::TextWrapped("%s", m_disassembly_lines[i].c_str());
 								else
-									ImGui::TextUnformatted(m_disassembly_lines[static_cast<size_t>(row)].c_str());
+									ImGui::TextUnformatted(m_disassembly_lines[i].c_str());
+							}
+						}
+						else
+						{
+							ImGuiListClipper clipper;
+							clipper.Begin(static_cast<int>(m_disassembly_lines.size()));
+							while (clipper.Step())
+							{
+								for (int row = clipper.DisplayStart; row < clipper.DisplayEnd; ++row)
+								{
+									ImGui::TextDisabled("%5d", row);
+									ImGui::SameLine();
+									if (m_disassembly_wrap)
+										ImGui::TextWrapped("%s", m_disassembly_lines[static_cast<size_t>(row)].c_str());
+									else
+										ImGui::TextUnformatted(m_disassembly_lines[static_cast<size_t>(row)].c_str());
+								}
 							}
 						}
 					}
@@ -3775,7 +3825,7 @@ namespace cygi
 				}
 				else if (!analysis.reflection.ok)
 				{
-					ImGui::TextColored(ImVec4(1.0f, 0.6f, 0.3f, 1.0f), "%s",
+					ImGui::TextColored(cyui::vec(cyui::palette().warning), "%s",
 						analysis.reflection.error.c_str());
 				}
 				else
@@ -3787,7 +3837,7 @@ namespace cygi
 						ImGui::Text(Tr("Thread group: %u x %u x %u"), reflection.thread_group[0],
 							reflection.thread_group[1], reflection.thread_group[2]);
 
-					ImGui::SeparatorText("Bound resources");
+					cyui::sectionTitle("Bound resources");
 					constexpr ImGuiTableFlags kFlags = ImGuiTableFlags_RowBg | ImGuiTableFlags_BordersOuter |
 						ImGuiTableFlags_BordersV | ImGuiTableFlags_Resizable | ImGuiTableFlags_SizingFixedFit;
 
@@ -3827,7 +3877,7 @@ namespace cygi
 						ImGui::EndTable();
 					}
 
-					ImGui::SeparatorText("Signatures");
+					cyui::sectionTitle("Signatures");
 					ImGui::Columns(2, "signatures", false);
 					ImGui::TextDisabled(Tr("Inputs"));
 					for (const SignatureElement &element : reflection.inputs)
@@ -3862,19 +3912,19 @@ namespace cygi
 				const ToolInfo &dxbc = DxbcToolInfo();
 				const ToolInfo &dxil = DxilToolInfo();
 
-				ImGui::SeparatorText("DXBC (Shader Model 4 and 5)");
+				cyui::sectionTitle("DXBC (Shader Model 4 and 5)");
 				if (dxbc.available)
 					ImGui::TextWrapped(Tr("%s\n%s"), dxbc.name.c_str(), dxbc.path.c_str());
 				else
-					ImGui::TextColored(ImVec4(1.0f, 0.6f, 0.3f, 1.0f), "%s", dxbc.error.c_str());
+					ImGui::TextColored(cyui::vec(cyui::palette().warning), "%s", dxbc.error.c_str());
 
-				ImGui::SeparatorText("DXIL (Shader Model 6)");
+				cyui::sectionTitle("DXIL (Shader Model 6)");
 				if (dxil.available)
 					ImGui::TextWrapped(Tr("%s\n%s"), dxil.name.c_str(), dxil.path.c_str());
 				else
-					ImGui::TextColored(ImVec4(1.0f, 0.6f, 0.3f, 1.0f), "%s", dxil.error.c_str());
+					ImGui::TextColored(cyui::vec(cyui::palette().warning), "%s", dxil.error.c_str());
 
-				ImGui::SeparatorText("Shader store");
+				cyui::sectionTitle("Shader store");
 				ImGui::TextWrapped("%s", m_analysis.StorePath().c_str());
 				ImGui::TextDisabled(Tr("%zu shader(s) queued for analysis"), m_analysis.PendingCount());
 				ImGui::EndTabItem();
@@ -3890,7 +3940,7 @@ namespace cygi
 
 	void Application::DrawDetailsPanel()
 	{
-		if (!ImGui::Begin(TrId("Details")))
+		if (!BeginPanel("Details"))
 		{
 			ImGui::End();
 			return;
@@ -3898,7 +3948,7 @@ namespace cygi
 
 		if (ActiveModel() == nullptr)
 		{
-			ImGui::TextDisabled(Tr("Not connected, and no capture open."));
+			DrawNoSessionState();
 			ImGui::End();
 			return;
 		}
@@ -3918,12 +3968,16 @@ namespace cygi
 				else
 				{
 					ImGui::Text(Tr("Shader #%u"), shader->id);
-					ImGui::Text(Tr("Stage:         %s"), ShaderStageName(shader->stage));
-					ImGui::Text(Tr("Format:        %s"), ShaderFormatName(shader->format));
-					ImGui::Text(Tr("Shader model:  %s"), ShaderModelName(shader->shader_model));
-					ImGui::Text(Tr("Byte code:     %u bytes (%zu received)"), shader->code_size, shader->code.size());
-					ImGui::Text(Tr("Draws (frame): %u"), shader->draws_this_frame);
-					ImGui::Text(Tr("Dispatches:    %u"), shader->dispatches_this_frame);
+					if (cyui::beginProperties("##shader-properties"))
+					{
+						cyui::property(Tr("Stage")); ImGui::TextUnformatted(ShaderStageName(shader->stage));
+						cyui::property(Tr("Format")); ImGui::TextUnformatted(ShaderFormatName(shader->format));
+						cyui::property(Tr("Shader model")); ImGui::TextUnformatted(ShaderModelName(shader->shader_model));
+						cyui::property(Tr("Byte code")); ImGui::TextWrapped(Tr("%u bytes (%zu received)"), shader->code_size, shader->code.size());
+						cyui::property(Tr("Draws (frame)")); ImGui::Text("%u", shader->draws_this_frame);
+						cyui::property(Tr("Dispatches")); ImGui::Text("%u", shader->dispatches_this_frame);
+						cyui::endProperties();
+					}
 					ImGui::Separator();
 					ImGui::TextUnformatted(Tr("SHA-256"));
 					ImGui::TextWrapped("%s", shader->signature.ToHex().c_str());
@@ -3946,10 +4000,10 @@ namespace cygi
 						else
 							m_mods.RecordDisable(m_client->Model(), shader_id);
 					}
-					ImGui::SameLine();
+					SameLineIfFits(Tr("Highlight"));
 					if (ImGui::Button(TrId("Highlight")))
 						HighlightShader(shader_id);
-					ImGui::SameLine();
+					SameLineIfFits(Tr("Restore"));
 					if (ImGui::Button(TrId("Restore")))
 					{
 						m_client->SendShaderCommand(ShaderCommand::restore, shader_id);
@@ -4025,7 +4079,7 @@ namespace cygi
 					// Section 7 of the brief: who produced this resource, and who consumed it.
 					if (const ResourceFlow *flow = m_graph.FlowOf(resource->id))
 					{
-						ImGui::SeparatorText("Dependencies (this frame)");
+						cyui::sectionTitle("Dependencies (this frame)");
 
 						auto pass_list = [&](const char *label, const std::vector<uint32_t> &passes) {
 							if (passes.empty())
@@ -4176,7 +4230,7 @@ namespace cygi
 
 	void Application::DrawStatusBar()
 	{
-		if (!ImGui::Begin(TrId("Status")))
+		if (!BeginPanel("Status"))
 		{
 			ImGui::End();
 			return;
@@ -4198,7 +4252,7 @@ namespace cygi
 			ImGui::Text(Tr("Tracked in game: %u shaders, %u pipelines, %u resources"), stats.tracked_shaders,
 				stats.tracked_pipelines, stats.tracked_resources);
 			if (!m_client->WriterAlive())
-				ImGui::TextColored(ImVec4(1.0f, 0.5f, 0.4f, 1.0f), Tr("The game process stopped writing."));
+				ImGui::TextColored(cyui::vec(cyui::palette().error), Tr("The game process stopped writing."));
 		}
 
 		ImGui::End();

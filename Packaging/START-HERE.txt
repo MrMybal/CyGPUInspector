@@ -116,7 +116,8 @@ Draw suppressions, on the other hand, are immediate.
     CyGPUInspectorFakeSession.exe  the synthetic producer
 
   Docs\                            the full documentation (Docs\fr\ for French)
-  Licenses\                        licences of the third-party binaries shipped here
+  LICENCES\                       full product/third-party licences and SOURCES.txt
+  Licenses\                        compatibility copy of the third-party notices
   THIRD-PARTY.md                   third-party components and their licences
   LICENSE                          GNU Affero General Public License v3 or later
 

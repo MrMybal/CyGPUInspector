@@ -179,3 +179,8 @@ The limits that follow from all this are collected, without softening, in
 
 Full detail, licence obligations and exact provenance: [THIRD-PARTY.md](THIRD-PARTY.md) and the
 `ORIGIN.md` of each component under `ThirdParty/`.
+
+Release packages and separately copyable Unreal plugins carry complete notices in
+`LICENCES/`, with source links in `LICENCES/SOURCES.txt`. See
+[Licensing and distribution](Docs/Licensing.md) for included components, packaging,
+updates and rollback.

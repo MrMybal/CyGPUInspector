@@ -18,8 +18,8 @@ public class CyGPUInspectorLoader : ModuleRules
 		PrivateIncludePathModuleNames.Add("CyGPUInspector");
 
 		// When ReShade and the add-on are put in the plugin itself, a packaged Development or
-		// DebugGame build takes them along. They are the user's own copies: nothing is shipped with
-		// the plugin, and the module is not built for Shipping at all (see the .uplugin).
+		// DebugGame build takes them along. Release packages include the binaries and their notices;
+		// the module is not built for Shipping at all (see the .uplugin).
 		string ThirdParty = Path.Combine(PluginDirectory, "Binaries", "ThirdParty", "CyGPUInspector", "Win64");
 		foreach (string Name in new string[] { "ReShade64.dll", "CyGPUInspectorRS.addon64" })
 		{
@@ -27,6 +27,11 @@ public class CyGPUInspectorLoader : ModuleRules
 			{
 				RuntimeDependencies.Add("$(PluginDir)/Binaries/ThirdParty/CyGPUInspector/Win64/" + Name);
 			}
+		}
+		foreach (string Name in new string[] { "LICENSE-ReShade.txt", "NOTICES-ReShade.txt" })
+		{
+			RuntimeDependencies.Add("$(PluginDir)/Binaries/ThirdParty/CyGPUInspector/Win64/" + Name,
+				StagedFileType.NonUFS);
 		}
 	}
 }

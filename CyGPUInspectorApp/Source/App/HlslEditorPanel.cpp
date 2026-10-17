@@ -11,6 +11,7 @@
 //
 // Copyright (C) 2026 Cyberalien. Licensed under the GNU AGPL v3 or later.
 #include "Application.hpp"
+#include <cyui/CyUI.h>
 #include "LayoutHelpers.hpp"
 
 #include <CyGPUInspectorCore/Localization.hpp>
@@ -283,9 +284,9 @@ namespace cygi
 
 			ImVec4 colour(0.9f, 0.6f, 0.3f, 1.0f);
 			if (result.verdict == ValidationVerdict::equivalent_disassembly)
-				colour = ImVec4(0.55f, 0.9f, 0.55f, 1.0f);
+				colour = cyui::vec(cyui::palette().success);
 			else if (result.verdict == ValidationVerdict::compiles)
-				colour = ImVec4(0.9f, 0.85f, 0.5f, 1.0f);
+				colour = cyui::vec(cyui::palette().warning);
 
 			ImGui::TextColored(colour, "%s", ValidationVerdictName(result.verdict));
 			ImGui::SameLine();
@@ -301,7 +302,7 @@ namespace cygi
 
 			if (m_hlsl_shader != m_selected_shader)
 			{
-				ImGui::TextColored(ImVec4(1.0f, 0.8f, 0.35f, 1.0f),
+				ImGui::TextColored(cyui::vec(cyui::palette().warning),
 					m_hlsl_shader != 0 ? Tr("The HLSL editor holds your edits of shader #%u.")
 					                   : Tr("The HLSL editor holds edits of a shader from an earlier session."),
 					m_hlsl_shader);
@@ -485,7 +486,7 @@ namespace cygi
 		// Every reconstruction of this shader can be loaded here, decompilers and AI clean-ups alike.
 		ShaderAnalysis analysis;
 		const bool has_analysis = m_hlsl_shader != 0 && m_analysis.Result(m_hlsl_shader, analysis);
-		ImGui::SetNextItemWidth(220.0f);
+		ImGui::SetNextItemWidth(cyui::dp(220.0f));
 		if (ImGui::BeginCombo("##load", Tr("Load a reconstruction..."), ImGuiComboFlags_HeightLarge))
 		{
 			if (has_analysis)
@@ -516,10 +517,10 @@ namespace cygi
 			ImGui::EndCombo();
 		}
 		ImGui::SameLine();
-		ImGui::SetNextItemWidth(90.0f);
+		ImGui::SetNextItemWidth(cyui::dp(90.0f));
 		ImGui::InputTextWithHint("##entry", Tr("entry point"), m_hlsl_entry, sizeof(m_hlsl_entry));
 		ImGui::SameLine();
-		ImGui::SetNextItemWidth(90.0f);
+		ImGui::SetNextItemWidth(cyui::dp(90.0f));
 		ImGui::InputTextWithHint("##profile", Tr("profile"), m_hlsl_profile, sizeof(m_hlsl_profile));
 		ImGui::SameLine();
 		if (ImGui::Button(TrId("Compile")))
@@ -545,8 +546,8 @@ namespace cygi
 			{
 				const CompilerMessage &message = m_hlsl_messages[i];
 				ImGui::PushID(static_cast<int>(i));
-				ImGui::PushStyleColor(ImGuiCol_Text, message.error ? ImVec4(1.0f, 0.5f, 0.45f, 1.0f)
-					: ImVec4(1.0f, 0.8f, 0.4f, 1.0f));
+				ImGui::PushStyleColor(ImGuiCol_Text, message.error ? cyui::vec(cyui::palette().error)
+					: cyui::vec(cyui::palette().warning));
 				const std::string first_line = message.text.substr(0, message.text.find('\n'));
 				if (ImGui::Selectable(first_line.c_str()) && message.line != 0)
 					m_hlsl_editor.GoToLine(message.line);

@@ -13,6 +13,7 @@ Games/
 Captures/
 ThirdParty/dxc/bin/
 CyGPUInspectorApp.ini
+CyGPUInspectorApp.settings.json
 imgui.ini
 CyGPUInspectorUnreal/**/Intermediate/
 CyGPUInspectorUnreal/**/Binaries/Win64/
@@ -22,3 +23,5 @@ CyGPUInspectorUnreal/**/Binaries/ThirdParty/**/*.addon64
 # published as release zips, never committed. ReShade in particular ships in release zips only
 # (see Tools/fetch_reshade.py).
 /Dist/
+__pycache__/
+*.pyc

@@ -1,0 +1,3 @@
+# Dear ImGui's key enumeration loop is code, not an API credential.
+b518d7ab6ed328bb5bfb14c9c7cf611c23ab8b57:ThirdParty/imgui/imgui.cpp:generic-api-key:4599
+ThirdParty/imgui/imgui.cpp:generic-api-key:4599

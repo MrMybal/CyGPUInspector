@@ -18,6 +18,8 @@
 //
 // Copyright (C) 2026 Cyberalien. Licensed under the GNU AGPL v3 or later.
 #include "Application.hpp"
+#include "LayoutHelpers.hpp"
+#include <cyui/CyUI.h>
 #include "TimelineDrawing.hpp"
 
 #include <CyGPUInspectorCore/Localization.hpp>
@@ -125,7 +127,7 @@ namespace cygi
 
 	void Application::DrawTimelinePanel()
 	{
-		if (!ImGui::Begin(TrId("Frame timeline")))
+		if (!BeginPanel("Frame timeline"))
 		{
 			ImGui::End();
 			return;
@@ -134,14 +136,14 @@ namespace cygi
 		const SessionModel *model = ActiveModel();
 		if (model == nullptr)
 		{
-			ImGui::TextDisabled(Tr("Not connected, and no capture open."));
+			DrawNoSessionState();
 			ImGui::End();
 			return;
 		}
 
-		ImGui::Checkbox(TrId("Follow"), &m_timeline_follow);
+		cyui::toggleSwitch(TrId("Follow"), &m_timeline_follow);
 		ImGui::SameLine();
-		if (ImGui::SmallButton(TrId("Fit")))
+		if (cyui::iconButton(cyui::icon::zoomOut, Tr("Fit timeline (double-click)")))
 		{
 			m_view_fit = true;
 			m_track_follow = true;
@@ -150,11 +152,10 @@ namespace cygi
 		ImGui::SameLine();
 		// Two views of the same capture, each with its own layout: one frame taken apart, or the
 		// last few seconds of frames one after another the way a profiler's timing view shows them.
-		if (ImGui::RadioButton(TrId("One frame"), !m_timeline_continuous))
-			m_timeline_continuous = false;
-		ImGui::SameLine();
-		if (ImGui::RadioButton(TrId("Continuous"), m_timeline_continuous))
-			m_timeline_continuous = true;
+		const char *views[] = { Tr("One frame"), Tr("Continuous") };
+		int view = m_timeline_continuous ? 1 : 0;
+		if (cyui::segmented("##timeline-view", views, 2, &view))
+			m_timeline_continuous = view == 1;
 		ImGui::SameLine();
 		Help(Tr("This is the runtime capture: it costs the game a few percent and can be left on. "
 		        "The strip at the top is the last few hundred frames. One frame shows the latest "
@@ -195,12 +196,11 @@ namespace cygi
 
 		if (has_history)
 		{
-			ImGui::SameLine();
-			ImGui::Text(Tr("Frame %llu: %u draws, %u dispatches, %u commands"),
+			ImGui::TextWrapped(Tr("Frame %llu: %u draws, %u dispatches, %u commands"),
 				static_cast<unsigned long long>(latest.index), latest.draw_count,
 				latest.dispatch_count, latest.event_count);
-			ImGui::SameLine();
-			ImGui::TextDisabled(Tr("| CPU %.2f ms | tool %.2f ms"),
+			SameLineIfFits(Tr("| CPU %.2f ms | tool %.2f ms"));
+			cyui::textDim(Tr("| CPU %.2f ms | tool %.2f ms"),
 				static_cast<double>(latest.cpu_frame_ms), static_cast<double>(latest.addon_cpu_ms));
 		}
 
@@ -225,7 +225,7 @@ namespace cygi
 				DrawTrackFrameDetail();
 			ImGui::EndChild();
 			ImGui::SameLine();
-			if (ImGui::BeginChild("track-frame-image", ImVec2(0.0f, 0.0f)))
+			if (ImGui::BeginChild("track-frame-image", cyui::dp(0.0f, 0.0f)))
 				DrawFrameImage(ImGui::GetContentRegionAvail().x, ImGui::GetContentRegionAvail().y);
 			ImGui::EndChild();
 			ImGui::End();
@@ -260,7 +260,7 @@ namespace cygi
 		ImGui::EndChild();
 		ImGui::SameLine();
 		// What the frame looked like: the final image, frozen with the timeline when Follow is off.
-		if (ImGui::BeginChild("frame-image-pane", ImVec2(0.0f, 0.0f)))
+		if (ImGui::BeginChild("frame-image-pane", cyui::dp(0.0f, 0.0f)))
 			DrawFrameImage(ImGui::GetContentRegionAvail().x, ImGui::GetContentRegionAvail().y);
 		ImGui::EndChild();
 
@@ -290,8 +290,8 @@ namespace cygi
 		if (history.size() < 2)
 			return;
 
-		constexpr float kHeight = 46.0f;
-		constexpr float kPitch = 3.0f;
+		const float kHeight = cyui::dp(46.0f);
+		const float kPitch = cyui::dp(3.0f);
 		const float width = ImGui::GetContentRegionAvail().x;
 		const size_t shown = std::min(history.size(), static_cast<size_t>(std::max(1.0f, width / kPitch)));
 		const size_t first = history.size() - shown;
@@ -325,11 +325,11 @@ namespace cygi
 			if (budget >= scale)
 				continue;
 			const float y = bottom - budget / scale * kHeight;
-			draw->AddLine(ImVec2(origin.x, y), ImVec2(origin.x + width, y), IM_COL32(255, 255, 255, 40));
+			draw->AddLine(ImVec2(origin.x, y), ImVec2(origin.x + width, y), cyui::palette().grid);
 			char text[16];
 			std::snprintf(text, sizeof(text), "%.0f fps", 1000.0f / budget);
 			draw->AddText(ImVec2(origin.x + width - ImGui::CalcTextSize(text).x - 4.0f, y - ImGui::GetFontSize()),
-				IM_COL32(255, 255, 255, 90), text);
+				cyui::palette().lineStrong, text);
 		}
 
 		const float right_edge = origin.x + width;
@@ -343,20 +343,20 @@ namespace cygi
 			const float x0 = x1 - (kPitch - 1.0f);
 
 			const float cpu = entry.cpu_frame_ms;
-			const ImU32 fill = cpu <= 1000.0f / 60.0f + 0.5f ? IM_COL32(88, 170, 104, 220)
-				: cpu <= 1000.0f / 30.0f + 0.5f ? IM_COL32(214, 164, 64, 230)
-				: IM_COL32(214, 78, 64, 240);
+			const ImU32 fill = cpu <= 1000.0f / 60.0f + 0.5f ? cyui::palette().success
+				: cpu <= 1000.0f / 30.0f + 0.5f ? cyui::palette().warning
+				: cyui::palette().error;
 			const float height = std::min(cpu / scale, 1.0f) * kHeight;
 			draw->AddRectFilled(ImVec2(x0, bottom - height), ImVec2(x1, bottom), fill);
 			if (cpu > scale)
-				draw->AddRectFilled(ImVec2(x0, origin.y), ImVec2(x1, origin.y + 3.0f), IM_COL32(255, 60, 40, 255));
+				draw->AddRectFilled(ImVec2(x0, origin.y), ImVec2(x1, origin.y + 3.0f), cyui::palette().error);
 
 			// The GPU cost of the same frame, as a tick at its height: whether the frame was bound
 			// by the CPU or by the GPU reads straight off the gap between the two.
 			if (entry.gpu_ms > 0.0)
 			{
 				const float y = bottom - std::min(static_cast<float>(entry.gpu_ms) / scale, 1.0f) * kHeight;
-				draw->AddRectFilled(ImVec2(x0, y - 1.0f), ImVec2(x1, y + 1.0f), IM_COL32(120, 190, 255, 255));
+				draw->AddRectFilled(ImVec2(x0, y - 1.0f), ImVec2(x1, y + 1.0f), cyui::palette().accent);
 			}
 
 			if (visible_first != 0 && entry.index >= visible_first && entry.index <= visible_last)
@@ -366,7 +366,7 @@ namespace cygi
 			}
 
 			if (entry.index == measured_frame && measured_frame != 0)
-				draw->AddRect(ImVec2(x0 - 1.0f, origin.y), ImVec2(x1 + 1.0f, bottom), IM_COL32(255, 255, 255, 220));
+				draw->AddRect(ImVec2(x0 - 1.0f, origin.y), ImVec2(x1 + 1.0f, bottom), cyui::palette().accent);
 
 			if (hovered && ImGui::GetIO().MousePos.x >= x0 - 0.5f && ImGui::GetIO().MousePos.x < x1 + 1.0f)
 				hovered_index = static_cast<int>(i);
@@ -378,17 +378,17 @@ namespace cygi
 			static_cast<double>(peak));
 		const ImVec2 caption_size = ImGui::CalcTextSize(caption);
 		draw->AddRectFilled(ImVec2(origin.x + 2.0f, origin.y + 1.0f),
-			ImVec2(origin.x + 6.0f + caption_size.x, origin.y + 3.0f + caption_size.y), IM_COL32(20, 22, 28, 190));
-		draw->AddText(ImVec2(origin.x + 4.0f, origin.y + 2.0f), IM_COL32(255, 255, 255, 210), caption);
+			ImVec2(origin.x + 6.0f + caption_size.x, origin.y + 3.0f + caption_size.y), cyui::palette().bg2);
+		draw->AddText(ImVec2(origin.x + 4.0f, origin.y + 2.0f), cyui::palette().text, caption);
 
 		// Which frames the continuous view below is showing, the way a profiler marks its
 		// selection on the frame graph.
 		if (window_x1 > window_x0)
 		{
 			draw->AddRectFilled(ImVec2(window_x0 - 1.0f, origin.y), ImVec2(window_x1 + 1.0f, bottom),
-				IM_COL32(255, 255, 255, 30));
+				cyui::palette().grid);
 			draw->AddRect(ImVec2(window_x0 - 1.0f, origin.y), ImVec2(window_x1 + 1.0f, bottom),
-				IM_COL32(255, 255, 255, 120));
+				cyui::palette().lineStrong);
 		}
 
 		// Press and drag along the strip to scrub: the frame under the mouse is picked and brought
@@ -460,10 +460,10 @@ namespace cygi
 			ImGui::TextDisabled(Tr("Positions laid end to end: this add-on predates measured start times."));
 
 		// ---- geometry --------------------------------------------------------------------------
-		constexpr float kLabels = 74.0f;
-		constexpr float kRuler = 18.0f;
-		constexpr float kRow = 22.0f;
-		constexpr float kGap = 3.0f;
+		const float kLabels = cyui::dp(74.0f);
+		const float kRuler = cyui::dp(18.0f);
+		const float kRow = cyui::dp(22.0f);
+		const float kGap = cyui::dp(3.0f);
 		const int rows = show_commands ? 3 : 2;
 		const float width = ImGui::GetContentRegionAvail().x;
 		const float height = kRuler + static_cast<float>(rows) * (kRow + kGap) + 2.0f;
@@ -527,7 +527,7 @@ namespace cygi
 		{
 			const float x = x_of(tick);
 			draw->AddLine(ImVec2(x, origin.y + kRuler - 5.0f), ImVec2(x, origin.y + height),
-				IM_COL32(255, 255, 255, 22));
+				cyui::palette().grid);
 			char text[32];
 			if (!timed)
 				std::snprintf(text, sizeof(text), "%.0f", tick);
@@ -541,7 +541,7 @@ namespace cygi
 				std::snprintf(text, sizeof(text), "%.3f ms", tick);
 			// A tick just left of the area would have its label cut to "ms": the line is enough.
 			if (x + 3.0f >= area_x0)
-				draw->AddText(ImVec2(x + 3.0f, origin.y + 1.0f), IM_COL32(255, 255, 255, 140), text);
+				draw->AddText(ImVec2(x + 3.0f, origin.y + 1.0f), cyui::palette().textDim, text);
 		}
 		draw->PopClipRect();
 
@@ -566,7 +566,7 @@ namespace cygi
 		else
 			std::snprintf(label, sizeof(label), Tr("Frame, %.0f commands"), frame_length);
 		DrawBar(draw, x_of(0.0), x_of(frame_length), row_frame, row_frame + kRow, area_x0, area_x1,
-			IM_COL32(70, 78, 96, 255), label, false);
+			cyui::palette().bg4, label, false);
 
 		// The passes.
 		int hovered_pass = -1;
@@ -680,17 +680,17 @@ namespace cygi
 			ImGuiTableFlags_BordersOuter | ImGuiTableFlags_BordersV | ImGuiTableFlags_Resizable |
 			ImGuiTableFlags_Sortable | ImGuiTableFlags_SizingFixedFit;
 
-		if (!ImGui::BeginTable("passes", 4, kFlags))
+		if (!ImGui::BeginTable("passes", 4, kFlags | ImGuiTableFlags_ScrollX, cyui::dp(0, 0), cyui::dp(360)))
 			return;
 
 		ImGui::TableSetupScrollFreeze(0, 1);
 		ImGui::TableSetupColumn(TrId("Pass"), ImGuiTableColumnFlags_WidthStretch |
 			ImGuiTableColumnFlags_NoSort);
-		ImGui::TableSetupColumn(TrId("Cmds"), ImGuiTableColumnFlags_WidthFixed, 46.0f);
+		ImGui::TableSetupColumn(TrId("Cmds"), ImGuiTableColumnFlags_WidthFixed, cyui::dp(46.0f));
 		ImGui::TableSetupColumn(TrId("GPU ms"), ImGuiTableColumnFlags_WidthFixed |
-			ImGuiTableColumnFlags_DefaultSort | ImGuiTableColumnFlags_PreferSortDescending, 62.0f);
+			ImGuiTableColumnFlags_DefaultSort | ImGuiTableColumnFlags_PreferSortDescending, cyui::dp(62.0f));
 		ImGui::TableSetupColumn(TrId("%"), ImGuiTableColumnFlags_WidthFixed |
-			ImGuiTableColumnFlags_PreferSortDescending, 44.0f);
+			ImGuiTableColumnFlags_PreferSortDescending, cyui::dp(44.0f));
 		ImGui::TableHeadersRow();
 
 		// Sorted as an index list, so a row still points at the right pass whatever the order.
@@ -956,7 +956,7 @@ namespace cygi
 
 	void Application::DrawDeepCapturePanel()
 	{
-		if (!ImGui::Begin(TrId("Deep capture")))
+		if (!BeginPanel("Deep capture"))
 		{
 			ImGui::End();
 			return;
@@ -965,7 +965,7 @@ namespace cygi
 		const SessionModel *model = ActiveModel();
 		if (model == nullptr)
 		{
-			ImGui::TextDisabled(Tr("Not connected, and no capture open."));
+			DrawNoSessionState();
 			ImGui::End();
 			return;
 		}
@@ -986,15 +986,15 @@ namespace cygi
 		ImGui::Separator();
 
 		ImGui::BeginDisabled(!IsLive());
-		ImGui::SetNextItemWidth(120.0f);
-		ImGui::SliderInt(TrId("Frames"), &m_deep_frames, 1, 8);
-		ImGui::Checkbox(TrId("Descriptors"), &m_deep_bindings);
-		ImGui::SameLine();
-		ImGui::Checkbox(TrId("Barriers"), &m_deep_barriers);
-		ImGui::SameLine();
-		ImGui::Checkbox(TrId("Timestamp per command"), &m_deep_per_draw_timing);
-		ImGui::SameLine();
-		ImGui::Checkbox(TrId("Save the buffers"), &m_deep_buffers);
+		if (cyui::beginProperties("##deep-settings"))
+		{
+			cyui::property(Tr("Frames")); ImGui::SliderInt("###Frames", &m_deep_frames, 1, 8);
+			cyui::property(Tr("Descriptors")); cyui::toggleSwitch("###Descriptors", &m_deep_bindings);
+			cyui::property(Tr("Barriers")); cyui::toggleSwitch("###Barriers", &m_deep_barriers);
+			cyui::property(Tr("Timestamp per command")); cyui::toggleSwitch("###Timestamp per command", &m_deep_per_draw_timing);
+			cyui::property(Tr("Save the buffers")); cyui::toggleSwitch("###Save the buffers", &m_deep_buffers);
+			cyui::endProperties();
+		}
 		ImGui::SameLine();
 		Help(Tr("At the end of the last captured frame, the add-on copies every texture that frame "
 		        "wrote to (render targets, depth buffers, UAV textures, copy destinations) on the "
@@ -1013,7 +1013,7 @@ namespace cygi
 		}();
 
 		ImGui::BeginDisabled(running);
-		if (ImGui::Button(TrId("Capture now"), ImVec2(140.0f, 0.0f)))
+		if (cyui::primaryButton(TrId("Capture now")))
 			StartDeepCapture();
 		ImGui::EndDisabled();
 		ImGui::EndDisabled();
@@ -1047,7 +1047,7 @@ namespace cygi
 				capture.barriers_recorded);
 		}
 		if (capture.dropped != 0)
-			ImGui::TextColored(ImVec4(0.95f, 0.75f, 0.35f, 1.0f),
+			ImGui::TextColored(cyui::vec(cyui::palette().warning),
 				Tr("%u bindings were dropped: a command bound more than the per command ceiling."),
 				capture.dropped);
 
@@ -1110,7 +1110,7 @@ namespace cygi
 				ImGui::Separator();
 
 				// The list of recorded commands, and the state of whichever one is selected.
-				if (ImGui::BeginChild("deep-events", ImVec2(260.0f, 0.0f), ImGuiChildFlags_Borders))
+				if (ImGui::BeginChild("deep-events", cyui::dp(260.0f, 0.0f), ImGuiChildFlags_Borders))
 				{
 					ImGuiListClipper clipper;
 					clipper.Begin(static_cast<int>(frame.draw_states.size()));
@@ -1131,7 +1131,7 @@ namespace cygi
 
 				ImGui::SameLine();
 
-				if (ImGui::BeginChild("deep-state", ImVec2(0.0f, 0.0f)))
+				if (ImGui::BeginChild("deep-state", cyui::dp(0.0f, 0.0f)))
 				{
 					const CommandState *state = frame.DrawStateOfEvent(m_selected_event);
 					if (state == nullptr)
@@ -1157,7 +1157,7 @@ namespace cygi
 								state->record.scissor[1], state->record.scissor[2], state->record.scissor[3]);
 
 						if (state->TablesUnresolved())
-							ImGui::TextColored(ImVec4(0.95f, 0.75f, 0.35f, 1.0f),
+							ImGui::TextColored(cyui::vec(cyui::palette().warning),
 								Tr("This command bound a descriptor table. Its contents are not readable "
 								   "through the add-on API, so the list below is incomplete."));
 
@@ -1198,11 +1198,11 @@ namespace cygi
 			ImGuiTableFlags_RowBg | ImGuiTableFlags_Borders | ImGuiTableFlags_SizingStretchProp))
 			return;
 
-		ImGui::TableSetupColumn(TrId("Slot"), ImGuiTableColumnFlags_WidthFixed, 60.0f);
+		ImGui::TableSetupColumn(TrId("Slot"), ImGuiTableColumnFlags_WidthFixed, cyui::dp(60.0f));
 		ImGui::TableSetupColumn(TrId("Kind"));
-		ImGui::TableSetupColumn(TrId("Stage"), ImGuiTableColumnFlags_WidthFixed, 80.0f);
+		ImGui::TableSetupColumn(TrId("Stage"), ImGuiTableColumnFlags_WidthFixed, cyui::dp(80.0f));
 		ImGui::TableSetupColumn(TrId("Resource"));
-		ImGui::TableSetupColumn(TrId("Range"), ImGuiTableColumnFlags_WidthFixed, 130.0f);
+		ImGui::TableSetupColumn(TrId("Range"), ImGuiTableColumnFlags_WidthFixed, cyui::dp(130.0f));
 		ImGui::TableHeadersRow();
 
 		const SessionModel *model = ActiveModel();

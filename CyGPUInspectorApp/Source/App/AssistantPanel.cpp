@@ -7,6 +7,7 @@
 //
 // Copyright (C) 2026 Cyberalien. Licensed under the GNU AGPL v3 or later.
 #include "Application.hpp"
+#include <cyui/CyUI.h>
 #include "LayoutHelpers.hpp"
 
 #include <CyGPUInspectorCore/Localization.hpp>
@@ -379,7 +380,7 @@ namespace cygi
 			ImGui::SetNextWindowFocus();
 			m_assistant_focus = false;
 		}
-		if (!ImGui::Begin(TrId("AI assistant")))
+		if (!BeginPanel("AI assistant"))
 		{
 			ImGui::End();
 			return;
@@ -396,14 +397,14 @@ namespace cygi
 			ImGui::SameLine();
 		}
 		ImGui::BeginGroup();
-		ImGui::TextUnformatted(Tr("CyGPUInspector - AI assistant"));
-		const ImVec4 colour = ready ? ImVec4(0.4f, 0.9f, 0.5f, 1.0f)
-			: phase == Phase::error ? ImVec4(1.0f, 0.45f, 0.35f, 1.0f) : ImVec4(1.0f, 0.8f, 0.35f, 1.0f);
+		cyui::heading(Tr("CyGPUInspector - AI assistant"), 3);
+		const ImVec4 colour = ready ? cyui::vec(cyui::palette().success)
+			: phase == Phase::error ? cyui::vec(cyui::palette().error) : cyui::vec(cyui::palette().warning);
 		ImGui::TextColored(colour, "%s", ready ? Tr("READY") : phase == Phase::connecting ? Tr("CONNECTING")
 			: phase == Phase::error ? Tr("CONNECTION ERROR") : Tr("DISCONNECTED"));
 		ImGui::EndGroup();
 		ImGui::TextWrapped("%s", Render(m_assistant.StatusMessage()).c_str());
-		if (!wanted && ImGui::Button(TrId("Connect to provider")))
+		if (!wanted && cyui::primaryButton(TrId("Connect to provider")))
 			ConnectAssistant();
 		ImGui::TextDisabled(Tr("Permissions: %s"), Tr(PermissionModeName(m_assistant.Mode())));
 
@@ -416,7 +417,7 @@ namespace cygi
 			}
 			if (ImGui::BeginTabItem(TrId("Options")))
 			{
-				ImGui::SeparatorText(Tr("Built-in assistant permissions"));
+				cyui::sectionTitle(Tr("Built-in assistant permissions"));
 				const char *names[] = { Tr(PermissionModeName(PermissionMode::automatic)),
 					Tr(PermissionModeName(PermissionMode::ask)), Tr(PermissionModeName(PermissionMode::full)) };
 				int mode = static_cast<int>(m_assistant.Mode());
@@ -436,40 +437,48 @@ namespace cygi
 				                      "highlighting, capturing and replacing shaders. They never give a terminal or "
 				                      "access to your files. Changing the mode cancels a pending request. External "
 				                      "agents connected through MCP use the permission level of the MCP panel instead."));
-				ImGui::SeparatorText(Tr("Language"));
+				cyui::sectionTitle(Tr("Language"));
 				ImGui::TextWrapped(Tr("The assistant answers in the interface language: View > Language. A request "
 				                      "already in progress finishes in its original language."));
 				ImGui::EndTabItem();
 			}
 			if (ImGui::BeginTabItem(TrId("Connection")))
 			{
-				ImGui::SeparatorText(Tr("Provider connection"));
+				cyui::sectionTitle(Tr("Provider connection"));
 				ImGui::BeginDisabled(wanted);
 				const char *providers[] = { Tr(ProviderName(ProviderKind::codex_cli)), Tr(ProviderName(ProviderKind::claude_cli)),
 					Tr(ProviderName(ProviderKind::openai_api)), Tr(ProviderName(ProviderKind::local_api)) };
-				ImGui::Combo(TrId("Provider"), &m_assistant_provider, providers, IM_ARRAYSIZE(providers));
-				const bool cli = IsCli(static_cast<ProviderKind>(m_assistant_provider));
-				ImGui::InputText(cli ? TrId("Model (empty = CLI default)") : TrId("Model"), m_assistant_model,
-					sizeof(m_assistant_model));
-				if (!cli)
+				if (cyui::beginProperties("##provider-properties", 90))
 				{
-					const bool local = static_cast<ProviderKind>(m_assistant_provider) == ProviderKind::local_api;
-					ImGui::InputTextWithHint(TrId("URL /chat/completions"),
-						local ? "http://localhost:11434/v1/chat/completions" : "https://api.example.com/v1/chat/completions",
-						m_assistant_endpoint, sizeof(m_assistant_endpoint));
-					ImGui::InputText(TrId("API key"), m_assistant_key, sizeof(m_assistant_key), ImGuiInputTextFlags_Password);
-					ImGui::TextDisabled(Tr("The key is kept in memory for this session only."));
-				}
-				else
-				{
-					ImGui::TextWrapped(Tr("Uses your existing CLI login. Connect checks the local session; the first "
-					                      "message checks model access."));
+					cyui::property(Tr("Provider"));
+					ImGui::Combo("###Provider", &m_assistant_provider, providers, IM_ARRAYSIZE(providers));
+					const bool cli = IsCli(static_cast<ProviderKind>(m_assistant_provider));
+					cyui::property(Tr("Model"), Tr("Model (empty = CLI default)"));
+					ImGui::InputText(cli ? "###Model (empty = CLI default)" : "###Model", m_assistant_model,
+						sizeof(m_assistant_model));
+					if (!cli)
+					{
+						const bool local = static_cast<ProviderKind>(m_assistant_provider) == ProviderKind::local_api;
+						cyui::property(Tr("URL /chat/completions"));
+						ImGui::InputTextWithHint("###URL /chat/completions",
+							local ? "http://localhost:11434/v1/chat/completions" : "https://api.example.com/v1/chat/completions",
+							m_assistant_endpoint, sizeof(m_assistant_endpoint));
+						cyui::property(Tr("API key"));
+						ImGui::InputText("###API key", m_assistant_key, sizeof(m_assistant_key), ImGuiInputTextFlags_Password);
+						ImGui::TextDisabled(Tr("The key is kept in memory for this session only."));
+					}
+					else
+					{
+						ImGui::TextWrapped(Tr("Uses your existing CLI login. Connect checks the local session; the first "
+						                      "message checks model access."));
+					}
+					cyui::endProperties();
 				}
 				ImGui::EndDisabled();
 
 				if (!wanted)
 				{
-					if (ImGui::Button(TrId("Connect")))
+					if (cyui::primaryButton(TrId("Connect")))
 						ConnectAssistant();
 				}
 				else if (ImGui::Button(TrId("Disconnect / edit")))
@@ -477,7 +486,7 @@ namespace cygi
 					m_assistant.Disconnect();
 				}
 
-				ImGui::SeparatorText(Tr("What is sent"));
+				cyui::sectionTitle(Tr("What is sent"));
 				ImGui::TextWrapped(Tr("Your messages, and the data the assistant reads with its tools: the structure of "
 				                      "the frame, names, timings and, when it asks for them, shader code. Never your "
 				                      "files. With a CLI or a remote API, this data goes to that provider; with a local "
@@ -577,11 +586,11 @@ namespace cygi
 
 		if (approval_pending)
 		{
-			ImGui::SeparatorText(Tr("Approval requested"));
+			cyui::sectionTitle(Tr("Approval requested"));
 			ImGui::TextWrapped("%s", Render(approval.summary).c_str());
 			if (ImGui::CollapsingHeader(TrId("View proposed values or code")))
 			{
-				ImGui::BeginChild("permission_details", ImVec2(0.0f, 130.0f), ImGuiChildFlags_Borders);
+				ImGui::BeginChild("permission_details", cyui::dp(0.0f, 130.0f), ImGuiChildFlags_Borders);
 				ImGui::TextUnformatted(approval.payload.c_str());
 				ImGui::EndChild();
 			}
@@ -705,7 +714,7 @@ namespace cygi
 		if (!m_ai_notice.Empty())
 			ImGui::TextWrapped("%s", Render(m_ai_notice).c_str());
 
-		ImGui::SeparatorText(Tr("AI results for this shader"));
+		cyui::sectionTitle(Tr("AI results for this shader"));
 		if (m_notes_shader != shader_id)
 			return;
 
@@ -750,7 +759,7 @@ namespace cygi
 					}
 				}
 				if (m_ai_preview_index == i)
-					m_ai_preview.Render("ai_preview", ImVec2(0.0f, 320.0f));
+					m_ai_preview.Render("ai_preview", cyui::dp(0.0f, 320.0f));
 			}
 			else
 			{

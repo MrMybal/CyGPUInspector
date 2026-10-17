@@ -9,6 +9,7 @@
 //
 // Copyright (C) 2026 Cyberalien. Licensed under the GNU AGPL v3 or later.
 #include "Application.hpp"
+#include <cyui/CyUI.h>
 #include "LayoutHelpers.hpp"
 
 #include <CyGPUInspectorCore/Localization.hpp>
@@ -149,7 +150,7 @@ namespace cygi
 
 	void Application::DrawShaderTiming(uint32_t shader_id)
 	{
-		ImGui::SeparatorText(Tr("GPU time"));
+		cyui::sectionTitle(Tr("GPU time"));
 
 		// Section 24: calls, total, average and maximum, from the commands of the frame held that
 		// have a measurement of their own.

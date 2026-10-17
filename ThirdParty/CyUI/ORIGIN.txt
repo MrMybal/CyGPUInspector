@@ -1,0 +1,9 @@
+CyUI 1.0.0 - themed Dear ImGui controls
+
+Source supplied by Cyberalien: CyImgui_Interface library
+Snapshot: 2026-10-17. MIT license: LICENSE, unchanged.
+Only include/, src/, CMakeLists.txt and LICENSE are vendored, without changes.
+The demo's ImGui copy, Python wrappers and build outputs are not included.
+CyGPUInspector builds CyUI with its existing Dear ImGui target; no sibling
+checkout, extra application or system font installation is required at runtime.
+Integration guide: upstream docs/AI_GUIDE.md.

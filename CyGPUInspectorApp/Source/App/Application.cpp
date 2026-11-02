@@ -2,7 +2,11 @@
 //
 // Copyright (C) 2026 Cyberalien. Licensed under the GNU AGPL v3 or later.
 #include "Application.hpp"
-#include <cyui/CyUI.h>
+#include <cyui/Core.h>
+#if defined(CYUI_HAS_GALLERY)
+#include <cyui/Gallery.h>
+#endif
+#include <TextEditor.h>
 #include "LayoutHelpers.hpp"
 
 #include <CyGPUInspectorCore/Localization.hpp>
@@ -93,6 +97,7 @@ namespace cygi
 		// from a run has to reflect what was actually shown.
 		i18n::ScanLanguages();
 		i18n::SetLanguage(LoadPreferredLanguage());
+		SyncCyuiLocale();
 		LoadAppearance();
 		LoadAssistantPreferences();
 
@@ -421,6 +426,7 @@ namespace cygi
 			start = end + 1;
 		}
 		m_disassembly_shader = m_selected_shader;
+		++m_disassembly_revision;
 	}
 
 	void Application::Draw(double delta_seconds)
@@ -534,8 +540,9 @@ namespace cygi
 			ImGui::ShowDemoWindow(&m_show_demo);
 		if (m_show_about)
 			DrawAboutWindow();
-		if (m_show_cyui_gallery)
-			cyui::showGallery(&m_show_cyui_gallery);
+#if defined(CYUI_HAS_GALLERY)
+		if (m_show_cyui_gallery) cyui::showGallery(&m_show_cyui_gallery);
+#endif
 		if (!m_status.empty() && m_status != m_last_notified_status)
 		{
 			cyui::notify(m_status.c_str());
@@ -746,11 +753,16 @@ namespace cygi
 			DrawAppearanceMenu();
 			if (ImGui::BeginMenu(TrId("Panels")))
 			{
-				for (const char *panel : { "Connections", "Captures", "Game profile", "Shaders", "Resources",
+				const char *panels[] = { "Connections", "Captures", "Game profile", "Shaders", "Resources",
 					"Frame timeline", "Frame graph", "Preview", "Frame events", "Deep capture", "Details",
-					"Shader code", "Mod export", "AI assistant", "MCP", "Status" })
-					if (ImGui::MenuItem(TrId(panel)))
-						FocusPanel(panel);
+					"Shader code", "Mod export", "AI assistant", "MCP", "Status" };
+				std::vector<cyui::FilterMenuItem> entries;
+				for (size_t i = 0; i < IM_ARRAYSIZE(panels); ++i)
+				{
+					cyui::FilterMenuItem entry; entry.id = i + 1; entry.label = panels[i]; entries.push_back(entry);
+				}
+				const auto selected = cyui::filterMenu("panels", m_panel_filter, entries);
+				if (selected && selected <= IM_ARRAYSIZE(panels)) FocusPanel(panels[selected - 1]);
 				ImGui::EndMenu();
 			}
 			if (ImGui::BeginMenu(TrId("Language")))
@@ -761,6 +773,7 @@ namespace cygi
 					if (ImGui::MenuItem(language.name.c_str(), language.code.c_str(), active) && !active)
 					{
 						i18n::SetLanguage(language.code);
+						SyncCyuiLocale();
 						SavePreferredLanguage(language.code);
 					}
 					if (!language.path.empty() && ImGui::BeginItemTooltip())
@@ -794,7 +807,9 @@ namespace cygi
 				m_layout_built = false;
 			}
 			ImGui::MenuItem(TrId("ImGui demo window"), nullptr, &m_show_demo);
+#if defined(CYUI_HAS_GALLERY)
 			ImGui::MenuItem(TrId("CyUI gallery"), nullptr, &m_show_cyui_gallery);
+#endif
 			ImGui::EndMenu();
 		}
 
@@ -837,6 +852,9 @@ namespace cygi
 		ImGui::Spacing();
 		ImGui::TextUnformatted(Tr("Copyright (C) 2026 Cyberalien"));
 		ImGui::TextUnformatted(Tr("GNU AGPL v3 or later: see LICENSE and THIRD-PARTY.md."));
+		ImGui::TextLinkOpenURL("CyUI 1.2.0 - MIT license",
+			"https://github.com/MrMybal/CyUI/blob/ff023e646c6a3038b3dfbfd53f6d2b4a2f5955e3/LICENSE");
+		cyui::tooltip("Full license included in LICENCES/CyUI/LICENSE.txt.");
 		ImGui::EndGroup();
 		ImGui::End();
 	}
@@ -1662,28 +1680,31 @@ namespace cygi
 		ImGui::Text(Tr("%u x %u  %s"), m_preview.Width(), m_preview.Height(), FormatName(m_preview.Format()));
 		ImGui::Separator();
 
-		const float texture_width = static_cast<float>(m_preview.Width());
-		const float texture_height = static_cast<float>(m_preview.Height());
-		ImVec2 size(texture_width, texture_height);
-
-		if (m_preview_fit)
+		ID3D11ShaderResourceView *view = m_preview_view_this_frame != nullptr ? m_preview_view_this_frame : m_preview.View();
+		const auto image_room = ImGui::GetContentRegionAvail();
+		const auto image_origin = ImGui::GetCursorScreenPos();
+		if (ImGui::IsWindowHovered(ImGuiHoveredFlags_ChildWindows) &&
+			ImGui::IsMouseHoveringRect(image_origin, ImVec2(image_origin.x + image_room.x, image_origin.y + image_room.y)) &&
+			(ImGui::GetIO().MouseWheel || ImGui::IsMouseDragging(ImGuiMouseButton_Middle)))
 		{
-			const ImVec2 available = ImGui::GetContentRegionAvail();
-			const float scale = (available.x > 0.0f && available.y > 0.0f)
-				? (std::min)(available.x / texture_width, available.y / texture_height) : 1.0f;
-			size = ImVec2(texture_width * scale, texture_height * scale);
+			m_preview_fit = false; m_preview_image_view.fitPending = false;
 		}
-		else
+		const auto previous_zoom = m_preview_image_view.canvas.view.zoom;
+		if (m_preview_fit) m_preview_image_view.fitPending = true;
+		else if (std::abs(previous_zoom - m_preview_zoom) > .001)
 		{
-			size = ImVec2(texture_width * m_preview_zoom, texture_height * m_preview_zoom);
+			m_preview_image_view.fitPending = false;
+			const auto available = ImGui::GetContentRegionAvail();
+			m_preview_image_view.canvas.view.zoomAt(ImVec2(available.x * .5f, available.y * .5f), m_preview_zoom);
 		}
-
-		// The shared texture lives in the game's GPU memory. The display pass reads it there and
-		// writes a viewable copy, once per interface frame (UpdatePreview); nothing ever travels
-		// through system memory unless it is saved.
-		ID3D11ShaderResourceView *view = m_preview_view_this_frame != nullptr ? m_preview_view_this_frame
-		                                                                      : m_preview.View();
-		ImGui::Image(reinterpret_cast<ImTextureID>(view), size);
+		const auto image = cyui::imageViewport("preview-surface", m_preview_image_view,
+			{reinterpret_cast<ImTextureID>(view), int(m_preview.Width()), int(m_preview.Height())},
+			ImGui::GetContentRegionAvail());
+		if (ImGui::IsItemHovered() && (ImGui::GetIO().MouseWheel || ImGui::IsMouseDragging(ImGuiMouseButton_Middle)))
+			m_preview_fit = false;
+		m_preview_zoom = float(m_preview_image_view.canvas.view.zoom);
+		if (image.pixelX >= 0)
+			ImGui::SetTooltip("%d, %d", image.pixelX, image.pixelY);
 
 		ImGui::End();
 	}
@@ -1737,16 +1758,13 @@ namespace cygi
 			return;
 		}
 
-		const float texture_width = static_cast<float>(m_preview.Width());
-		const float texture_height = static_cast<float>(m_preview.Height());
-		const float available_height = std::max(max_height - ImGui::GetCursorPosY(), 40.0f);
-		const float scale = std::min(max_width / texture_width, available_height / texture_height);
-		ImGui::Image(reinterpret_cast<ImTextureID>(m_preview_view_this_frame),
-			ImVec2(texture_width * scale, texture_height * scale));
+		DrawImageSurface("frame-image-surface", m_frame_image_views[ImGui::GetID("frame-image-surface")],
+			{reinterpret_cast<ImTextureID>(m_preview_view_this_frame), int(m_preview.Width()), int(m_preview.Height())},
+			ImVec2(std::max(cyui::dp(1), max_width), std::max(cyui::dp(40), std::min(max_height, ImGui::GetContentRegionAvail().y))));
 		if (ImGui::IsItemHovered())
-			ImGui::SetTooltip("%s", Tr("Double click to open it full size in the Preview panel."));
+			cyui::tooltip(Tr("Double click to open it full size in the Preview panel."));
 		if (ImGui::IsItemHovered() && ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left))
-			ImGui::SetWindowFocus("Preview");
+			FocusPanel("Preview");
 	}
 
 	std::string Application::ProfileOf(uint32_t shader_id) const
@@ -3301,19 +3319,7 @@ namespace cygi
 		if (ImGui::SmallButton(TrId("Clear")))
 			m_mcp.ClearLog();
 
-		ImGui::BeginChild("mcplog", cyui::dp(0.0f, 0.0f));
-		for (const std::string &line : m_mcp.Log())
-		{
-			if (line.find("REFUSED") != std::string::npos)
-				ImGui::TextColored(cyui::vec(cyui::palette().error), "%s", line.c_str());
-			else if (line.find("  ! ") != std::string::npos)
-				ImGui::TextColored(cyui::vec(cyui::palette().warning), "%s", line.c_str());
-			else
-				ImGui::TextUnformatted(line.c_str());
-		}
-		if (ImGui::GetScrollY() >= ImGui::GetScrollMaxY() - 1.0f)
-			ImGui::SetScrollHereY(1.0f);
-		ImGui::EndChild();
+		DrawMcpLog();
 
 		ImGui::End();
 	}
@@ -3592,7 +3598,7 @@ namespace cygi
 			ImGui::PushID(static_cast<int>(pass.id));
 
 			// Confidence is shown as colour: a guess must never look like a fact.
-			ImVec4 colour(0.65f, 0.65f, 0.65f, 1.0f);
+			ImVec4 colour = cyui::vec(cyui::palette().textDim);
 			if (pass.origin == PassNameOrigin::user)
 				colour = cyui::vec(cyui::palette().info);
 			else if (pass.confidence >= 0.7f)
@@ -3773,46 +3779,24 @@ namespace cygi
 
 					ImGui::Separator();
 
-					const bool filtering = m_disassembly_filter[0] != '\0';
-					ImGui::BeginChild("disasmtext", cyui::dp(0.0f, 0.0f), ImGuiChildFlags_None,
-						m_disassembly_wrap ? 0 : ImGuiWindowFlags_HorizontalScrollbar);
+					if (m_disassembly_prepared_revision != m_disassembly_revision || m_disassembly_prepared_filter != m_disassembly_filter)
 					{
-						cyui::ScopedFont mono(cyui::monoFont());
-
-						if (filtering)
-						{
-							// A filtered view is short by construction: no clipper needed.
-							for (size_t i = 0; i < m_disassembly_lines.size(); ++i)
-							{
-								if (!ContainsInsensitive(m_disassembly_lines[i], m_disassembly_filter))
-									continue;
-								ImGui::TextDisabled("%5zu", i);
-								ImGui::SameLine();
-								if (m_disassembly_wrap)
-									ImGui::TextWrapped("%s", m_disassembly_lines[i].c_str());
-								else
-									ImGui::TextUnformatted(m_disassembly_lines[i].c_str());
-							}
-						}
-						else
-						{
-							ImGuiListClipper clipper;
-							clipper.Begin(static_cast<int>(m_disassembly_lines.size()));
-							while (clipper.Step())
-							{
-								for (int row = clipper.DisplayStart; row < clipper.DisplayEnd; ++row)
-								{
-									ImGui::TextDisabled("%5d", row);
-									ImGui::SameLine();
-									if (m_disassembly_wrap)
-										ImGui::TextWrapped("%s", m_disassembly_lines[static_cast<size_t>(row)].c_str());
-									else
-										ImGui::TextUnformatted(m_disassembly_lines[static_cast<size_t>(row)].c_str());
-								}
-							}
-						}
+						std::string visible;
+						if (!m_disassembly_filter[0]) visible = analysis.disassembly.text;
+						else for (size_t i = 0; i < m_disassembly_lines.size(); ++i)
+							if (ContainsInsensitive(m_disassembly_lines[i], m_disassembly_filter))
+								visible += std::to_string(i) + "  " + m_disassembly_lines[i] + "\n";
+						m_disassembly_visible_text = std::move(visible);
+						m_disassembly_editor.setText(m_disassembly_visible_text);
+						m_disassembly_editor.setLanguage(cyui::CodeLanguage::plain);
+						m_disassembly_editor.setSyntaxEnabled(false);
+						m_disassembly_editor.setReadOnly(true);
+						m_disassembly_editor.native().SetShowWhitespacesEnabled(false);
+						m_disassembly_prepared_revision = m_disassembly_revision;
+						m_disassembly_prepared_filter = m_disassembly_filter;
 					}
-					ImGui::EndChild();
+					m_disassembly_editor.native().SetWordWrapEnabled(m_disassembly_wrap);
+					m_disassembly_editor.draw("disasmtext");
 				}
 				ImGui::EndTabItem();
 			}

@@ -1,4 +1,4 @@
-CyGPUInspector 0.2.0
+CyGPUInspector 0.4.0
 ====================
 
 (English: see START-HERE.txt)
@@ -118,7 +118,7 @@ chargement. Les suppressions de draws, elles, sont immédiates.
 
   TestWithoutAGame\
     Demo.cmd                       lance la fausse session + l'application
-    RunTests.cmd                   lance les quatre suites de tests
+    RunTests.cmd                   lance les cinq suites de tests
     CyGPUInspectorFakeSession.exe  le producteur synthétique
 
   Docs\                            la documentation complète (Docs\fr\ en français)

@@ -19,7 +19,7 @@
 // Copyright (C) 2026 Cyberalien. Licensed under the GNU AGPL v3 or later.
 #include "Application.hpp"
 #include "LayoutHelpers.hpp"
-#include <cyui/CyUI.h>
+#include <cyui/Core.h>
 #include "TimelineDrawing.hpp"
 
 #include <CyGPUInspectorCore/Localization.hpp>
@@ -267,406 +267,9 @@ namespace cygi
 		ImGui::End();
 	}
 
-	using timeline_drawing::Colour;
-	using timeline_drawing::ColourOfCommand;
-	using timeline_drawing::DrawBar;
-	using timeline_drawing::NiceStep;
 
-	// The strip of recent frames, one bar per frame and newest on the right, the way a profiler
-	// shows them. A spike stays visible for a few seconds instead of being a number that has
-	// already changed, and the frame whose GPU timings are in the view below is outlined.
-	void Application::DrawFrameStrip(uint64_t measured_frame, uint64_t visible_first, uint64_t visible_last,
-	                                 bool pick)
-	{
-		const SessionModel *model = ActiveModel();
-		if (model == nullptr)
-			return;
-
-		std::vector<FrameHistoryEntry> history;
-		{
-			std::lock_guard<std::mutex> lock(model->Mutex());
-			history = model->History();
-		}
-		if (history.size() < 2)
-			return;
-
-		const float kHeight = cyui::dp(46.0f);
-		const float kPitch = cyui::dp(3.0f);
-		const float width = ImGui::GetContentRegionAvail().x;
-		const size_t shown = std::min(history.size(), static_cast<size_t>(std::max(1.0f, width / kPitch)));
-		const size_t first = history.size() - shown;
-
-		// The scale is a high percentile, not the peak: one loading stall of four seconds would
-		// otherwise flatten every other frame into the bottom pixel. Anything taller is drawn full
-		// height with a red cap, and its real value is in the tooltip.
-		std::vector<float> values;
-		values.reserve(shown);
-		float peak = 0.0f;
-		for (size_t i = first; i < history.size(); ++i)
-		{
-			values.push_back(history[i].cpu_frame_ms);
-			peak = std::max(peak, history[i].cpu_frame_ms);
-		}
-		const size_t percentile = (values.size() * 19) / 20;
-		std::nth_element(values.begin(), values.begin() + static_cast<ptrdiff_t>(percentile), values.end());
-		const float scale = std::max(values[percentile] * 1.3f, 1.0f);
-
-		const ImVec2 origin = ImGui::GetCursorScreenPos();
-		ImGui::InvisibleButton("frame-strip", ImVec2(width, kHeight));
-		const bool hovered = ImGui::IsItemHovered();
-
-		ImDrawList *draw = ImGui::GetWindowDrawList();
-		const float bottom = origin.y + kHeight;
-		draw->AddRectFilled(origin, ImVec2(origin.x + width, bottom), ImGui::GetColorU32(ImGuiCol_FrameBg));
-
-		// The budgets a player feels: 60 and 30 frames per second, drawn when they are on scale.
-		for (const float budget : { 1000.0f / 60.0f, 1000.0f / 30.0f })
-		{
-			if (budget >= scale)
-				continue;
-			const float y = bottom - budget / scale * kHeight;
-			draw->AddLine(ImVec2(origin.x, y), ImVec2(origin.x + width, y), cyui::palette().grid);
-			char text[16];
-			std::snprintf(text, sizeof(text), "%.0f fps", 1000.0f / budget);
-			draw->AddText(ImVec2(origin.x + width - ImGui::CalcTextSize(text).x - 4.0f, y - ImGui::GetFontSize()),
-				cyui::palette().lineStrong, text);
-		}
-
-		const float right_edge = origin.x + width;
-		int hovered_index = -1;
-		float window_x0 = 0.0f;
-		float window_x1 = 0.0f;
-		for (size_t i = first; i < history.size(); ++i)
-		{
-			const FrameHistoryEntry &entry = history[i];
-			const float x1 = right_edge - static_cast<float>(history.size() - 1 - i) * kPitch;
-			const float x0 = x1 - (kPitch - 1.0f);
-
-			const float cpu = entry.cpu_frame_ms;
-			const ImU32 fill = cpu <= 1000.0f / 60.0f + 0.5f ? cyui::palette().success
-				: cpu <= 1000.0f / 30.0f + 0.5f ? cyui::palette().warning
-				: cyui::palette().error;
-			const float height = std::min(cpu / scale, 1.0f) * kHeight;
-			draw->AddRectFilled(ImVec2(x0, bottom - height), ImVec2(x1, bottom), fill);
-			if (cpu > scale)
-				draw->AddRectFilled(ImVec2(x0, origin.y), ImVec2(x1, origin.y + 3.0f), cyui::palette().error);
-
-			// The GPU cost of the same frame, as a tick at its height: whether the frame was bound
-			// by the CPU or by the GPU reads straight off the gap between the two.
-			if (entry.gpu_ms > 0.0)
-			{
-				const float y = bottom - std::min(static_cast<float>(entry.gpu_ms) / scale, 1.0f) * kHeight;
-				draw->AddRectFilled(ImVec2(x0, y - 1.0f), ImVec2(x1, y + 1.0f), cyui::palette().accent);
-			}
-
-			if (visible_first != 0 && entry.index >= visible_first && entry.index <= visible_last)
-			{
-				window_x0 = window_x0 == 0.0f ? x0 : std::min(window_x0, x0);
-				window_x1 = std::max(window_x1, x1);
-			}
-
-			if (entry.index == measured_frame && measured_frame != 0)
-				draw->AddRect(ImVec2(x0 - 1.0f, origin.y), ImVec2(x1 + 1.0f, bottom), cyui::palette().accent);
-
-			if (hovered && ImGui::GetIO().MousePos.x >= x0 - 0.5f && ImGui::GetIO().MousePos.x < x1 + 1.0f)
-				hovered_index = static_cast<int>(i);
-		}
-
-		// What the strip says in numbers, in its top left corner.
-		char caption[128];
-		std::snprintf(caption, sizeof(caption), "CPU %.2f ms, peak %.2f ms", static_cast<double>(history.back().cpu_frame_ms),
-			static_cast<double>(peak));
-		const ImVec2 caption_size = ImGui::CalcTextSize(caption);
-		draw->AddRectFilled(ImVec2(origin.x + 2.0f, origin.y + 1.0f),
-			ImVec2(origin.x + 6.0f + caption_size.x, origin.y + 3.0f + caption_size.y), cyui::palette().bg2);
-		draw->AddText(ImVec2(origin.x + 4.0f, origin.y + 2.0f), cyui::palette().text, caption);
-
-		// Which frames the continuous view below is showing, the way a profiler marks its
-		// selection on the frame graph.
-		if (window_x1 > window_x0)
-		{
-			draw->AddRectFilled(ImVec2(window_x0 - 1.0f, origin.y), ImVec2(window_x1 + 1.0f, bottom),
-				cyui::palette().grid);
-			draw->AddRect(ImVec2(window_x0 - 1.0f, origin.y), ImVec2(window_x1 + 1.0f, bottom),
-				cyui::palette().lineStrong);
-		}
-
-		// Press and drag along the strip to scrub: the frame under the mouse is picked and brought
-		// into the view below as it moves, the way a profiler's frame graph is scrubbed.
-		if (pick && ImGui::IsItemActive())
-		{
-			const float offset = (right_edge - ImGui::GetIO().MousePos.x) / kPitch;
-			const float clamped = std::clamp(offset, 0.0f, static_cast<float>(shown - 1));
-			const size_t picked_row = history.size() - 1 - static_cast<size_t>(clamped);
-			const uint64_t picked = history[picked_row].index;
-			if (picked != m_track_selected_frame)
-			{
-				m_track_selected_frame = picked;
-				m_track_selected_pass = -1;
-				m_track_center_request = picked;
-			}
-			m_track_follow = false;
-		}
-
-		if (hovered_index >= 0)
-		{
-			const FrameHistoryEntry &entry = history[static_cast<size_t>(hovered_index)];
-			if (ImGui::BeginTooltip())
-			{
-				ImGui::Text(Tr("Frame %llu"), static_cast<unsigned long long>(entry.index));
-				ImGui::Separator();
-				ImGui::Text(Tr("CPU %.2f ms"), static_cast<double>(entry.cpu_frame_ms));
-				if (entry.gpu_ms > 0.0)
-					ImGui::Text(Tr("GPU %.2f ms, measured passes only"), entry.gpu_ms);
-				else
-					ImGui::TextDisabled(Tr("GPU not measured for this frame"));
-				ImGui::Text(Tr("%u draws, %u dispatches, %u commands"), entry.draw_count,
-					entry.dispatch_count, entry.event_count);
-				if (pick)
-					ImGui::TextDisabled(Tr("Click to show this frame in the continuous view."));
-				ImGui::EndTooltip();
-			}
-		}
-	}
-
-	// One frame on a time axis: a ruler, then the whole frame, then its passes, then the commands
-	// that were measured inside them — the layout of a profiler's timing view, drawn from what
-	// the runtime capture measures.
-	//
-	// Where a pass sits comes from the measured start of the timestamps inside it. Between two
-	// measurements nothing is known, so a pass that has none of its own is placed by interpolating
-	// on its commands, and drawn dimmed with a tooltip saying so. When no timings exist at all, the
-	// same view is laid out by command count instead, and the ruler says "commands", not "ms".
-	void Application::DrawTimingView()
-	{
-		const std::vector<GraphPass> &passes = m_graph.Passes();
-		if (passes.empty())
-			return;
-
-		const FrameTimeline &timeline = m_timeline;
-		const std::vector<FrameTimeline::Point> &points = timeline.Points();
-		const std::vector<FrameTimeline::Span> &spans = timeline.Spans();
-		const bool timed = timeline.Timed();
-		const double frame_length = timeline.Length();
-
-		// The commands row only earns its place when it says more than the passes row: at Pass
-		// Timing there is one measurement per pass and the two rows would be the same bars twice.
-		size_t measured_passes = 0;
-		for (const FrameTimeline::Span &span : spans)
-			measured_passes += span.measured ? 1 : 0;
-		const bool show_commands = timed && points.size() > measured_passes;
-
-		if (timed && !timeline.MeasuredPositions())
-			ImGui::TextDisabled(Tr("Positions laid end to end: this add-on predates measured start times."));
-
-		// ---- geometry --------------------------------------------------------------------------
-		const float kLabels = cyui::dp(74.0f);
-		const float kRuler = cyui::dp(18.0f);
-		const float kRow = cyui::dp(22.0f);
-		const float kGap = cyui::dp(3.0f);
-		const int rows = show_commands ? 3 : 2;
-		const float width = ImGui::GetContentRegionAvail().x;
-		const float height = kRuler + static_cast<float>(rows) * (kRow + kGap) + 2.0f;
-
-		const ImVec2 origin = ImGui::GetCursorScreenPos();
-		ImGui::InvisibleButton("timing-view", ImVec2(width, height), ImGuiButtonFlags_MouseButtonLeft | ImGuiButtonFlags_MouseButtonMiddle | ImGuiButtonFlags_MouseButtonRight);
-		const bool hovered = ImGui::IsItemHovered();
-		const bool active = ImGui::IsItemActive();
-		// The wheel belongs to the view while the mouse is over it, not to the panel's scrollbar.
-		const bool owns_wheel = ImGui::SetItemKeyOwner(ImGuiKey_MouseWheelY);
-
-		const float area_x0 = origin.x + kLabels;
-		const float area_x1 = origin.x + width;
-		const float area_width = std::max(area_x1 - area_x0, 1.0f);
-
-		if (m_view_fit || m_view_span <= 0.0)
-		{
-			m_view_start = 0.0;
-			m_view_span = frame_length * 1.02;
-		}
-
-		ImGuiIO &io = ImGui::GetIO();
-		if (hovered && owns_wheel && io.MouseWheel != 0.0f && io.MousePos.x >= area_x0)
-		{
-			// Zoom around the mouse, so what is under the cursor stays under it.
-			const double anchor = (io.MousePos.x - area_x0) / area_width;
-			const double at = m_view_start + anchor * m_view_span;
-			const double minimum = timed ? 0.0005 : 4.0;
-			m_view_span = std::clamp(m_view_span * std::pow(0.8, static_cast<double>(io.MouseWheel)),
-				minimum, std::max(frame_length * 1.5, minimum));
-			m_view_start = at - anchor * m_view_span;
-			m_view_fit = false;
-		}
-		if (ImGui::IsItemActivated())
-			m_view_dragged = false;
-		if (active && (ImGui::IsMouseDragging(ImGuiMouseButton_Left, 3.0f) ||
-		                   ImGui::IsMouseDragging(ImGuiMouseButton_Middle, 1.0f) ||
-		                   ImGui::IsMouseDragging(ImGuiMouseButton_Right, 1.0f)))
-		{
-			m_view_start -= static_cast<double>(io.MouseDelta.x) / area_width * m_view_span;
-			m_view_dragged = true;
-			m_view_fit = false;
-		}
-		if (hovered && ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left))
-			m_view_fit = true;
-		m_view_start = std::clamp(m_view_start, -m_view_span * 0.1,
-			std::max(frame_length - m_view_span * 0.1, 0.0));
-
-		const auto x_of = [&](double time) {
-			return area_x0 + static_cast<float>((time - m_view_start) / m_view_span) * area_width;
-		};
-
-		ImDrawList *draw = ImGui::GetWindowDrawList();
-		draw->AddRectFilled(origin, ImVec2(area_x1, origin.y + height), ImGui::GetColorU32(ImGuiCol_FrameBg));
-
-		// ---- ruler -----------------------------------------------------------------------------
-		const double step = NiceStep(m_view_span * 90.0 / area_width);
-		const double first_tick = std::floor(m_view_start / step) * step;
-		draw->PushClipRect(ImVec2(area_x0, origin.y), ImVec2(area_x1, origin.y + height), true);
-		for (double tick = first_tick; tick <= m_view_start + m_view_span; tick += step)
-		{
-			const float x = x_of(tick);
-			draw->AddLine(ImVec2(x, origin.y + kRuler - 5.0f), ImVec2(x, origin.y + height),
-				cyui::palette().grid);
-			char text[32];
-			if (!timed)
-				std::snprintf(text, sizeof(text), "%.0f", tick);
-			else if (step >= 1.0)
-				std::snprintf(text, sizeof(text), "%.0f ms", tick);
-			else if (step >= 0.1)
-				std::snprintf(text, sizeof(text), "%.1f ms", tick);
-			else if (step >= 0.01)
-				std::snprintf(text, sizeof(text), "%.2f ms", tick);
-			else
-				std::snprintf(text, sizeof(text), "%.3f ms", tick);
-			// A tick just left of the area would have its label cut to "ms": the line is enough.
-			if (x + 3.0f >= area_x0)
-				draw->AddText(ImVec2(x + 3.0f, origin.y + 1.0f), cyui::palette().textDim, text);
-		}
-		draw->PopClipRect();
-
-		// ---- rows ------------------------------------------------------------------------------
-		const float row_frame = origin.y + kRuler + 1.0f;
-		const float row_passes = row_frame + kRow + kGap;
-		const float row_commands = row_passes + kRow + kGap;
-
-		const ImU32 label_colour = ImGui::GetColorU32(ImGuiCol_TextDisabled);
-		draw->AddText(ImVec2(origin.x + 4.0f, origin.y + 1.0f), label_colour, timed ? Tr("GPU") : Tr("commands"));
-		draw->AddText(ImVec2(origin.x + 4.0f, row_frame + 3.0f), label_colour, Tr("Frame"));
-		draw->AddText(ImVec2(origin.x + 4.0f, row_passes + 3.0f), label_colour, Tr("Passes"));
-		if (show_commands)
-			draw->AddText(ImVec2(origin.x + 4.0f, row_commands + 3.0f), label_colour, Tr("Commands"));
-
-		char label[192];
-
-		// The frame itself.
-		if (timed)
-			std::snprintf(label, sizeof(label), Tr("Frame %llu, %.3f ms of measured GPU time"),
-				static_cast<unsigned long long>(timeline.FrameIndex()), frame_length);
-		else
-			std::snprintf(label, sizeof(label), Tr("Frame, %.0f commands"), frame_length);
-		DrawBar(draw, x_of(0.0), x_of(frame_length), row_frame, row_frame + kRow, area_x0, area_x1,
-			cyui::palette().bg4, label, false);
-
-		// The passes.
-		int hovered_pass = -1;
-		for (size_t i = 0; i < passes.size() && i < spans.size(); ++i)
-		{
-			const GraphPass &pass = passes[i];
-			const float x0 = x_of(spans[i].start);
-			const float x1 = x_of(spans[i].end);
-			if (timed)
-				std::snprintf(label, sizeof(label), "%s  %.3f ms", pass.name.c_str(), spans[i].Length());
-			else
-				std::snprintf(label, sizeof(label), "%s", pass.name.c_str());
-			DrawBar(draw, x0, x1, row_passes, row_passes + kRow, area_x0, area_x1,
-				Colour(ColourOfPass(pass), spans[i].measured || !timed ? 1.0f : 0.45f), label,
-				pass.id == m_selected_pass);
-
-			if (hovered && io.MousePos.y >= row_passes && io.MousePos.y < row_passes + kRow &&
-			    io.MousePos.x >= std::max(x0, area_x0) && io.MousePos.x < std::max(x1, x0 + 1.0f))
-				hovered_pass = static_cast<int>(i);
-		}
-
-		// The measured commands.
-		int hovered_point = -1;
-		if (show_commands)
-		{
-			for (size_t i = 0; i < points.size(); ++i)
-			{
-				const float x0 = x_of(points[i].start);
-				const float x1 = x_of(points[i].start + points[i].length);
-				// Culled before formatting: at Full Draw Timing there can be sixteen thousand.
-				if (x1 < area_x0 || x0 > area_x1)
-					continue;
-				std::snprintf(label, sizeof(label), "%u %s", points[i].event, EventKindName(points[i].kind));
-				DrawBar(draw, x0, x1, row_commands, row_commands + kRow, area_x0, area_x1,
-					Colour(ColourOfCommand(points[i].kind)), label, points[i].event == m_selected_event);
-
-				if (hovered && io.MousePos.y >= row_commands && io.MousePos.y < row_commands + kRow &&
-				    io.MousePos.x >= std::max(x0, area_x0) && io.MousePos.x < std::max(x1, x0 + 1.0f))
-					hovered_point = static_cast<int>(i);
-			}
-		}
-
-		// ---- hover and click -------------------------------------------------------------------
-		const bool clicked = hovered && ImGui::IsMouseReleased(ImGuiMouseButton_Left) && !m_view_dragged;
-
-		if (hovered_pass >= 0)
-		{
-			const GraphPass &pass = passes[static_cast<size_t>(hovered_pass)];
-			const FrameTimeline::Span &span = spans[static_cast<size_t>(hovered_pass)];
-			if (ImGui::BeginTooltip())
-			{
-				ImGui::PushStyleColor(ImGuiCol_Text, ColourOfPass(pass));
-				ImGui::TextUnformatted(pass.name.c_str());
-				ImGui::PopStyleColor();
-				if (pass.origin != PassNameOrigin::user)
-					ImGui::TextDisabled(Tr("name: %s, confidence %.0f%%"), PassNameOriginName(pass.origin),
-						static_cast<double>(pass.confidence) * 100.0);
-				ImGui::Separator();
-				if (timed)
-				{
-					ImGui::Text(Tr("starts at %.3f ms, lasts %.3f ms (%.1f%% of the frame)"), span.start,
-						span.Length(), span.Length() / frame_length * 100.0);
-					if (!span.measured)
-						ImGui::TextDisabled(Tr("no measurement of its own: placed between the two around it"));
-				}
-				ImGui::Text(Tr("%u draws, %u dispatches, events %u-%u"), pass.draw_count, pass.dispatch_count,
-					pass.first_event, pass.last_event);
-				ImGui::EndTooltip();
-			}
-			if (clicked)
-			{
-				m_selected_pass = pass.id;
-				SelectEvent(pass.first_event);
-			}
-		}
-		else if (hovered_point >= 0)
-		{
-			const FrameTimeline::Point &point = points[static_cast<size_t>(hovered_point)];
-			if (ImGui::BeginTooltip())
-			{
-				ImGui::Text(Tr("Event %u — %s"), point.event, EventKindName(point.kind));
-				ImGui::Separator();
-				ImGui::Text(Tr("starts at %.3f ms, lasts %.3f ms (%.1f%% of the frame)"),
-					point.start, point.length, point.length / frame_length * 100.0);
-				ImGui::TextDisabled(Tr("until the next measured command, which is what a before-only "
-				                       "interceptor can measure"));
-				ImGui::EndTooltip();
-			}
-			if (clicked)
-			{
-				SelectEvent(point.event);
-				if (const GraphPass *owner = m_graph.PassOfEvent(point.event))
-					m_selected_pass = owner->id;
-			}
-		}
-	}
-
-	// The passes as a sortable list. The bars answer "where did the frame go"; this answers "which
-	// pass is the expensive one", which is a different question and needs a sort, not a picture.
-	void Application::DrawPassList(const FrameTimings &timings)
+	// Domain-specific sortable pass metadata complements the shared timeline.
+	void Application::DrawPassList(const FrameTimings &)
 	{
 		const std::vector<GraphPass> &passes = m_graph.Passes();
 		if (passes.empty())
@@ -782,7 +385,7 @@ namespace cygi
 
 	// Everything about the pass whose bar is selected, and the way into the rest of the tool:
 	// clicking a shader or a resource here selects it in every other panel.
-	void Application::DrawSelectedPass(const FrameTimings &timings)
+	void Application::DrawSelectedPass(const FrameTimings &)
 	{
 		const GraphPass *pass = m_graph.PassById(m_selected_pass);
 		if (pass == nullptr)
@@ -1296,39 +899,46 @@ namespace cygi
 
 		const auto known = [&](uint32_t bit) { return (state.known_fields & (1u << bit)) != 0; };
 
+		cyui::filterBox("##pipeline-filter", m_pipeline_filter);
+		std::vector<cyui::Property> properties;
+		auto add = [&](uint64_t id, const char *label, cyui::PropertyValue value) {
+			cyui::Property property; property.id = id; property.label = label;
+			property.value = std::move(value); property.readOnly = true;
+			properties.push_back(std::move(property));
+		};
 		if (known(2))
 		{
-			ImGui::Text(Tr("Depth     %s, write %s, %s"), state.depth_enable ? "on" : "off",
-				state.depth_write ? "on" : "off", CompareOpName(state.depth_func));
-			ImGui::Text(Tr("Stencil   %s"), state.stencil_enable ? "on" : "off");
+			add(1, "Depth", bool(state.depth_enable));
+			add(2, "Depth write", bool(state.depth_write));
+			add(3, "Compare", std::string(CompareOpName(state.depth_func)));
+			add(4, "Stencil", bool(state.stencil_enable));
 		}
 		if (known(1))
-			ImGui::Text(Tr("Raster    cull %s, %s winding"), CullModeName(state.cull_mode),
-				state.front_counter_clockwise ? "counter clockwise" : "clockwise");
+		{
+			add(5, "Cull mode", std::string(CullModeName(state.cull_mode)));
+			add(6, "Counter-clockwise winding", bool(state.front_counter_clockwise));
+		}
 		if (known(0))
 		{
-			ImGui::Text(Tr("Blend     %s, write mask 0x%X"),
-				state.blend_enable_mask != 0 ? "on" : "off", state.render_target_write_mask);
-			if (state.alpha_to_coverage != 0)
-				ImGui::TextDisabled(Tr("alpha to coverage"));
+			add(7, "Blend", bool(state.blend_enable_mask));
+			char mask[32]; std::snprintf(mask, sizeof(mask), "0x%X", state.render_target_write_mask);
+			add(8, "Write mask", std::string(mask));
+			add(9, "Alpha to coverage", bool(state.alpha_to_coverage));
 		}
 		if (known(4))
 		{
 			std::string formats;
 			for (uint32_t i = 0; i < kMaxTrackedRenderTargets; ++i)
-			{
-				if (state.render_target_formats[i] == 0)
-					continue;
-				if (!formats.empty())
-					formats += ", ";
-				formats += FormatName(state.render_target_formats[i]);
-			}
-			if (!formats.empty())
-				ImGui::Text(Tr("Targets   %s"), formats.c_str());
+				if (state.render_target_formats[i])
+				{
+					if (!formats.empty()) formats += ", ";
+					formats += FormatName(state.render_target_formats[i]);
+				}
+			if (!formats.empty()) add(10, "Targets", formats);
 		}
-		if (known(5) && state.depth_stencil_format != 0)
-			ImGui::Text(Tr("Depth fmt %s"), FormatName(state.depth_stencil_format));
-		if (known(7) && state.sample_count > 1)
-			ImGui::Text(Tr("Samples   %u"), state.sample_count);
+		if (known(5) && state.depth_stencil_format) add(11, "Depth format", std::string(FormatName(state.depth_stencil_format)));
+		if (known(7) && state.sample_count > 1) add(12, "Samples", int64_t(state.sample_count));
+		cyui::inspector("pipeline-state", m_pipeline_inspector, properties, pipeline_id, {},
+			cyui::InspectorOptions{&m_pipeline_filter, "Pipeline state"});
 	}
 }

@@ -11,7 +11,7 @@
 //
 // Copyright (C) 2026 Cyberalien. Licensed under the GNU AGPL v3 or later.
 #include "Application.hpp"
-#include <cyui/CyUI.h>
+#include <cyui/Core.h>
 #include "LayoutHelpers.hpp"
 
 #include <CyGPUInspectorCore/Localization.hpp>
@@ -540,24 +540,7 @@ namespace cygi
 		m_hlsl_editor.Render("hlsl_window", ImVec2(0.0f, ImGui::GetContentRegionAvail().y - output_height - status_height));
 
 		if (!m_hlsl_messages.empty())
-		{
-			ImGui::BeginChild("output", ImVec2(0.0f, output_height), ImGuiChildFlags_Borders);
-			for (size_t i = 0; i < m_hlsl_messages.size(); ++i)
-			{
-				const CompilerMessage &message = m_hlsl_messages[i];
-				ImGui::PushID(static_cast<int>(i));
-				ImGui::PushStyleColor(ImGuiCol_Text, message.error ? cyui::vec(cyui::palette().error)
-					: cyui::vec(cyui::palette().warning));
-				const std::string first_line = message.text.substr(0, message.text.find('\n'));
-				if (ImGui::Selectable(first_line.c_str()) && message.line != 0)
-					m_hlsl_editor.GoToLine(message.line);
-				ImGui::PopStyleColor();
-				if (ImGui::IsItemHovered() && message.text.find('\n') != std::string::npos)
-					ImGui::SetTooltip("%s", message.text.c_str());
-				ImGui::PopID();
-			}
-			ImGui::EndChild();
-		}
+			DrawCompilerDiagnostics(output_height);
 
 		ImGui::Text(Tr("Ln %zu, Col %zu | %zu lines"), m_hlsl_editor.CursorLine(), m_hlsl_editor.CursorColumn(),
 			m_hlsl_editor.LineCount());

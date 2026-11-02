@@ -68,6 +68,7 @@ namespace cygi::assistant
 		PermissionMode mode = PermissionMode::automatic;
 		std::vector<ChatMessage> conversation;
 		uint64_t version = 0;
+		uint64_t next_message = 0;
 		bool pending = false;
 		uint64_t prompt_id = 0;
 		ULONGLONG started = 0;
@@ -94,6 +95,7 @@ namespace cygi::assistant
 
 		void Add(ChatMessage entry)
 		{
+			entry.id = ++next_message;
 			conversation.push_back(std::move(entry));
 			while (conversation.size() > kMaxConversation)
 				conversation.erase(conversation.begin());

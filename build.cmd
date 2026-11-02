@@ -1,5 +1,8 @@
 @echo off
 setlocal
+rem Deterministic /showIncludes output keeps Ninja header dependencies valid on every OS locale.
+set VSLANG=1033
+chcp 65001 >nul
 rem ---------------------------------------------------------------------------
 rem  build.cmd [Release^|Debug] [clean]
 rem  Configures (Ninja + MSVC x64) and builds CyGPUInspector into bin\<Config>\
@@ -7,7 +10,8 @@ rem ---------------------------------------------------------------------------
 set CONFIG=%1
 if "%CONFIG%"=="" set CONFIG=Release
 set ROOT=%~dp0
-set BUILD_DIR=%ROOT%build\%CONFIG%
+rem Separate native caches from release archives, and avoid older locale-dependent caches.
+set BUILD_DIR=%ROOT%build\Native-%CONFIG%
 
 for /f "usebackq tokens=*" %%i in (`"%ProgramFiles(x86)%\Microsoft Visual Studio\Installer\vswhere.exe" -latest -products * -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath`) do set VSDIR=%%i
 if "%VSDIR%"=="" (

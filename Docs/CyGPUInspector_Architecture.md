@@ -58,7 +58,7 @@ Four separate channels, for four needs that do not share constraints:
 | `CyGPUInspectorDecompiler` | static library | disassembly, decompilation backends, validation |
 | `CyGPUInspectorDatabase` | static library | JSON + blob store, game profiles, cache |
 | `CyGPUInspectorMCP` | small stdio executable | MCP server, proxy to the App |
-| `ThirdParty` | — | reshade (BSD-3), imgui (MIT), ImGuiColorTextEdit (MIT), 3Dmigoto decompiler (GPL-3), dxil-spirv and dxbc-spirv (MIT), SPIRV-Cross (Apache-2.0) |
+| `ThirdParty` | — | reshade (BSD-3), imgui (MIT), CyUI modules + bundled CodeEditor (MIT), 3Dmigoto decompiler (GPL-3), dxil-spirv and dxbc-spirv (MIT), SPIRV-Cross (Apache-2.0) |
 
 The structuring rule: **the add-on only observes, transmits and carries out orders.** It contains
 no database, no decompiler, no analysis and no complex interface.

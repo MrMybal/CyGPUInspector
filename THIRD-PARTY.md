@@ -11,12 +11,15 @@ and an AGPL v3 work to be linked into a single one.
 |---|---|---|---|---|
 | **ReShade SDK** (headers only) | 6.8.x, API 20 | BSD-3-Clause | the add-on | `ThirdParty/reshade/` |
 | **Dear ImGui** (docking) | 1.93 WIP | MIT | the standalone | `ThirdParty/imgui/` |
-| **CyUI** | 1.0.0, snapshot 2026-10-17 | MIT | standalone themes, layout and widgets; uses the same ImGui instance | `ThirdParty/CyUI/` |
+| **CyUI** | 1.2.0, revision `ff023e6` | MIT | selected standalone modules; uses the same ImGui instance | `ThirdParty/CyUI/` |
 | **Dear ImGui** (headers only) | 1.92.5 | MIT | the add-on overlay, matching ReShade's own version | `ThirdParty/reshade_imgui/` |
-| **ImGuiColorTextEdit** | commit `99fcb0d` | MIT | the HLSL editor of the standalone: colouring, undo, find, error marks | `ThirdParty/ImGuiColorTextEdit/` |
+| **ImGuiColorTextEdit** | CyUI pinned and patched snapshot (`VERSION.json`) | MIT | shared CodeEditor backend: undo, find, wrapping, compiler markers | `ThirdParty/CyUI/third_party/texteditor/` |
+| **Lexilla** | `e675376` | permissive (Neil Hodgson and contributors) | shared Code syntax engines | `ThirdParty/CyUI/third_party/lexilla/` |
+| **Scintilla headers** | `c4f1619` | same permissive license | lexer interface; no Scintilla editing UI | `ThirdParty/CyUI/third_party/scintilla/` |
+| **SciTE profile data** | `d166c05` | same permissive license | generated syntax profiles | `ThirdParty/CyUI/third_party/SciTE-Properties-License.txt` |
 | **3Dmigoto HLSL decompiler** | commit `8f329bd` | **GPL-3.0** | the `hlsldecompiler` decompilation backend | `ThirdParty/hlsldecompiler/` |
-| **dxil-spirv** | 2.73.0, commit `bed30ff` | MIT | the `dxil-spirv` backend, first half: DXIL → SPIR-V | `ThirdParty/dxil-spirv/` |
-| **SPIRV-Cross** | commit `be71ee8c` | Apache-2.0 OR MIT | the `dxil-spirv` backend, second half: SPIR-V → HLSL | `ThirdParty/SPIRV-Cross/` |
+| **dxil-spirv** | 2.73.0, commit `bed30ff` | MIT | the `dxil-spirv` backend, first half: DXIL â†’ SPIR-V | `ThirdParty/dxil-spirv/` |
+| **SPIRV-Cross** | commit `be71ee8c` | Apache-2.0 OR MIT | the `dxil-spirv` backend, second half: SPIR-V â†’ HLSL | `ThirdParty/SPIRV-Cross/` |
 
 `dxil-spirv` carries four components of its own, vendored inside its tree and each under its own
 notice: the Khronos **SPIR-V headers** (MIT / Khronos free use), the SPIR-V builder from
@@ -35,8 +38,8 @@ installer.
 Wherever the DLL goes, two notices go with it, kept in the repository next to where it is put
 (`CyGPUInspectorUnreal/CyGPUInspector/Binaries/ThirdParty/CyGPUInspector/Win64/`):
 
-* `LICENSE-ReShade.txt` — ReShade's own licence, verbatim;
-* `NOTICES-ReShade.txt` — the full licences of the libraries compiled into the DLL: Dear ImGui
+* `LICENSE-ReShade.txt` â€” ReShade's own licence, verbatim;
+* `NOTICES-ReShade.txt` â€” the full licences of the libraries compiled into the DLL: Dear ImGui
   (MIT), MinHook with the Hacker Disassembler Engine (BSD-2-Clause), stb (MIT or public domain),
   glad (MIT), utfcpp (BSL-1.0), SPIRV-Headers (MIT-style, Khronos), Vulkan Memory Allocator (MIT),
   DirectX-Headers (MIT), OpenXR SDK (Apache-2.0), simple-lossless-encoder (BSD-3-Clause), the
@@ -51,7 +54,7 @@ toolchain; `Docs/ShaderDecompiler.md` lists exactly which generated headers it w
 
 ## 3Dmigoto
 
-The DXBC → HLSL decompiler of [bo3b/3Dmigoto](https://github.com/bo3b/3Dmigoto), including the
+The DXBC â†’ HLSL decompiler of [bo3b/3Dmigoto](https://github.com/bo3b/3Dmigoto), including the
 `BinaryDecompiler` layer it depends on, which itself derives from **HLSLcc** by James Jones.
 
 It is **GPL-3.0**. It can be linked directly into CyGPUInspector, which is AGPL-3.0, rather than
@@ -75,7 +78,7 @@ present: CyGPUInspector captures through the official ReShade add-on API.
 ## dxil-spirv and SPIRV-Cross
 
 The Shader Model 6 chain. Both are permissively licensed, both are vendored unmodified, and the
-obligation each imposes — carry the copyright and permission notices — is met by shipping the
+obligation each imposes â€” carry the copyright and permission notices â€” is met by shipping the
 licence files and leaving every file header untouched.
 
 Only the converter is built: no CLI tools, no shared libraries, and, in the case of dxil-spirv, the
@@ -120,3 +123,14 @@ Complete notices and source links ship in root `LICENCES/`. Each separately copy
 Unreal plugin carries its own `LICENCES/` for the components it includes. See
 [Docs/Licensing.md](Docs/Licensing.md) for packaging, update and rollback instructions.
 CyToolsCore and CyUEMCPSDK are not included dependencies of this product.
+
+CyUI's exact revision and vendored subset are recorded in `ThirdParty/CyUI/ORIGIN.txt`.
+Its `THIRD_PARTY_NOTICES.md`, editor `VERSION.json` and syntax lock file retain
+upstream provenance. Core, Canvas, Timeline, Plots, Images, Inspector, Code,
+CodeEditor, Diagnostics and DocumentViews are selected. Audio, Gallery, CEF,
+ImGuizmo and the bundled ImGui are not linked. The earlier standalone
+`ThirdParty/ImGuiColorTextEdit` copy has been removed in favor of CyUI's backend.
+
+CyUI is distributed under the MIT license. Its [upstream license](https://github.com/MrMybal/CyUI/blob/ff023e646c6a3038b3dfbfd53f6d2b4a2f5955e3/LICENSE)
+is in a currently private repository; the complete license is included in
+`LICENCES/CyUI/LICENSE.txt` and in every release archive.

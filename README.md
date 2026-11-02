@@ -120,7 +120,7 @@ in and dropping it in `Lang/`; no rebuild is needed. See [Docs/Translating.md](D
 
 ## Building
 
-Visual Studio 2022 with the Desktop C++ workload, and the Windows SDK. Everything else is vendored
+Visual Studio 2022 with the Desktop C++ workload (including C++20), and the Windows SDK. Everything else is vendored
 in `ThirdParty/`.
 
 ```
@@ -184,3 +184,7 @@ Release packages and separately copyable Unreal plugins carry complete notices i
 `LICENCES/`, with source links in `LICENCES/SOURCES.txt`. See
 [Licensing and distribution](Docs/Licensing.md) for included components, packaging,
 updates and rollback.
+
+The standalone selects explicit modules from pinned CyUI 1.2.0; only its native CodeEditor
+requires C++20. Module boundaries, retained host behavior, dependency updates and validation
+commands are documented in [Docs/CyUIIntegration.md](Docs/CyUIIntegration.md).

@@ -4,16 +4,38 @@
 
 #include <CyGPUInspectorCore/Localization.hpp>
 #include <CyGPUInspectorCore/Version.hpp>
-#include <cyui/CyUI.h>
+#include <cyui/Core.h>
 #include <imgui_internal.h>
 
 #include <algorithm>
 #include <cmath>
+#include <fstream>
+#include <iterator>
 
 namespace cygi
 {
 	using i18n::Tr;
 	using i18n::TrId;
+
+	void Application::SyncCyuiLocale()
+	{
+		for (const auto &language : i18n::Languages())
+		{
+			cyui::TranslationCatalog messages;
+			if (!language.path.empty())
+			{
+				std::ifstream file(language.path, std::ios::binary);
+				const std::string text{std::istreambuf_iterator<char>(file), std::istreambuf_iterator<char>()};
+				Json catalogue;
+				if (Json::Parse(text, catalogue))
+					for (const auto &entry : catalogue["strings"].Members())
+						if (!entry.second.AsString().empty())
+							messages.emplace(entry.first, entry.second.AsString());
+			}
+			cyui::registerTranslations(language.code.c_str(), messages, language.name.c_str());
+		}
+		cyui::setLocale(i18n::CurrentLanguage().c_str());
+	}
 
 	void Application::LoadAppearance()
 	{

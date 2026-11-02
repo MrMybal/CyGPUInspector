@@ -45,8 +45,13 @@ LICENCE_FILES = {
     'ReShade/NOTICES-ReShade.txt': 'CyGPUInspectorUnreal/CyGPUInspector/Binaries/ThirdParty/CyGPUInspector/Win64/NOTICES-ReShade.txt',
     'DearImGui/LICENSE.txt': 'ThirdParty/imgui/LICENSE.txt',
     'DearImGui-ReShade/LICENSE.txt': 'ThirdParty/reshade_imgui/LICENSE.txt',
-    'ImGuiColorTextEdit/LICENSE': 'ThirdParty/ImGuiColorTextEdit/LICENSE',
-    'ImGuiColorTextEdit/ORIGIN.md': 'ThirdParty/ImGuiColorTextEdit/ORIGIN.md',
+    'ImGuiColorTextEdit/LICENSE': 'ThirdParty/CyUI/third_party/texteditor/LICENSE',
+    'ImGuiColorTextEdit/VERSION.json': 'ThirdParty/CyUI/third_party/texteditor/VERSION.json',
+    'CyUI/THIRD_PARTY_NOTICES.md': 'ThirdParty/CyUI/THIRD_PARTY_NOTICES.md',
+    'CyUI/ORIGIN.txt': 'ThirdParty/CyUI/ORIGIN.txt',
+    'Lexilla/License.txt': 'ThirdParty/CyUI/third_party/lexilla/License.txt',
+    'Scintilla/License.txt': 'ThirdParty/CyUI/third_party/scintilla/License.txt',
+    'SciTE/License.txt': 'ThirdParty/CyUI/third_party/SciTE-Properties-License.txt',
     '3Dmigoto/LICENSE.GPL.txt': 'ThirdParty/hlsldecompiler/LICENSE.GPL.txt',
     '3Dmigoto/ORIGIN.md': 'ThirdParty/hlsldecompiler/ORIGIN.md',
     'dxil-spirv/LICENSE.MIT': 'ThirdParty/dxil-spirv/LICENSE.MIT',
@@ -185,7 +190,7 @@ def main():
     for addon in ('CyGPUInspectorRS.addon64', 'CyGPUInjector.addon64'):
         copy(os.path.join(BIN, addon), os.path.join(stage, 'Addons', addon))
     for exe in ('CyGPUInspectorCoreTests.exe', 'CyGPUInspectorAssistantTests.exe', 'CyGPUInspectorIpcTests.exe',
-                'CyGPUInspectorShaderTests.exe',
+                'CyGPUInspectorShaderTests.exe', 'CyGPUInspectorInterfaceTests.exe',
                 'CyGPUInspectorFakeSession.exe', 'CyGPUInspectorMCP.exe'):
         copy(os.path.join(BIN, exe), os.path.join(stage, 'TestWithoutAGame', exe))
     # The IPC tests load the add-on the way the Unreal plugin does: it sits next to them.
@@ -257,21 +262,7 @@ def main():
     copy_tree(os.path.join(ROOT, 'LICENCES'), os.path.join(stage, 'LICENCES'))
 
     # The licences of what is compiled into the binaries.
-    licences = {
-        'CyUI/LICENSE.txt': 'ThirdParty/CyUI/LICENSE',
-        'ReShade-SDK/LICENSE.md': 'ThirdParty/reshade/LICENSE.md',
-        'ReShade/LICENSE-ReShade.txt': 'CyGPUInspectorUnreal/CyGPUInspector/Binaries/ThirdParty/CyGPUInspector/Win64/LICENSE-ReShade.txt',
-        'ReShade/NOTICES-ReShade.txt': 'CyGPUInspectorUnreal/CyGPUInspector/Binaries/ThirdParty/CyGPUInspector/Win64/NOTICES-ReShade.txt',
-        'DearImGui/LICENSE.txt': 'ThirdParty/imgui/LICENSE.txt',
-        'ImGuiColorTextEdit/LICENSE': 'ThirdParty/ImGuiColorTextEdit/LICENSE',
-        'ImGuiColorTextEdit/ORIGIN.md': 'ThirdParty/ImGuiColorTextEdit/ORIGIN.md',
-        '3Dmigoto/LICENSE.GPL.txt': 'ThirdParty/hlsldecompiler/LICENSE.GPL.txt',
-        '3Dmigoto/ORIGIN.md': 'ThirdParty/hlsldecompiler/ORIGIN.md',
-        'dxil-spirv/LICENSE.MIT': 'ThirdParty/dxil-spirv/LICENSE.MIT',
-        'dxbc-spirv/LICENSE': 'ThirdParty/dxil-spirv/subprojects/dxbc-spirv/LICENSE',
-        'SPIRV-Headers/LICENSE': 'ThirdParty/dxil-spirv/third_party/spirv-headers/LICENSE',
-        'SPIRV-Cross/LICENSE': 'ThirdParty/SPIRV-Cross/LICENSE',
-    }
+    licences = LICENCE_FILES
     for target, source in licences.items():
         copy(os.path.join(ROOT, source), os.path.join(stage, 'Licenses', target))
     copy_tree(os.path.join(ROOT, 'ThirdParty', 'SPIRV-Cross', 'LICENSES'), os.path.join(stage, 'Licenses', 'SPIRV-Cross', 'LICENSES'))

@@ -68,3 +68,17 @@ add_test(NAME CoreTests COMMAND CyGPUInspectorCoreTests)
 add_test(NAME ShaderTests COMMAND CyGPUInspectorShaderTests)
 add_test(NAME IpcTests COMMAND CyGPUInspectorIpcTests)
 add_test(NAME AssistantTests COMMAND CyGPUInspectorAssistantTests)
+
+# Exercise the same shared editor adapter used by the standalone, plus its selected views.
+if(TARGET CyUI::CodeEditor)
+    add_executable(CyGPUInspectorInterfaceTests
+        CyGPUInspectorInterfaceTests/Main.cpp
+        ${CMAKE_SOURCE_DIR}/CyGPUInspectorApp/Source/Editor/HlslEditor.cpp
+        ${CMAKE_SOURCE_DIR}/CyGPUInspectorApp/Source/Editor/CompilerMessages.cpp)
+    target_include_directories(CyGPUInspectorInterfaceTests PRIVATE ${CMAKE_SOURCE_DIR}/CyGPUInspectorApp/Source)
+    target_link_libraries(CyGPUInspectorInterfaceTests PRIVATE
+        CyGPUInspectorCore CyUI::Core CyUI::CodeEditor CyUI::Timeline CyUI::Images CyUI::Inspector
+        CyUI::Diagnostics CyUI::DocumentViews)
+    set_target_properties(CyGPUInspectorInterfaceTests PROPERTIES RUNTIME_OUTPUT_DIRECTORY "${CYGI_OUTPUT_DIR}")
+    add_test(NAME InterfaceTests COMMAND CyGPUInspectorInterfaceTests)
+endif()

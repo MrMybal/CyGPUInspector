@@ -577,6 +577,9 @@ namespace
 		run_until([&]() { return !assistant.IsPending(); });
 		std::vector<ChatMessage> conversation = assistant.Conversation();
 		Check(conversation.size() == 2 && conversation[1].content == "The bloom is pass 3.", "the reply arrives");
+		Check(conversation.size() == 2 && conversation[0].id != 0 && conversation[1].id > conversation[0].id,
+			"transcript messages receive stable nonzero increasing IDs");
+		const auto first_message_id = conversation.front().id;
 		Check(std::find(called.begin(), called.end(), "get_frame_graph") != called.end() &&
 			std::find(called.begin(), called.end(), "get_session") != called.end(),
 			"its tools ran on the pumping thread, with the session as context");
@@ -594,6 +597,8 @@ namespace
 		assistant.Decide(approval.id, false);
 		run_until([&]() { return !assistant.IsPending(); });
 		conversation = assistant.Conversation();
+		Check(conversation.front().id == first_message_id && conversation.back().id > conversation.front().id,
+			"appending information does not change earlier transcript IDs");
 		Check(std::find(called.begin(), called.end(), "disable_shader") == called.end(), "a refused operation never runs");
 		Check(!conversation.empty() && English(conversation.back().notice).find("denied") != std::string::npos,
 			"and the conversation says so");

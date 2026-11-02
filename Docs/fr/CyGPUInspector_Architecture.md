@@ -58,7 +58,7 @@ Quatre canaux distincts, pour quatre besoins qui n'ont pas les mêmes contrainte
 | `CyGPUInspectorDatabase` | bibliothèque statique | JSON + magasin de blobs, profils de jeu, cache |
 | `CyGPUInspectorMCP` | petit exe stdio | serveur MCP, proxy vers l'App |
 | `CyGPUInjector` | add-on ReShade | applique un mod exporté : remplace des shaders, supprime des draws. Aucun IPC, aucune analyse |
-| `ThirdParty` | — | reshade (BSD-3), imgui (MIT), ImGuiColorTextEdit (MIT), 3Dmigoto decompiler (GPL-3), dxil-spirv (MIT), SPIRV-Cross (Apache-2.0) |
+| `ThirdParty` | — | reshade (BSD-3), imgui (MIT), CyUI modules + bundled CodeEditor (MIT), 3Dmigoto decompiler (GPL-3), dxil-spirv (MIT), SPIRV-Cross (Apache-2.0) |
 
 Règle structurante : **l'add-on ne fait qu'observer, transmettre et exécuter des ordres.**
 Il ne contient ni base de données, ni décompilateur, ni analyse, ni interface complexe.

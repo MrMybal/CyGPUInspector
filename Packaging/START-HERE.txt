@@ -1,4 +1,4 @@
-CyGPUInspector 0.2.0
+CyGPUInspector 0.4.0
 ====================
 
 (Français : voir COMMENCER-ICI.txt)
@@ -112,7 +112,7 @@ Draw suppressions, on the other hand, are immediate.
 
   TestWithoutAGame\
     Demo.cmd                       starts the fake session + the application
-    RunTests.cmd                   runs the four test suites
+    RunTests.cmd                   runs the five test suites
     CyGPUInspectorFakeSession.exe  the synthetic producer
 
   Docs\                            the full documentation (Docs\fr\ for French)

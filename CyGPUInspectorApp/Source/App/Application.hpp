@@ -4,6 +4,7 @@
 #pragma once
 
 #include "Analysis/FrameGraph.hpp"
+#include "App/TimingNavigation.hpp"
 #include "Assistant/Assistant.hpp"
 #include "Editor/HlslEditor.hpp"
 #include "Analysis/FrameTimeline.hpp"
@@ -22,6 +23,14 @@
 #include "Session/SessionClient.hpp"
 
 #include <CyGPUInspectorCore/SessionDirectory.hpp>
+
+#include <cyui/modules/CodeEditor.h>
+#include <cyui/modules/Timeline.h>
+#include <cyui/modules/Plots.h>
+#include <cyui/modules/Images.h>
+#include <cyui/modules/Inspector.h>
+#include <cyui/modules/Diagnostics.h>
+#include <cyui/modules/DocumentViews.h>
 
 #include <cstdint>
 #include <filesystem>
@@ -81,6 +90,11 @@ namespace cygi
 		void DrawSessionBar();
 		void DrawAppearanceMenu();
 		void LoadAppearance();
+		void SyncCyuiLocale();
+		void DrawCompilerDiagnostics(float height);
+		void DrawMcpLog();
+		struct ImageSurface { cyui::ImageState view; bool fit = true; };
+		cyui::ImageResult DrawImageSurface(const char *id, ImageSurface &, const cyui::ImageData &, ImVec2 room);
 		void FocusWorkspace(int workspace);
 		void FocusPanel(const char *name);
 		bool BeginPanel(const char *name);
@@ -299,6 +313,22 @@ namespace cygi
 		// The adapter this application renders with, to say so when it is not the game's.
 		std::string m_adapter_name;
 
+		// Common view state is per panel; GPU data, storage and mutations stay in this application.
+		cyui::TimelineState m_frame_timeline_view, m_continuous_timeline_view;
+		TimingNavigation m_frame_navigation, m_continuous_navigation;
+		cyui::PlotState m_frame_plot;
+		cyui::ImageState m_preview_image_view;
+		std::unordered_map<ImGuiID, ImageSurface> m_frame_image_views;
+		ImageSurface m_buffer_image_surface;
+		cyui::InspectorState m_pipeline_inspector;
+		cyui::TextFilter m_pipeline_filter, m_panel_filter;
+		cyui::TranscriptState m_transcript_view;
+		cyui::LogBuffer m_mcp_log_view{256};
+		cyui::LogState m_mcp_log_state;
+		std::deque<std::string> m_mcp_displayed_log;
+		cyui::CodeEditor m_disassembly_editor;
+		std::string m_disassembly_visible_text, m_disassembly_prepared_filter;
+		uint64_t m_disassembly_revision = 0, m_disassembly_prepared_revision = UINT64_MAX;
 		ShaderAnalysisService m_analysis;
 		uint32_t m_disassembly_shader = 0;      // which shader m_disassembly_lines belongs to
 		std::vector<std::string> m_disassembly_lines;
@@ -352,7 +382,6 @@ namespace cygi
 		char m_assistant_endpoint[1024] = {};
 		char m_assistant_key[512] = {};       // in memory only, never saved
 		char m_assistant_input[4096] = {};
-		uint64_t m_assistant_seen_version = 0;
 		bool m_assistant_focus = false;
 		bool m_assistant_refocus = false;
 		// A shader job waits here until the disassembly and the decompilation it sends are ready.
@@ -392,12 +421,10 @@ namespace cygi
 		bool m_track_follow = true;              // keep the newest frame at the right edge
 		double m_track_view_start = 0.0;         // milliseconds on the track's axis
 		double m_track_view_span = 0.0;
-		bool m_track_dragged = false;
 		uint64_t m_track_center_request = 0;     // a frame picked in the strip, to bring into view
 		bool m_view_fit = true;
 		double m_view_start = 0.0;
 		double m_view_span = 0.0;
-		bool m_view_dragged = false;
 
 		// What has been changed in the connected game, and the metadata of the package it exports
 		// to. Kept across a disconnection on purpose: the work outlives the session.
@@ -438,7 +465,9 @@ namespace cygi
 		int m_default_tabs_pending = 0;
 		bool m_picking_tabs = false;           // this frame is one of those
 		bool m_show_demo = false;
+#if defined(CYUI_HAS_GALLERY)
 		bool m_show_cyui_gallery = false;
+#endif
 		int m_workspace = 0;
 		std::string m_theme = "navy";
 		int m_density = 0;

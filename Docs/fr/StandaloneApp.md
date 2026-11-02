@@ -6,7 +6,7 @@
 
 ## Apparence et navigation
 
-L’interface utilise **CyUI 1.0.0**, inclus dans le projet avec le Dear ImGui existant.
+L’interface utilise **CyUI 1.2.0**, inclus dans le projet avec le Dear ImGui existant.
 Le thème bleu **Navy** est choisi par défaut. **Affichage > Apparence** permet de
 changer de thème, de densité et de taille d’affichage (85 à 175 %). Ces préférences
 s’ajoutent au fichier de réglages existant, sans remplacer la langue ni les paramètres
@@ -48,7 +48,7 @@ CyGPUInspectorApp/Source
 │   ├── AssistantAgent      la boucle d'outils bornée et les tâches sur les shaders
 │   └── Assistant           connexion, conversation, autorisations, threads de travail
 ├── Editor/
-│   ├── HlslEditor          ImGuiColorTextEdit avec coloration HLSL et marques d'erreurs
+│   ├── HlslEditor          CyUI::CodeEditor avec syntaxe HLSL commune et marques d'erreurs
 │   └── CompilerMessages    messages de FXC et DXC rapportés aux lignes du source
 ├── Analysis/
 │   ├── FrameGraph              clustering, dépendances, classification des passes
@@ -123,7 +123,7 @@ agrandie. Elle offre
 
 * la coloration syntaxique, les numéros de ligne, les parenthèses appariées, annuler et rétablir,
   rechercher et remplacer (Ctrl+F), le retour à la ligne, l'affichage des espaces et une minimap
-  (ImGuiColorTextEdit, MIT) ;
+  (CyUI CodeEditor, MIT) ;
 * **Charger une reconstruction** : la sortie de n'importe quel décompilateur pour ce shader, ou
   n'importe lequel de ses nettoyages IA ;
 * un point d'entrée et un profil pour **tester la compilation** (F7), préremplis avec le profil du
@@ -182,3 +182,5 @@ Rien de coûteux ne tourne sur le thread de l'interface :
 * le **thread d'analyse** désassemble et réfléchit les shaders, avec cache mémoire et disque ;
 * le **frame graph** est reconstruit quatre fois par seconde, pas à chaque image, et la case
   `Follow` permet de geler celui d'une frame pendant qu'on l'inspecte.
+
+Voir [CyUIIntegration.md](../CyUIIntegration.md) pour les modules retenus, leurs limites et les commandes de validation.

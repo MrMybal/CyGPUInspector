@@ -7,7 +7,7 @@
 //
 // Copyright (C) 2026 Cyberalien. Licensed under the GNU AGPL v3 or later.
 #include "Application.hpp"
-#include <cyui/CyUI.h>
+#include <cyui/Core.h>
 
 #include <CyGPUInspectorCore/Localization.hpp>
 

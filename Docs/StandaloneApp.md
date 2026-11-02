@@ -6,7 +6,7 @@
 
 ## Appearance and navigation
 
-The standalone uses **CyUI 1.0.0**, vendored in `ThirdParty/CyUI`, with the existing
+The standalone uses **CyUI 1.2.0**, vendored in `ThirdParty/CyUI`, with the existing
 Dear ImGui docking build. The default is the blue **Navy** theme. **View > Appearance**
 offers five themes, Compact/Comfortable density and 85–175% interface scaling. These
 preferences are saved under `appearance` in the existing settings JSON, preserving
@@ -62,7 +62,7 @@ CyGPUInspectorApp/Source
 │   ├── AssistantAgent      the bounded tool loop and the shader jobs
 │   └── Assistant           connection, conversation, approvals, worker threads
 ├── Editor/
-│   ├── HlslEditor          ImGuiColorTextEdit with HLSL colouring and error marks
+│   ├── HlslEditor          CyUI::CodeEditor with shared HLSL syntax and error marks
 │   └── CompilerMessages    FXC and DXC messages as lines of the source
 ├── Analysis/
 │   ├── FrameGraph              clustering, dependencies, pass classification
@@ -137,7 +137,7 @@ own (**Open in a window**, or View > HLSL editor). That window is a separate Win
 system's title bar: it can go to another screen and be maximised. It has
 
 * syntax colouring, line numbers, bracket matching, undo and redo, find and replace (Ctrl+F),
-  word wrap, whitespace and a minimap (ImGuiColorTextEdit, MIT);
+  word wrap, whitespace and a minimap (CyUI CodeEditor, MIT);
 * **Load a reconstruction**: any decompiler's output for this shader, or any AI clean-up of it;
 * an entry point and a profile to **test the compilation** for (F7), prefilled with the shader's
   own profile; FXC for Shader Model 5, DXC for Shader Model 6;
@@ -193,3 +193,5 @@ Nothing expensive runs on the interface thread:
 * the **analysis thread** disassembles and reflects shaders, with a memory and disk cache;
 * the **frame graph** is rebuilt four times a second, not every frame, and the `Follow` checkbox
   freezes one frame's graph while it is being inspected.
+
+See [CyUIIntegration.md](CyUIIntegration.md) for module selection, dependency boundaries and reproducible build checks.

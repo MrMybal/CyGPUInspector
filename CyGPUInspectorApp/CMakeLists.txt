@@ -11,13 +11,8 @@ set(CYGI_IMGUI_SOURCES
     ${CYGI_THIRDPARTY}/imgui/imgui_demo.cpp
     ${CYGI_THIRDPARTY}/imgui/backends/imgui_impl_dx11.cpp
     ${CYGI_THIRDPARTY}/imgui/backends/imgui_impl_win32.cpp)
-# The HLSL editor widget (MIT). See ThirdParty/ImGuiColorTextEdit/ORIGIN.md.
-set(CYGI_TEXTEDITOR_SOURCES
-    ${CYGI_THIRDPARTY}/ImGuiColorTextEdit/TextEditor.cpp)
-# Dear ImGui and the editor are third party code: do not fail our /W4 build on their warnings.
+# CyUI owns the shared syntax engines and the optional C++20 editor backend.
 set_source_files_properties(${CYGI_IMGUI_SOURCES} PROPERTIES COMPILE_OPTIONS "/W1")
-# The editor needs a few C++20 library calls; the rest of the project stays C++17.
-set_source_files_properties(${CYGI_TEXTEDITOR_SOURCES} PROPERTIES COMPILE_OPTIONS "/W1;/std:c++20")
 
 set(CYGI_APP_SOURCES
     Source/Main.cpp
@@ -25,6 +20,7 @@ set(CYGI_APP_SOURCES
     Source/App/Application.hpp
     Source/App/Application.cpp
     Source/App/Appearance.cpp
+    Source/App/SharedViews.cpp
     Source/App/CapturePanels.cpp
     Source/App/ContinuousTimeline.cpp
     Source/App/TimelineDrawing.hpp
@@ -82,26 +78,34 @@ set_source_files_properties(Source/CyGPUInspectorApp.rc PROPERTIES OBJECT_DEPEND
 add_library(CyGPUInspectorImGui STATIC ${CYGI_IMGUI_SOURCES})
 target_include_directories(CyGPUInspectorImGui PUBLIC ${CYGI_THIRDPARTY}/imgui ${CYGI_THIRDPARTY}/imgui/backends)
 set(CYUI_IMGUI_TARGET CyGPUInspectorImGui CACHE STRING "Dear ImGui target for CyUI" FORCE)
-set(CYUI_BUILD_DEMO OFF CACHE BOOL "Build only the embedded CyUI library" FORCE)
+set(CYUI_BUILD_DEMO OFF CACHE BOOL "Build only embedded CyUI modules" FORCE)
+set(CYUI_BUILD_AUDIO OFF CACHE BOOL "No audio UI in the GPU inspector" FORCE)
+option(CYGI_BUILD_UI_GALLERY "Enable the optional CyUI developer gallery" OFF)
+set(CYUI_BUILD_GALLERY ${CYGI_BUILD_UI_GALLERY} CACHE BOOL "No gallery in the production application" FORCE)
+set(CYUI_BUILD_WEB_CEF OFF CACHE BOOL "No browser runtime" FORCE)
+set(CYUI_MODULES "CodeEditor;Timeline;Plots;Images;Inspector;Diagnostics;DocumentViews" CACHE STRING "GPU inspector presentation modules" FORCE)
 add_subdirectory(${CYGI_THIRDPARTY}/CyUI ${CMAKE_CURRENT_BINARY_DIR}/CyUI)
 
-add_executable(CyGPUInspectorApp WIN32 ${CYGI_APP_SOURCES} ${CYGI_TEXTEDITOR_SOURCES})
+add_executable(CyGPUInspectorApp WIN32 ${CYGI_APP_SOURCES})
 
 source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR}/Source PREFIX "Source" FILES ${CYGI_APP_SOURCES})
 source_group("ThirdParty\\imgui" FILES ${CYGI_IMGUI_SOURCES})
-source_group("ThirdParty\\ImGuiColorTextEdit" FILES ${CYGI_TEXTEDITOR_SOURCES})
 
 target_include_directories(CyGPUInspectorApp PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/Source
     ${CMAKE_SOURCE_DIR}/CyGPUInspectorCore/Include
     ${CYGI_THIRDPARTY}/imgui
-    ${CYGI_THIRDPARTY}/imgui/backends
-    ${CYGI_THIRDPARTY}/ImGuiColorTextEdit)
+    ${CYGI_THIRDPARTY}/imgui/backends)
 
 target_compile_definitions(CyGPUInspectorApp PRIVATE WIN32_LEAN_AND_MEAN UNICODE _UNICODE)
 
 target_link_libraries(CyGPUInspectorApp PRIVATE CyGPUInspectorCore CyGPUInspectorDecompiler CyGPUInspectorDatabase
-    CyUI::CyUI d3d11 dxgi dxguid user32 gdi32 shell32 advapi32 ole32 windowscodecs winhttp comdlg32)
+    CyUI::Core CyUI::CodeEditor CyUI::Timeline CyUI::Plots CyUI::Images
+    CyUI::Inspector CyUI::Diagnostics CyUI::DocumentViews d3d11 dxgi dxguid user32 gdi32 shell32 advapi32 ole32 windowscodecs winhttp comdlg32)
+
+if(CYGI_BUILD_UI_GALLERY)
+    target_link_libraries(CyGPUInspectorApp PRIVATE CyUI::Gallery)
+endif()
 
 set_target_properties(CyGPUInspectorApp PROPERTIES
     RUNTIME_OUTPUT_DIRECTORY "${CYGI_OUTPUT_DIR}"

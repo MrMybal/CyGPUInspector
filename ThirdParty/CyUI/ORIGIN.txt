@@ -1,9 +1,12 @@
-CyUI 1.0.0 - themed Dear ImGui controls
+CyUI 1.2.0 - modular Dear ImGui presentation
 
-Source supplied by Cyberalien: CyImgui_Interface library
-Snapshot: 2026-10-17. MIT license: LICENSE, unchanged.
-Only include/, src/, CMakeLists.txt and LICENSE are vendored, without changes.
-The demo's ImGui copy, Python wrappers and build outputs are not included.
-CyGPUInspector builds CyUI with its existing Dear ImGui target; no sibling
-checkout, extra application or system font installation is required at runtime.
-Integration guide: upstream docs/AI_GUIDE.md.
+Upstream: https://github.com/MrMybal/CyUI
+License URL: https://github.com/MrMybal/CyUI/blob/ff023e646c6a3038b3dfbfd53f6d2b4a2f5955e3/LICENSE
+The upstream repository is currently private; the complete MIT text is included locally.
+Revision: ff023e646c6a3038b3dfbfd53f6d2b4a2f5955e3
+Snapshot: 2026-11-02. MIT license: LICENSE, unchanged.
+Vendored CMake, include/, src/, docs/, data/ and the required Code/CodeEditor
+dependencies (Lexilla, Scintilla headers, SciTE profiles and TextEditor).
+No bundled ImGui, audio/browser runtime, Python binding or demo is used.
+Sources are unchanged; the application selects explicit CyUI module targets
+and supplies its existing Dear ImGui target. See THIRD_PARTY_NOTICES.md.

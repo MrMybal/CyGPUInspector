@@ -9,7 +9,7 @@
 #include "Resource.h"
 
 #include <CyGPUInspectorCore/Version.hpp>
-#include <cyui/CyUI.h>
+#include <cyui/Core.h>
 
 #include <imgui.h>
 #include <imgui_internal.h>

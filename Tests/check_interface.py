@@ -37,7 +37,10 @@ def main():
     try:
         time.sleep(0.6)
         cases = [(key, key, [], True) for key in ('navy', 'mid-grey', 'light-grey', 'amber-night', 'violet')]
+        cases += [(key + '-comfortable', key, ['--ui-comfortable'], True) for key in ('navy', 'mid-grey', 'light-grey', 'amber-night', 'violet')]
         cases += [
+            ('small-85', 'navy', ['--ui-scale=0.85'], True),
+            ('large-175', 'light-grey', ['--ui-scale=1.75', '--ui-size=1920x1200'], True),
             ('compact-1280', 'navy', ['--ui-size=1280x800'], True),
             ('comfortable-125', 'navy', ['--ui-size=1600x1000', '--ui-scale=1.25', '--ui-comfortable'], True),
             ('no-active-session', 'navy', [], False),
@@ -72,7 +75,7 @@ def main():
             print('{}: rendered {}x{}, no ImGui errors, preferences preserved'.format(name, width, abs(height)), flush=True)
     finally:
         fake.terminate()
-        fake.wait(timeout=5)
+        fake.wait(timeout=15)
     print('{} real interface checks passed'.format(len(cases)))
 
 

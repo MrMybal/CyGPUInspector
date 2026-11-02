@@ -1,6 +1,6 @@
 # Licensing and distribution
 
-CyGPUInspector **0.3.0** and its Unreal plugin remain under **GNU AGPL v3 or later**.
+CyGPUInspector **0.4.0** and its Unreal plugin remain under **GNU AGPL v3 or later**.
 The full product license is in [LICENSE](../LICENSE) and
 [LICENCES/CyGPUInspector-AGPL-3.0.txt](../LICENCES/CyGPUInspector-AGPL-3.0.txt).
 Third-party license texts and copyright notices are preserved unchanged.

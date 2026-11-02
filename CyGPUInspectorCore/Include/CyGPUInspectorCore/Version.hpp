@@ -10,9 +10,9 @@
 #endif
 
 #define CYGI_VERSION_MAJOR 0
-#define CYGI_VERSION_MINOR 3
+#define CYGI_VERSION_MINOR 4
 #define CYGI_VERSION_PATCH 0
-#define CYGI_VERSION_STRING "0.3.0"
+#define CYGI_VERSION_STRING "0.4.0"
 
 #ifndef RC_INVOKED
 namespace cygi

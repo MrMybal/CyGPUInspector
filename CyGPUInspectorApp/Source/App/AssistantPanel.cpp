@@ -7,7 +7,7 @@
 //
 // Copyright (C) 2026 Cyberalien. Licensed under the GNU AGPL v3 or later.
 #include "Application.hpp"
-#include <cyui/CyUI.h>
+#include <cyui/Core.h>
 #include "LayoutHelpers.hpp"
 
 #include <CyGPUInspectorCore/Localization.hpp>
@@ -32,11 +32,6 @@ namespace cygi
 
 	namespace
 	{
-		const ImVec4 kAiColour(0.8f, 0.7f, 1.0f, 1.0f);
-		const ImVec4 kUserColour(0.5f, 0.75f, 1.0f, 1.0f);
-		const ImVec4 kAssistantColour(0.65f, 0.9f, 0.65f, 1.0f);
-		const ImVec4 kInformationColour(0.9f, 0.8f, 0.5f, 1.0f);
-		const ImVec4 kWarningColour(1.0f, 0.6f, 0.3f, 1.0f);
 
 		constexpr const char *kFenceStart = "```hlsl\n";
 
@@ -548,41 +543,22 @@ namespace cygi
 		const float available = ImGui::GetContentRegionAvail().y;
 		const float input_height = std::clamp(available * 0.22f, line * 2.2f, 90.0f);
 		const float below = input_height + line * 4.6f + (approval_pending ? line * 4.0f : 0.0f);
-		ImGui::BeginChild("conversation", ImVec2(0.0f, std::max(line * 3.0f, available - below)),
-			ImGuiChildFlags_Borders);
-		if (conversation.empty())
-			ImGui::TextWrapped(Tr("Hello! Ask a question about the frame: which pass is the bloom, what a shader does, "
-			                      "why a pass is slow. The assistant reads the data itself with CyGPUInspector's tools."));
-		for (size_t i = 0; i < conversation.size(); ++i)
-		{
-			const ChatMessage &message = conversation[i];
-			ImGui::PushID(static_cast<int>(i));
-			const ImVec4 colour = message.role == "user" ? kUserColour
-				: message.role == "assistant" ? kAssistantColour : kInformationColour;
-			ImGui::TextColored(colour, "%s", label(message));
-			ImGui::SameLine();
-			const std::string text = body(message);
-			if (ImGui::SmallButton(TrId("Copy")))
-				ImGui::SetClipboardText(text.c_str());
-			ImGui::TextWrapped("%s", text.c_str());
-			ImGui::Separator();
-			ImGui::PopID();
-		}
+		std::vector<cyui::TranscriptMessage> messages;
+		for (const auto &message : conversation)
+			messages.push_back({message.id, label(message), body(message), {}});
+		if (messages.empty())
+			messages.push_back({UINT64_MAX, Tr("Assistant"), Tr("Hello! Ask a question about the frame: which pass is the bloom, what a shader does, why a pass is slow. The assistant reads the data itself with CyGPUInspector's tools."), {}});
 		if (pending)
+			messages.push_back({UINT64_MAX - 1, Tr("Working..."), m_assistant.Progress(),
+				std::to_string(m_assistant.PendingSeconds()) + " s"});
+		const auto transcript = cyui::transcript("conversation", m_transcript_view, messages,
+			ImVec2(0.0f, std::max(line * 3.0f, available - below)));
+		// Links are data from the provider. Copy for review instead of launching a URL.
+		if (!transcript.link.empty())
 		{
-			ImGui::Text(Tr("Working... %llu s"), static_cast<unsigned long long>(m_assistant.PendingSeconds()));
-			const std::string progress = m_assistant.Progress();
-			if (!progress.empty())
-				ImGui::TextWrapped("%s", progress.c_str());
+			ImGui::SetClipboardText(transcript.link.c_str());
+			cyui::notify(Tr("Link copied to clipboard"));
 		}
-		const uint64_t version = m_assistant.ConversationVersion();
-		if (version != m_assistant_seen_version || pending)
-		{
-			if (version != m_assistant_seen_version || ImGui::GetScrollY() >= ImGui::GetScrollMaxY() - 4.0f)
-				ImGui::SetScrollHereY(1.0f);
-			m_assistant_seen_version = version;
-		}
-		ImGui::EndChild();
 
 		if (approval_pending)
 		{
@@ -728,7 +704,7 @@ namespace cygi
 			any = true;
 			ImGui::PushID(i);
 
-			ImGui::TextColored(kAiColour, "%s", annotation.Describe().c_str());
+			ImGui::TextColored(cyui::vec(cyui::palette().info), "%s", annotation.Describe().c_str());
 			if (!annotation.created.empty())
 			{
 				ImGui::SameLine();
@@ -740,7 +716,7 @@ namespace cygi
 			if (annotation.kind == AnnotationKind::cleanup && SplitCleanup(annotation.text, summary, hlsl))
 			{
 				ImGui::TextWrapped("%s", summary.c_str());
-				ImGui::TextColored(kWarningColour, "%s", Tr("AI reconstructed HLSL: never the original source, which "
+				ImGui::TextColored(cyui::vec(cyui::palette().warning), "%s", Tr("AI reconstructed HLSL: never the original source, which "
 				                                             "does not exist in a compiled shader."));
 				if (ImGui::SmallButton(TrId("Open in the HLSL editor")))
 					OpenHlslEditor(shader_id, hlsl, "AI clean-up (" + annotation.author + ")", true);

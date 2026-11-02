@@ -44,6 +44,7 @@ namespace cygi::assistant
 		std::string role;       // "user", "assistant" or "information"
 		std::string content;    // what was said, verbatim
 		Text notice;            // an information message of the application, translated when shown
+		uint64_t id = 0;        // local presentation identity, never sent to the provider
 	};
 
 	// ---- the tools --------------------------------------------------------------------------------

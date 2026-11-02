@@ -1,6 +1,6 @@
 // CyGPUInspectorApp — an HLSL text editor: colours, line numbers, undo, find, compiler errors.
 //
-// A thin layer over ImGuiColorTextEdit (MIT, ThirdParty/ImGuiColorTextEdit) with its HLSL language
+// A host adapter over CyUI::CodeEditor with its shared HLSL language
 // definition. It is used for the HLSL tab, the HLSL editor window and the read-only views of
 // reconstructed code, so all of them colour code the same way.
 //
@@ -17,7 +17,7 @@
 #include <string>
 #include <vector>
 
-class TextEditor;
+namespace cyui { class CodeEditor; }
 
 namespace cygi
 {
@@ -66,7 +66,9 @@ namespace cygi
 		bool IsModified() const;
 
 	private:
-		std::unique_ptr<TextEditor> m_editor;
+		std::unique_ptr<cyui::CodeEditor> m_editor;
+		size_t m_checked_revision = ~size_t(0);
+		bool m_syntax_available = true;
 		size_t m_loaded_undo = 0;   // the undo position right after SetText
 	};
 }

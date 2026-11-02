@@ -13,7 +13,7 @@
 //
 // Copyright (C) 2026 Cyberalien. Licensed under the GNU AGPL v3 or later.
 #include "Application.hpp"
-#include <cyui/CyUI.h>
+#include <cyui/Core.h>
 
 #include <CyGPUInspectorCore/Format.hpp>
 #include <CyGPUInspectorCore/Localization.hpp>
@@ -232,6 +232,7 @@ namespace cygi
 	{
 		ReleaseBufferView();
 		m_buffer_view_index = index;
+		m_buffer_image_surface = {};
 		m_buffer_view = LoadImageFile(m_device, png.wstring(), m_buffer_view_width, m_buffer_view_height,
 			m_buffer_view_error);
 	}
@@ -288,12 +289,9 @@ namespace cygi
 					static_cast<double>(item.range_max));
 				if (m_buffer_view != nullptr && m_buffer_view_width != 0 && m_buffer_view_height != 0)
 				{
-					const ImVec2 avail = ImGui::GetContentRegionAvail();
-					const float scale = std::min(avail.x / static_cast<float>(m_buffer_view_width),
-						avail.y / static_cast<float>(m_buffer_view_height));
-					ImGui::Image(reinterpret_cast<ImTextureID>(m_buffer_view),
-						ImVec2(static_cast<float>(m_buffer_view_width) * scale,
-						       static_cast<float>(m_buffer_view_height) * scale));
+					DrawImageSurface("capture-buffer-surface", m_buffer_image_surface,
+						{reinterpret_cast<ImTextureID>(m_buffer_view), int(m_buffer_view_width), int(m_buffer_view_height)},
+						ImGui::GetContentRegionAvail());
 				}
 				else if (!m_buffer_view_error.empty())
 				{

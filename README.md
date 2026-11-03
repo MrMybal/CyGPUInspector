@@ -13,6 +13,22 @@ into the game stays small; all the analysis lives in the standalone application.
 
 Licence: **GNU Affero General Public License v3 or later** (AGPL-3.0-or-later). See [LICENSE](LICENSE).
 
+## Screenshots
+
+Captured from CyGPUInspector 0.4.0 using the included synthetic demo session.
+
+**Frame inspection** — GPU passes, frame events, shaders and the live image in the Navy theme.
+
+![CyGPUInspector frame inspection with GPU passes, shader details and live image](Assets/screenshots/frame-inspection.png)
+
+**Continuous timeline** — frame history, GPU waits and pass timings across successive frames.
+
+![CyGPUInspector continuous timeline showing frames, GPU waits and passes](Assets/screenshots/continuous-timeline.png)
+
+**HLSL view** — decompiled shader code with syntax highlighting in the Light Grey theme.
+
+![CyGPUInspector HLSL shader code with syntax highlighting in the light theme](Assets/screenshots/hlsl-editor-light.png)
+
 ## Components
 
 | Component | Role | State |

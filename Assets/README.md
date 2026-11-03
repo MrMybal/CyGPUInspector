@@ -13,3 +13,10 @@ Both derived files are downscaled from the original with a high quality filter. 
 original, regenerate them the same way and rebuild: the resource scripts
 (`CyGPUInspectorApp/Source/CyGPUInspectorApp.rc`, `CyGPUInspectorMCP/Source/CyGPUInspectorMCP.rc`)
 embed them at link time, so nothing here is read at run time.
+
+## Application screenshots
+
+`screenshots/` contains lossless PNG captures of CyGPUInspector 0.4.0, used by both
+READMEs. They show the included synthetic demo session in French, with the Navy
+and Light Grey themes. The images are actual application renders, converted from
+BMP to PNG without changing their content.

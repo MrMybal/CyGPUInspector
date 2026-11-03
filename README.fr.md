@@ -13,6 +13,22 @@ composant injecté reste léger ; toute la puissance d'analyse est dans l'applic
 
 Licence : **GNU Affero General Public License v3 ou ultérieure** (AGPL-3.0-or-later). Voir [LICENSE](LICENSE).
 
+## Captures d’écran
+
+Captures de CyGPUInspector 0.4.0 avec la session de démonstration synthétique incluse.
+
+**Inspection d’une frame** — passes GPU, événements, shaders et image en direct avec le thème Navy.
+
+![Inspection d’une frame dans CyGPUInspector : passes GPU, détails du shader et image en direct](Assets/screenshots/frame-inspection.png)
+
+**Timeline continue** — historique des frames, attentes GPU et temps des passes sur plusieurs frames.
+
+![Timeline continue de CyGPUInspector montrant les frames, les attentes GPU et les passes](Assets/screenshots/continuous-timeline.png)
+
+**Vue HLSL** — code du shader décompilé avec coloration syntaxique dans le thème Light Grey.
+
+![Code HLSL d’un shader dans CyGPUInspector avec coloration syntaxique et thème clair](Assets/screenshots/hlsl-editor-light.png)
+
 ## Composants
 
 | Composant | Rôle | État |

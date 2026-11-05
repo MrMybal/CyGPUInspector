@@ -17,6 +17,7 @@ on:
       - 'Tools/build_help.mjs'
       - 'Tools/check_help_export.mjs'
       - 'Tests/check_cydoc.mjs'
+      - 'Tests/check_readme_links.mjs'
       - 'CyGPUInspectorCore/Include/CyGPUInspectorCore/Localization.hpp'
       - 'CyGPUInspectorCore/Include/CyGPUInspectorCore/ModPackage.hpp'
       - 'CyGPUInspectorCore/Include/CyGPUInspectorCore/Version.hpp'
@@ -37,6 +38,7 @@ on:
       - 'Tools/build_help.mjs'
       - 'Tools/check_help_export.mjs'
       - 'Tests/check_cydoc.mjs'
+      - 'Tests/check_readme_links.mjs'
       - 'CyGPUInspectorCore/Include/CyGPUInspectorCore/Localization.hpp'
       - 'CyGPUInspectorCore/Include/CyGPUInspectorCore/ModPackage.hpp'
       - 'CyGPUInspectorCore/Include/CyGPUInspectorCore/Version.hpp'
@@ -132,3 +134,7 @@ jobs:
         run: |
           cygi_browser_path="$(command -v google-chrome)"
           CYGI_TEST_BROWSER="$cygi_browser_path" node Tests/check_cydoc.mjs build/pages/site build/pages/checks/published
+      - name: Follow both published README links into the visual reader
+        run: |
+          cygi_browser_path="$(command -v google-chrome)"
+          CYGI_TEST_BROWSER="$cygi_browser_path" node Tests/check_readme_links.mjs build/pages/checks/readme

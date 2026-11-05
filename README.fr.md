@@ -4,7 +4,7 @@
 
 *Disponible aussi en [anglais](README.md), qui est la langue de référence du projet.*
 
-**[Consulter la documentation](https://mrmybal.github.io/CyGPUInspector/#/fr/welcome)** — guides, recherche, captures, schémas et références API en français. Le même manuel reste disponible hors ligne avec F1 dans l’application.
+**[Documentation](https://mrmybal.github.io/CyGPUInspector/#/fr/welcome)** — guides, recherche, captures, schémas et références API en français. Le même manuel reste disponible hors ligne avec F1 dans l’application.
 
 Inspecteur GPU temps réel et offline : frame debugger, inspecteur de shaders et de ressources,
 profileur, décompilateur et analyse assistée par IA, avec **ReShade comme agent de capture et de
@@ -215,9 +215,14 @@ ReShade est simplement non supportée.
 
 ## Documentation
 
-Tout est dans [Docs/fr/](Docs/fr/) ; commencer par
-[Docs/fr/CyGPUInspector_Architecture.md](Docs/fr/CyGPUInspector_Architecture.md), puis
-[Docs/fr/Limitations.md](Docs/fr/Limitations.md).
+[Ouvrir la documentation interactive](https://mrmybal.github.io/CyGPUInspector/#/fr/welcome)
+pour retrouver le lecteur CyDoc complet, avec navigation, recherche, captures,
+schémas et choix français/anglais. Le même manuel fonctionne hors ligne avec
+**F1** ou **Aide > Guide utilisateur** dans l’application.
+
+Les sources techniques modifiables restent dans [Docs/fr/](Docs/fr/), notamment
+[l’architecture](Docs/fr/CyGPUInspector_Architecture.md) et
+[les limitations](Docs/fr/Limitations.md).
 
 ## Tiers
 

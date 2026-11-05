@@ -4,7 +4,7 @@
 
 *Also available in [French](README.fr.md).*
 
-**[Read the documentation](https://mrmybal.github.io/CyGPUInspector/#/en/welcome)** — searchable guides, screenshots, diagrams and API references. The same manual remains available offline through F1 in the application.
+**[Documentation](https://mrmybal.github.io/CyGPUInspector/#/en/welcome)** — searchable guides, screenshots, diagrams and API references. The same manual remains available offline through F1 in the application.
 
 A real-time and offline GPU inspector: frame debugger, shader and resource browser, profiler,
 decompiler and AI-assisted analysis, with **ReShade as the capture and control agent** inside the
@@ -204,8 +204,13 @@ The limits that follow from all this are collected, without softening, in
 
 ## Documentation
 
-Open **F1** or **Help > User guide** for the local CyDoc manual. Source technical
-documents remain in [Docs/](Docs/) with French translations in Docs/fr/.
+[Open the visual documentation](https://mrmybal.github.io/CyGPUInspector/#/en/welcome)
+for the complete CyDoc reader, with navigation, search, screenshots, diagrams and
+English/French language switching. The same manual works offline through **F1** or
+**Help > User guide** in the application.
+
+Editable technical sources remain in [Docs/](Docs/), with French translations in
+[Docs/fr/](Docs/fr/).
 
 ## Third party
 

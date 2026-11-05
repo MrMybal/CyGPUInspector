@@ -30,7 +30,7 @@ assert(!data.pages.some(p=>p.source&&/AssistantProvider|AppData|node_modules/.te
 const browser=await chromium.launch({headless:true,executablePath:process.env.CYGI_TEST_BROWSER||(process.platform==='win32'?'C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe':undefined),args:['--disable-background-networking','--disable-extensions']});
 const errors=[],requests=[],failures=[],localRequests=[];
 let checks=0;
-const check=(condition,message)=>{assert(condition,message);checks++;};
+const check=(condition,message)=>{assert(condition,message);checks++;console.log('PASS: '+message);};
 let server;
 if (process.env.CYGI_DOCS_TEST_TRANSPORT === 'http') {
  const prefix='/CyGPUInspector/';
@@ -91,10 +91,10 @@ try {
  await page.waitForFunction(()=>globalThis.cygiManual.resolve('ref-MCP','en')?.page.id==='ref-mcp');
  check((await page.locator('article').innerText()).includes('CyGPUInspectorMCP'),'legacy uppercase page alias');
  await page.getByRole('link',{name:'French',exact:true}).click(); await page.waitForURL(/\/fr\/ref-mcp/);
+ await page.locator('article[lang="fr"]').waitFor();
  check(page.url().includes('/fr/ref-mcp'),'source language links open the requested translation');
  await page.keyboard.press('Control+k');
- await page.waitForSelector('.search-dialog');
- const search=page.locator('.search-dialog input').first(); await search.fill('shader');
+ const search=page.locator('.search-dialog[open] input').first(); await search.waitFor({state:'visible'}); await search.fill('shader');
  await page.waitForTimeout(200);
  check((await page.locator('.search-dialog').innerText()).toLowerCase().includes('shader'),'keyboard search returns content');
  await page.keyboard.press('Escape');

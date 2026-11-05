@@ -126,10 +126,9 @@ jobs:
         env:
           DOCS_BASE_URL: ${{ steps.deployment.outputs.page_url }}
         run: node Tools/check_help_export.mjs build/pages/site --url "$DOCS_BASE_URL"
-      - name: Install the browser for the published reader
-        working-directory: Documentation
-        run: npx playwright install --with-deps chromium
-      - name: Test the actual public reader
+      - name: Test the actual public reader with the runner's Chrome
         env:
           CYGI_DOCS_URL: ${{ steps.deployment.outputs.page_url }}index.html
-        run: node Tests/check_cydoc.mjs build/pages/site build/pages/checks/published
+        run: |
+          cygi_browser_path="$(command -v google-chrome)"
+          CYGI_TEST_BROWSER="$cygi_browser_path" node Tests/check_cydoc.mjs build/pages/site build/pages/checks/published

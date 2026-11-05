@@ -61,7 +61,14 @@ const page=await context.newPage();
 page.on('pageerror',error=>errors.push(error.message));
 page.on('requestfailed',request=>failures.push(request.url()));
 page.on('response',response=>{if(response.status()>=400)failures.push(`${response.status()} ${response.url()}`);});
-async function go(route){await page.goto(base+'#/'+route);await page.waitForSelector('.cydoc-viewer');await page.waitForFunction(()=>document.querySelector('article')?.textContent?.length>40);}
+async function go(route){
+ const [locale,id]=route.split('?')[0].split('/');
+ const pageId=data.aliases?.[id]||id;
+ const target=data.pages.find(p=>p.id===pageId&&p.locale===locale)||data.pages.find(p=>p.id===pageId&&p.locale==='en');
+ assert(target,'Known route: '+route);
+ await page.goto(base+'#/'+route);await page.waitForSelector('.cydoc-viewer');
+ await page.waitForFunction(({title,locale,contentLocale})=>document.title.startsWith(title+' — ')&&document.documentElement.lang===locale&&document.querySelector('article')?.lang===contentLocale,{title:target.title,locale,contentLocale:target.locale});
+}
 try {
  await go('en/welcome');
  check((await page.title()).startsWith('Start here'),'English landing page');
@@ -101,11 +108,14 @@ try {
  await go('en/source-sources-cygpuinspectorcore-include-cygpuinspectorcore-modpackage-hpp');
  check((await page.locator('article').innerText()).includes('ModPackage'),'distributed public C++ source index');
  await go('en/welcome');
- await page.evaluate(()=>document.querySelector('article').scrollIntoView());
- await page.evaluate(()=>window.scrollTo(0,700));
+ await page.evaluate(()=>document.fonts.ready);
+ await page.evaluate(()=>window.scrollTo({top:700,behavior:'instant'}));
+ await page.waitForFunction(()=>window.scrollY>=690);
  const position=await page.evaluate(()=>window.scrollY);
- await page.locator('a[href="#/en/installation"]').first().click(); await page.waitForURL(/installation/);
- await page.goBack(); await page.waitForURL(/welcome/); await page.waitForTimeout(250);
+ // Use fixed navigation: an article link above the viewport would scroll before clicking.
+ await page.locator('.side-nav a[data-page="installation"]').first().click(); await page.waitForURL(/installation/);
+ await page.goBack(); await page.waitForURL(/welcome/);
+ await page.waitForFunction(position=>Math.abs(window.scrollY-position)<180,position,{timeout:5000});
  check(Math.abs((await page.evaluate(()=>window.scrollY))-position)<180,'reading position restored on return');
  const mobile=await browser.newContext({viewport:{width:390,height:844},isMobile:true,hasTouch:true});
  await mobile.route(/^https?:/,requestPolicy);

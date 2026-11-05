@@ -59,6 +59,13 @@ The texture is created with **one mip and one layer**, because a legacy D3D11 sh
 requires it. That is also exactly what a preview needs: the requested mip and slice are copied into
 mip 0 of the shared texture.
 
+### The two D3D12 flags and render-target use
+
+D3D12 sharing uses both `resource_flags::shared` and `resource_flags::shared_nt_handle`.
+The NT-handle flag selects the handle type; it does not replace the shared-resource flag.
+The texture also carries render-target and shader-resource use so the D3D11 preview device
+can open it. A missing share handle is reported as unsupported sharing.
+
 ### The final image
 
 `resource_id = kPreviewFinalImage` asks for whatever the swap chain presents: the game's own image

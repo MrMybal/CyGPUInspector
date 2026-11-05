@@ -2,6 +2,7 @@
 // Copyright (C) 2026 Cyberalien. Licensed under the GNU AGPL v3 or later.
 #include "Editor/HlslEditor.hpp"
 #include "App/TimingNavigation.hpp"
+#include "Help/HelpLauncher.hpp"
 #include <cyui/Core.h>
 #include <cyui/modules/CodeEditor.h>
 #include <cyui/modules/Diagnostics.h>
@@ -15,6 +16,8 @@
 #include <cmath>
 #include <functional>
 #include <limits>
+#include <fstream>
+#include <chrono>
 
 namespace
 {
@@ -158,6 +161,46 @@ namespace
 	}
 }
 
+namespace
+{
+	void OfflineHelp()
+	{
+		const auto root = std::filesystem::temp_directory_path() /
+			(std::wstring(L"CyGPUInspector help é # % ") + std::to_wstring(std::chrono::steady_clock::now().time_since_epoch().count()));
+		std::filesystem::create_directory(root);
+		auto write = [&](const char *name, const std::string &text) { std::ofstream file(root / name, std::ios::binary); file << text; };
+		write("index.html", "<!doctype html><title>Local help fixture</title>");
+		write("manifest.json", R"({"schemaVersion":1,"aliases":{"ref-MCP":"ref-mcp"},"pages":[
+			{"id":"welcome","locale":"en","headings":[{"id":"first-steps"}],"anchors":[],"html":"<div data-cydoc-id=\"figure-0\"></div>"},
+			{"id":"ref-mcp","locale":"en","headings":[],"html":"MCP"}]})");
+		write("legacy-routes.json", R"({"welcome":{"fr":{"premiers-pas":"first-steps"}}})");
+		std::string error;
+		const auto index = root / "index.html";
+		auto url = cygi::HelpLauncher::BuildUrl(index,"welcome","en",error);
+		Check(error.empty() && url.rfind(L"file:///",0) == 0, "CyDoc opens through a local file URL");
+		Check(url.find(L"%20") != std::wstring::npos && url.find(L"%23") != std::wstring::npos && url.find(L"%25") != std::wstring::npos && url.find(L"%C3%A9") != std::wstring::npos,
+			"Windows URL API encodes spaces, fragment characters and percent signs in installation paths");
+		Check(url.find(L"#/en/welcome") != std::wstring::npos, "native route defaults to English");
+		url = cygi::HelpLauncher::BuildUrl(index,"ref-MCP","fr",error);
+		Check(error.empty() && url.find(L"#/fr/ref-mcp") != std::wstring::npos, "legacy page alias retains requested locale and English fallback");
+		url = cygi::HelpLauncher::BuildUrl(index,"help:welcome#premiers-pas","fr",error);
+		Check(error.empty() && url.find(L"/first-steps") != std::wstring::npos, "legacy translated anchors map to a common stable section");
+		url = cygi::HelpLauncher::BuildUrl(index,"welcome?media=figure-0","en",error);
+		Check(error.empty() && url.find(L"?media=figure-0") != std::wstring::npos, "media state is inside the route fragment");
+		Check(cygi::HelpLauncher::BuildUrl(index,"unknown","en",error).empty() && !error.empty(), "unknown help page reports an error");
+		Check(cygi::HelpLauncher::BuildUrl(index,"welcome#missing","en",error).empty(), "unknown section does not open a misleading destination");
+		Check(cygi::HelpLauncher::BuildUrl(index,"welcome?media=missing","en",error).empty(), "unknown media route is rejected");
+		Check(cygi::HelpLauncher::ContextTopic("Ressources###Resources") == "resources" &&
+			cygi::HelpLauncher::ContextTopic("MCP") == "mcp", "contextual F1 uses stable panel identities across languages");
+		Check(cygi::HelpLauncher::ContextTopic("HLSL editor") == "hlsl" &&
+			cygi::HelpLauncher::ContextTopic("unrecognised") == "welcome", "contextual help has a predictable home fallback");
+		write("manifest.json", "{}");
+		Check(cygi::HelpLauncher::BuildUrl(index,"welcome","en",error).empty(), "missing or invalid CyDoc bundle is recoverable");
+		for (const char *name : {"index.html","manifest.json","legacy-routes.json"}) std::filesystem::remove(root / name);
+		std::filesystem::remove(root);
+	}
+}
+
 int main()
 {
 	ImGui::CreateContext(); auto &io = ImGui::GetIO();
@@ -167,7 +210,7 @@ int main()
 	cyui::apply(); cyui::loadFonts();
 	unsigned char *pixels; int width, height;
 	io.Fonts->GetTexDataAsRGBA32(&pixels, &width, &height); io.Fonts->SetTexID(ImTextureID(1));
-	Editor(); TimelineAndImages(); PropertiesAndDocuments();
+	Editor(); TimelineAndImages(); PropertiesAndDocuments(); OfflineHelp();
 	ImGui::DestroyContext();
 	std::printf("%d interface checks, %d failure(s)\n", checks, failures);
 	return failures ? 1 : 0;

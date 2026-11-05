@@ -1,0 +1,13 @@
+{
+  "name": "CyGPUInspector",
+  "defaultLocale": "en",
+  "locales": [{"code":"en","label":"English"},{"code":"fr","label":"Français"}],
+  "homePage": "welcome",
+  "content": "content",
+  "assets": "assets",
+  "out": "export",
+  "modules": ["image"],
+  "sources": ["sources"],
+  "sourceIndex": {"enabled":true,"includeDirs":["sources/CyGPUInspectorCore/Include"]},
+  "translationReport": true
+}

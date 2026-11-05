@@ -1,0 +1,18 @@
+{
+  "capture-flow": {
+    "nodes":[["game","Game + ReShade","Jeu + ReShade",0,0],["transport","Shared memory / pipes","Mémoire partagée / pipes",300,0],["app","Standalone analysis","Analyse standalone",600,0],["files","Captures / profiles / mods","Captures / profils / mods",600,160],["ai","AI provider / MCP agent","Fournisseur IA / agent MCP",300,160]],
+    "edges":[["game","transport"],["transport","app"],["app","files"],["ai","app"]]
+  },
+  "capture-modes": {
+    "nodes":[["live","Live history","Historique en direct",0,0],["saved","Saved single frame","Une frame sauvegardée",300,0],["deep","Deep command state","État profond des commandes",600,0],["bounded","Bounded observations","Observations bornées",0,160],["offline","Offline, no live pixels","Hors ligne, sans pixels vivants",300,160],["export","Separate PNG / DDS export","Export PNG / DDS séparé",600,160]],
+    "edges":[["live","bounded"],["saved","offline"],["deep","export"]]
+  },
+  "shader-workflow": {
+    "nodes":[["inspect","1. Inspect bytecode","1. Inspecter le bytecode",0,0],["edit","2. Reconstruct / edit","2. Reconstruire / éditer",300,0],["compile","3. Compile and review","3. Compiler et vérifier",600,0],["apply","4. Apply to live session","4. Appliquer en direct",600,160],["verify","5. Observe or restore","5. Observer ou restaurer",300,160],["save","6. Save profile / mod","6. Sauver profil / mod",0,160]],
+    "edges":[["inspect","edit"],["edit","compile"],["compile","apply"],["apply","verify"],["verify","save"]]
+  },
+  "ai-permissions": {
+    "nodes":[["assistant","Assistant: Auto / Ask / Full","Assistant : Auto / Demander / Tout",0,0],["host","Standalone permission checks","Contrôles dans le standalone",320,0],["mcp","MCP: Read / Debug / Modify","MCP : Lire / Déboguer / Modifier",640,0],["provider","CLI / API provider","Fournisseur CLI / API",0,160],["actions","Permitted game / file actions","Actions jeu / fichiers autorisées",320,160]],
+    "edges":[["assistant","host"],["mcp","host"],["assistant","provider"],["host","actions"]]
+  }
+}

@@ -431,6 +431,14 @@ namespace cygi
 
 	void Application::Draw(double delta_seconds)
 	{
+		if (const auto *focused = ImGui::GetCurrentContext()->NavWindow)
+		{
+			const auto *root = focused->RootWindow;
+			// Opening the menu must retain the help target of the panel it came from.
+			if (!(root->Flags & (ImGuiWindowFlags_Popup | ImGuiWindowFlags_ChildMenu)) &&
+				std::string(root->Name).rfind("##", 0) != 0)
+				m_help_context = HelpLauncher::ContextTopic(root->Name);
+		}
 		m_since_refresh += delta_seconds;
 		if (m_since_refresh > 1.0)
 		{
@@ -535,6 +543,9 @@ namespace cygi
 		DrawShaderCodePanel();
 		DrawModExportPanel();
 		DrawHlslEditorWindow();
+		if (ImGui::Shortcut(ImGuiKey_F1, ImGuiInputFlags_RouteGlobal))
+			m_help.Open(m_help_context);
+		m_help.Draw();
 
 		if (m_show_demo)
 			ImGui::ShowDemoWindow(&m_show_demo);
@@ -624,7 +635,9 @@ namespace cygi
 
 	void Application::RequestStartupView(const std::string &view)
 	{
-		if (view == "resources")
+		if (view == "help")
+			m_help.Open();
+		else if (view == "resources")
 			FocusPanel("Resources");
 		else if (view == "captures")
 			FocusWorkspace(1);
@@ -815,6 +828,11 @@ namespace cygi
 
 		if (ImGui::BeginMenu(TrId("Help")))
 		{
+			if (ImGui::MenuItem(TrId("User guide")))
+				m_help.Open();
+			if (ImGui::MenuItem(TrId("Help for this view"), "F1"))
+				m_help.Open(m_help_context);
+			ImGui::Separator();
 			if (ImGui::MenuItem(TrId("About CyGPUInspector")))
 				m_show_about = true;
 			ImGui::Separator();

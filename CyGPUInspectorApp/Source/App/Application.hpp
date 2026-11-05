@@ -7,6 +7,7 @@
 #include "App/TimingNavigation.hpp"
 #include "Assistant/Assistant.hpp"
 #include "Editor/HlslEditor.hpp"
+#include "Help/HelpLauncher.hpp"
 #include "Analysis/FrameTimeline.hpp"
 #include "Analysis/FrameTrack.hpp"
 #include "Mcp/McpBridge.hpp"
@@ -75,6 +76,8 @@ namespace cygi
 		// "hlsl", "ai-analysis", "hlsl-editor" or "assistant". No click, no cursor moved.
 		void RequestStartupShader(uint32_t shader_id, bool decompile, bool time = false);
 		void RequestStartupView(const std::string &view);
+		void OpenHelp(const std::string &topic = "welcome", const std::string &language = {}) { m_help.Open(topic, language); }
+		void SetHelpUrlOutput(const std::filesystem::path &path) { m_help.SetUrlOutput(path); }
 		// Fills the search of the Shaders panel, in the query language of find_shaders.
 		void SetShaderSearch(const std::string &query);
 
@@ -480,6 +483,8 @@ namespace cygi
 		bool m_startup_time = false;
 		std::string m_code_tab_request;        // a tab of Shader code to select once: "HLSL", "AI Analysis"
 		bool m_show_about = false;
+		HelpLauncher m_help;
+		std::string m_help_context = "welcome";
 		ID3D11ShaderResourceView *m_logo = nullptr;
 		bool m_wants_exit = false;
 		std::string m_status;

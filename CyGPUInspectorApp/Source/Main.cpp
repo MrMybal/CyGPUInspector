@@ -414,9 +414,26 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, LPWSTR, int)
 		if (int count = 0; LPWSTR *arguments = CommandLineToArgvW(GetCommandLineW(), &count))
 		{
 			bool connected = false;
+			std::string help_topic, help_language;
+			bool help_requested = false;
 			for (int i = 1; i < count; ++i)
 			{
 				const std::wstring argument = arguments[i];
+				if (argument.rfind(L"--help-topic=", 0) == 0)
+				{
+					help_topic = std::filesystem::path(argument.substr(13)).string(); help_requested = true;
+					continue;
+				}
+				if (argument.rfind(L"--help-language=", 0) == 0)
+				{
+					help_language = std::filesystem::path(argument.substr(16)).string(); help_requested = true;
+					continue;
+				}
+				if (argument.rfind(L"--help-url-file=", 0) == 0)
+				{
+					application.SetHelpUrlOutput(std::filesystem::path(argument.substr(16)));
+					continue;
+				}
 				if (!ui_capture.empty() && argument.rfind(L"--ui-theme=", 0) == 0)
 				{
 					capture_theme = std::filesystem::path(argument.substr(11)).string();
@@ -518,6 +535,7 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, LPWSTR, int)
 					}
 				}
 			}
+			if (help_requested) application.OpenHelp(help_topic.empty() ? "welcome" : help_topic, help_language);
 			LocalFree(arguments);
 		}
 		if (!ui_capture.empty())

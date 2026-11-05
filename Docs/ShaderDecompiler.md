@@ -252,6 +252,13 @@ a verdict:
 
 Only the last one means "faithful", and the interface never says more than the verdict allows.
 
+## D3D12 signing requirement
+
+D3D12 normally requires signed DXIL. Keep the matching `dxil.dll` beside
+`dxcompiler.dll`; inspect the compiler tools panel and replacement errors when
+signing or validation is unavailable. A successful disassembly does not prove
+that a replacement can be signed and accepted by the live device.
+
 ## What is never claimed
 
 The original source **does not exist** in a compiled shader. Variable names, function names and

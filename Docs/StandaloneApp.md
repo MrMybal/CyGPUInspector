@@ -34,6 +34,23 @@ desktop or account/provider request is made.
 
 ## Technology
 
+### Integrated offline documentation
+
+F1 or Help > User guide opens the local CyDoc reader in a browser, with English as the initial
+language and a French selector independent of application settings. It includes
+task guides, full technical references, full-text search, article history, section
+navigation, application captures and localized diagrams. Images support zoom, pan, annotations and enlargement inside the documentation
+window. Static diagrams are compiled into accessible SVG.
+The bundle is resolved from `Help/` beside the EXE even with another working
+directory. A modern browser is required; no game, network, embedded browser runtime,
+Node.js installation or provider account is needed to read it.
+Missing translations visibly use English; missing images leave the article usable.
+The build and packager copy all source content and validate its delivery.
+See [the bundle maintenance instructions](../Help/README.md).
+
+For scripted rendering, use `--help-language=en` (or `fr`) followed by
+`--help-topic=welcome`, `capture`, `hlsl` or another stable manifest ID.
+
 Win32 + Direct3D 11 + Dear ImGui (docking branch, MIT). The choice is reasoned, not a default:
 
 * the standalone has to **open shared D3D textures** coming from the game and display them with no

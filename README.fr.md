@@ -4,6 +4,8 @@
 
 *Disponible aussi en [anglais](README.md), qui est la langue de référence du projet.*
 
+**[Consulter la documentation](https://mrmybal.github.io/CyGPUInspector/#/fr/welcome)** — guides, recherche, captures, schémas et références API en français. Le même manuel reste disponible hors ligne avec F1 dans l’application.
+
 Inspecteur GPU temps réel et offline : frame debugger, inspecteur de shaders et de ressources,
 profileur, décompilateur et analyse assistée par IA, avec **ReShade comme agent de capture et de
 contrôle** dans le processus du jeu.
@@ -122,6 +124,12 @@ demande**. Voir [Docs/fr/AI.md](Docs/fr/AI.md).
 
 ## Langue
 
+**F1** ou **Aide > Guide utilisateur** ouvre la documentation intégrée hors ligne :
+manuel anglais/français avec recherche, captures de l’application, schémas,
+navigation par sections et références techniques complètes. L’anglais est la langue
+initiale du guide ; son sélecteur ne modifie pas les préférences de l’application.
+Conservez `App/Help/` avec l’exécutable lors d’une copie du paquet.
+
 L'anglais est la langue de référence : le code, les commentaires, la documentation et chaque
 chaîne de l'interface sont écrits en anglais d'abord. Une traduction est un catalogue dans `Lang/`
 qui associe ces chaînes anglaises à une autre langue, et tout ce qu'il ne couvre pas retombe sur
@@ -140,7 +148,14 @@ proxy : `Read Only` par défaut, puis `Debug Control` (désactiver, surligner, c
 
 ## Construire
 
-Prérequis : Windows 64 bits, Visual Studio 2022 avec les outils C++ (CMake et Ninja fournis avec).
+Prérequis : Windows 64 bits, Visual Studio 2022 avec les outils C++ (CMake et Ninja
+fournis avec), le SDK Windows et Node.js 22+ pour générer le manuel CyDoc local.
+Les dépendances natives et l’archive CyDoc sont dans `ThirdParty/`. Installez une fois
+les dépendances de génération :
+
+```sh
+npm --prefix Documentation ci
+```
 
 ```bash
 build.cmd Release
@@ -157,6 +172,12 @@ Sorties dans `bin/Release/` :
 | `CyGPUInspectorMCP.exe` | serveur MCP à lancer depuis un client MCP |
 | `CyGPUInspectorFakeSession.exe` | add-on synthétique, pour essayer l'app sans jeu |
 | `CyGPUInspectorIpcTests.exe` | test bout en bout de la chaîne RS → App |
+
+## Installation
+
+Chargez `CyGPUInspectorRS.addon64` à côté du jeu avec ReShade et prise en charge
+complète des add-ons. Le standalone détecte les sessions ; gardez `Lang/` et le
+lecteur `Help/` près de son exécutable. `CyGPUInjector.addon64` sert aux mods exportés.
 
 ## Essayer sans jeu
 
@@ -177,7 +198,7 @@ bin/Release/CyGPUInspectorShaderTests.exe
 bin/Release/CyGPUInspectorIpcTests.exe
 ```
 
-Aujourd'hui : 4106 + 142 + 141 vérifications, aucune en échec. Les tests compilent de vrais shaders,
+La référence historique documentée ici comptait 4106 + 142 + 141 vérifications, aucune en échec. Les tests compilent de vrais shaders,
 partagent une vraie texture GPU entre deux processus et relisent ses pixels, reconstruisent un
 frame graph complet, et décompilent un shader réel avant de vérifier qu'il se recompile en un
 bytecode aux instructions identiques, sauvegardent une capture et la relisent, et pilotent le

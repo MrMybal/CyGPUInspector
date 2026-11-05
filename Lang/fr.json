@@ -643,6 +643,8 @@
     "\nNo measurement of its own: placed between the two around it": "\nPas de mesure propre : positionné entre les deux mesures voisines",
     "\nPass structure reconstructed from a later frame": "\nStructure des passes reconstruite depuis une frame ultérieure",
     "CPU %.2f ms, peak %.2f ms": "CPU %.2f ms, pic %.2f ms",
-    "Syntax highlighting is limited to 32 MiB; the full document remains editable.": "La coloration syntaxique est limitée à 32 Mio ; le document complet reste modifiable."
+    "Syntax highlighting is limited to 32 MiB; the full document remains editable.": "La coloration syntaxique est limitée à 32 Mio ; le document complet reste modifiable.",
+    "User guide": "Guide utilisateur",
+    "Help for this view": "Aide pour cette vue"
   }
 }

@@ -21,6 +21,7 @@ set(CYGI_APP_SOURCES
     Source/App/Application.cpp
     Source/App/Appearance.cpp
     Source/App/SharedViews.cpp
+    Source/Help/HelpLauncher.cpp
     Source/App/CapturePanels.cpp
     Source/App/ContinuousTimeline.cpp
     Source/App/TimelineDrawing.hpp
@@ -96,12 +97,13 @@ target_include_directories(CyGPUInspectorApp PRIVATE
     ${CMAKE_SOURCE_DIR}/CyGPUInspectorCore/Include
     ${CYGI_THIRDPARTY}/imgui
     ${CYGI_THIRDPARTY}/imgui/backends)
+target_include_directories(CyGPUInspectorApp PRIVATE ${CYGI_THIRDPARTY}/CyDoc)
 
 target_compile_definitions(CyGPUInspectorApp PRIVATE WIN32_LEAN_AND_MEAN UNICODE _UNICODE)
 
 target_link_libraries(CyGPUInspectorApp PRIVATE CyGPUInspectorCore CyGPUInspectorDecompiler CyGPUInspectorDatabase
     CyUI::Core CyUI::CodeEditor CyUI::Timeline CyUI::Plots CyUI::Images
-    CyUI::Inspector CyUI::Diagnostics CyUI::DocumentViews d3d11 dxgi dxguid user32 gdi32 shell32 advapi32 ole32 windowscodecs winhttp comdlg32)
+    CyUI::Inspector CyUI::Diagnostics CyUI::DocumentViews d3d11 dxgi dxguid user32 gdi32 shell32 shlwapi advapi32 ole32 windowscodecs winhttp comdlg32)
 
 if(CYGI_BUILD_UI_GALLERY)
     target_link_libraries(CyGPUInspectorApp PRIVATE CyUI::Gallery)
@@ -127,3 +129,12 @@ add_custom_target(CyGPUInspectorLang ALL
     COMMENT "Copying the translation catalogues"
     VERBATIM)
 add_dependencies(CyGPUInspectorApp CyGPUInspectorLang)
+
+# CyDoc is generated at build time; the reader itself has no Node/runtime dependency.
+find_program(CYGI_NODE_EXECUTABLE NAMES node REQUIRED)
+add_custom_target(CyGPUInspectorHelp ALL
+    COMMAND "${CYGI_NODE_EXECUTABLE}" "${CMAKE_SOURCE_DIR}/Tools/build_help.mjs"
+            --output "${CYGI_OUTPUT_DIR}/Help"
+    WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}"
+    COMMENT "Generating and validating the offline CyDoc manual" VERBATIM)
+add_dependencies(CyGPUInspectorApp CyGPUInspectorHelp)

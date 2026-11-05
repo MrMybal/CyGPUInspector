@@ -18,7 +18,7 @@ network download or installed CyUI runtime is required by a build.
 | `CyUI::Images` | Live preview, final image and saved capture buffers; fit, zoom, pan and pixel coordinates |
 | `CyUI::Inspector` | Filterable read-only captured pipeline properties with exact integer values |
 | `CyUI::Diagnostics` | Navigable compiler output and bounded, searchable MCP activity with refusal severity |
-| `CyUI::DocumentViews` | Cached Markdown conversation transcript with stable application message IDs |
+| `CyUI::DocumentViews` | Cached Markdown conversation transcript with stable application message IDs; the manual uses CyDoc |
 | `CyUI::Canvas` (dependency) | Shared coordinate transforms and clipping for plots, timelines and images |
 
 `CYUI_MODULES` is configured **before** `add_subdirectory`. Explicit targets are
@@ -73,6 +73,8 @@ truncated. Disassembly uses the read-only backend without lexical preparation.
 Dock layouts, additive appearance preferences, provider configuration, captures,
 profiles and databases retain their existing formats. No settings migration runs.
 Conversation links are copied for review; provider text cannot launch a browser.
+
+## Limits and integrations
 
 CyUI's Markdown renderer is a native subset, not a complete CommonMark/HTML
 engine. It adds formatted conversation display without a browser dependency.

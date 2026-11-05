@@ -156,3 +156,11 @@ Rien n'est chargé dans un commandlet (cook, `-run=`), avec `-nullrhi` ou `-serv
 Le plugin a sa propre copie d'`InProcessApi.h`
 (`Source/ThirdParty/CyGPUInspector/CyGPUInspectorInProcessApi.h`), parce qu'Unreal le compile avec
 sa propre chaîne d'outils ; CMake réécrit cette copie dès que l'original change.
+
+## Notices de distribution
+
+Conservez le dossier LICENCES du plugin lors de sa copie dans un projet : licence AGPL
+du produit, notices ReShade/ImGui et SOURCES.txt. FilterPlugin.ini les inclut dans
+BuildPlugin ; les modules runtime les déploient comme fichiers NonUFS. Les notices
+de ReShade restent à côté de sa DLL. Voir [Licences](Licensing.md) pour les mises à jour
+et retours arrière.

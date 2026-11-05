@@ -1,0 +1,21 @@
+{
+  "name": "cygpuinspector-documentation",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "build": "node ../Tools/build_help.mjs",
+    "check": "node ../Tools/build_help.mjs --check",
+    "test": "node ../Tests/check_cydoc.mjs",
+    "build:pages": "node ../Tools/build_help.mjs --check --output build/pages/site",
+    "check:export": "node ../Tools/check_help_export.mjs ../build/pages/site"
+  },
+  "dependencies": {
+    "cydoc": "file:../ThirdParty/CyDoc/cydoc-0.1.0.tgz"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.56.1"
+  }
+}

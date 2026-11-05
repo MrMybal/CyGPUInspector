@@ -38,6 +38,11 @@ PLUGIN_ROOT = os.path.join(ROOT, 'CyGPUInspectorUnreal', 'CyGPUInspector')
 # The complete, unchanged notices of the components actually used by this product.
 # CyToolsCore and CyUEMCPSDK are not dependencies of its native assistant/MCP server.
 LICENCE_FILES = {
+    'CyDoc/LICENSE.txt': 'ThirdParty/CyDoc/LICENSE',
+    'CyDoc/ORIGIN.json': 'ThirdParty/CyDoc/ORIGIN.json',
+    'CyDoc/marked-LICENSE.md': 'ThirdParty/CyDoc/licenses/marked-LICENSE.md',
+    'CyDoc/prismjs-LICENSE': 'ThirdParty/CyDoc/licenses/prismjs-LICENSE',
+    'CyDoc/esbuild-LICENSE.md': 'ThirdParty/CyDoc/licenses/esbuild-LICENSE.md',
     'CyUI/LICENSE.txt': 'ThirdParty/CyUI/LICENSE',
     'CyGPUInspector-AGPL-3.0.txt': 'LICENSE',
     'ReShade-SDK/LICENSE.md': 'ThirdParty/reshade/LICENSE.md',
@@ -97,6 +102,47 @@ def source_version():
     """CYGI_VERSION_STRING: the package takes the version the binaries were built with."""
     header = os.path.join(ROOT, 'CyGPUInspectorCore', 'Include', 'CyGPUInspectorCore', 'Version.hpp')
     return re.search(r'#define CYGI_VERSION_STRING "([^"]+)"', open(header, encoding='utf-8').read()).group(1)
+
+
+def help_sources():
+    """The official CyDoc export inventory; personal or retired files never enter a package."""
+    import json
+    from pathlib import Path
+    directory = Path(BIN) / 'Help'
+    delivery = json.loads((directory / 'delivery.json').read_text(encoding='utf-8'))
+    return {name: str(directory / name) for name in [*delivery['files'], 'delivery.json']}
+
+
+def validate_help(read_file):
+    """Read back the delivered export and reject missing, stale or wrong-module bundles."""
+    import json
+    from pathlib import Path, PurePosixPath
+    problems = []
+    def safe(name):
+        p = PurePosixPath(name)
+        return not p.is_absolute() and '..' not in p.parts and ':' not in name
+    try:
+        receipt = json.loads(read_file('App/Help/delivery.json'))
+        assert receipt['schema'] == 1 and receipt['modules'] == ['image']
+        for name, digest in receipt['files'].items():
+            assert safe(name), name
+            try:
+                if hashlib.sha256(read_file('App/Help/' + name)).hexdigest() != digest:
+                    problems.append('help differs from generated export: ' + name)
+            except (KeyError, FileNotFoundError):
+                problems.append('missing help content: ' + name)
+        for name, digest in receipt['inputs'].items():
+            assert safe(name), name
+            if hashlib.sha256((Path(ROOT) / name).read_bytes()).hexdigest() != digest:
+                problems.append('help export is stale for source: ' + name)
+        manifest = json.loads(read_file('App/Help/manifest.json'))
+        assert manifest['schemaVersion'] == 1 and manifest['defaultLocale'] == 'en'
+        assert {x['code'] for x in manifest['locales']} == {'en', 'fr'}
+        assert 'media-image.js' in receipt['files']
+        assert not any('media-' + name + '.js' in receipt['files'] for name in ('mesh','graph','gif','video','gallery'))
+    except (AssertionError, KeyError, ValueError, FileNotFoundError):
+        problems.append('invalid or incomplete CyDoc export')
+    return problems
 
 
 def licence_contents(plugin=False):
@@ -170,6 +216,12 @@ def main():
     parser.add_argument('--output-root', default=os.path.join(ROOT, 'build', 'Release'),
                         help='Package output directory; use a separate directory to preserve an earlier release.')
     args = parser.parse_args()
+
+    node = shutil.which('node')
+    if not node:
+        parser.error('Node.js 22+ is required to generate the CyDoc manual before packaging.')
+    subprocess.run([node, os.path.join(ROOT, 'Tools', 'build_help.mjs'), '--output',
+                    os.path.join(BIN, 'Help')], cwd=ROOT, check=True)
 
     name = 'CyGPUInspector-{}-win64'.format(args.version)
     out_root = os.path.abspath(args.output_root)
@@ -259,6 +311,9 @@ def main():
             with open(path, 'w', encoding='utf-8', newline='') as file:
                 file.write(text.replace(line, replacement))
     copy_tree(os.path.join(ROOT, 'Docs'), os.path.join(stage, 'Docs'))
+    copy_tree(os.path.join(ROOT, 'Assets'), os.path.join(stage, 'Assets'))
+    for relative, source in help_sources().items():
+        copy(source, os.path.join(stage, 'App', 'Help', relative))
     copy_tree(os.path.join(ROOT, 'LICENCES'), os.path.join(stage, 'LICENCES'))
 
     # The licences of what is compiled into the binaries.
@@ -281,6 +336,7 @@ def main():
             return file.read()
 
     problems = validate_licences(read_staged, packaged_plugins, bool(args.dxc), dxc_contents)
+    problems.extend(validate_help(read_staged))
     if not packaged_plugins:
         problems.append('no Unreal plugins were packaged')
     for folder, _, files in os.walk(stage):
@@ -320,6 +376,7 @@ def main():
             problems.append('corrupt ZIP entry: ' + corrupt)
         problems.extend(validate_licences(lambda path: zip_file.read(name + '/' + path),
                                           packaged_plugins, bool(args.dxc), dxc_contents))
+        problems.extend(validate_help(lambda path: zip_file.read(name + '/' + path)))
     if problems:
         print('\n'.join(problems))
         return 1

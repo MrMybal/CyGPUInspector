@@ -134,3 +134,11 @@ ImGuizmo and the bundled ImGui are not linked. The earlier standalone
 CyUI is distributed under the MIT license. Its [upstream license](https://github.com/MrMybal/CyUI/blob/ff023e646c6a3038b3dfbfd53f6d2b4a2f5955e3/LICENSE)
 is in a currently private repository; the complete license is included in
 `LICENCES/CyUI/LICENSE.txt` and in every release archive.
+
+## CyDoc offline documentation
+
+The local reader uses CyDoc 0.1.0 (MIT), pinned to revision `774f2a7`.
+Only its image reader is distributed; no Three.js or 3D runtime is included.
+Full CyDoc, marked, PrismJS and esbuild notices are preserved under
+`LICENCES/CyDoc/` and in the exported reader. Node.js and these generation
+tools are build dependencies, not an installed reader service.

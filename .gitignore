@@ -25,3 +25,4 @@ CyGPUInspectorUnreal/**/Binaries/ThirdParty/**/*.addon64
 /Dist/
 __pycache__/
 *.pyc
+/Documentation/node_modules/

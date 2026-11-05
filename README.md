@@ -4,6 +4,8 @@
 
 *Also available in [French](README.fr.md).*
 
+**[Read the documentation](https://mrmybal.github.io/CyGPUInspector/#/en/welcome)** — searchable guides, screenshots, diagrams and API references. The same manual remains available offline through F1 in the application.
+
 A real-time and offline GPU inspector: frame debugger, shader and resource browser, profiler,
 decompiler and AI-assisted analysis, with **ReShade as the capture and control agent** inside the
 game process.
@@ -126,6 +128,12 @@ the MCP panel. See [Docs/MCP.md](Docs/MCP.md).
 
 ## Language
 
+**F1** or **Help > User guide** opens the integrated offline documentation: a
+searchable English/French manual with application screenshots, diagrams, section
+navigation and the full technical references. English is the guide's default;
+its language selector does not change application preferences. Keep `App/Help/`
+with the executable when copying a release.
+
 English is the base language: the code, the comments, the documentation and every string in the
 interface are written in English first. A translation is a catalogue in `Lang/` that maps those
 English strings onto another language, and anything it does not cover falls back to English — so a
@@ -136,8 +144,13 @@ in and dropping it in `Lang/`; no rebuild is needed. See [Docs/Translating.md](D
 
 ## Building
 
-Visual Studio 2022 with the Desktop C++ workload (including C++20), and the Windows SDK. Everything else is vendored
-in `ThirdParty/`.
+Visual Studio 2022 with the Desktop C++ workload (including C++20), the Windows SDK,
+and Node.js 22+ for generating the local CyDoc manual. Native dependencies and the
+pinned CyDoc archive are vendored in `ThirdParty/`. Install generation dependencies once:
+
+```sh
+npm --prefix Documentation ci
+```
 
 ```
 build.cmd
@@ -155,6 +168,13 @@ This configures CMake with Ninja and builds everything into `bin/Release/`. The 
 | `CyGPUInjector.addon64` | same, to apply an exported mod |
 | `CyGPUInspectorApp.exe` | anywhere; it finds running sessions by itself |
 | `Lang/` | next to `CyGPUInspectorApp.exe` (the build copies it there) |
+| `Help/` | next to `CyGPUInspectorApp.exe`; opens locally in a modern browser |
+
+## Try without a game
+
+Run `TestWithoutAGame/Demo.cmd` from the portable package, or start
+`bin/Release/CyGPUInspectorFakeSession.exe` and connect to FakeGame.exe from the app.
+The synthetic session supplies frame data and a real shared D3D11 image.
 
 ## Tests
 
@@ -164,7 +184,7 @@ bin/Release/CyGPUInspectorShaderTests.exe
 bin/Release/CyGPUInspectorIpcTests.exe
 ```
 
-Today: 4106 + 142 + 141 checks, none failing. The tests compile real shaders, run a fake session
+The baseline documented here recorded 4106 + 142 + 141 checks, none failing. The tests compile real shaders, run a fake session
 in a separate process, and exercise the whole chain rather than merely linking it.
 
 ## Honesty about what this is not
@@ -181,6 +201,11 @@ in a separate process, and exercise the whole chain rather than merely linking i
 
 The limits that follow from all this are collected, without softening, in
 [Docs/Limitations.md](Docs/Limitations.md).
+
+## Documentation
+
+Open **F1** or **Help > User guide** for the local CyDoc manual. Source technical
+documents remain in [Docs/](Docs/) with French translations in Docs/fr/.
 
 ## Third party
 

@@ -2,7 +2,7 @@
 
 *Disponible aussi en [anglais](../StandaloneApp.md), qui fait foi.*
 
-**État : milestones 2 à 5 implémentés.**
+**État : milestones 2 à 11 implémentés.**
 
 ## Apparence et navigation
 
@@ -22,6 +22,23 @@ lorsque vous ne travaillez pas dans un champ texte ou dans l’éditeur HLSL, qu
 ses propres raccourcis.
 
 ## Technologie
+
+### Documentation intégrée hors ligne
+
+F1 ou Aide > Guide utilisateur ouvre le lecteur local CyDoc dans un navigateur, en anglais initialement,
+avec un sélecteur français indépendant des réglages de l’application. Il propose
+guides par tâches, références techniques complètes, recherche dans les textes,
+historique des articles, sections, captures et schémas localisés. Les images
+gèrent zoom, déplacement, annotations et agrandissement dans la fenêtre ; les
+schémas sont compilés en SVG accessibles. Le dossier `Help/` est recherché à côté de l’EXE indépendamment
+du dossier de travail. Un navigateur moderne est requis ; aucun jeu, réseau, moteur
+de navigateur embarqué, Node.js ou compte fournisseur n’est nécessaire à la lecture.
+Une traduction absente utilise visiblement l’anglais et une image absente laisse
+l’article lisible. Build et packaging copient et vérifient tout le contenu.
+Voir [la maintenance du bundle](../../Help/README.md).
+
+Pour un rendu scripté, utilisez `--help-language=en` (ou `fr`) puis
+`--help-topic=welcome`, `capture`, `hlsl` ou un autre ID stable du manifeste.
 
 Win32 + Direct3D 11 + Dear ImGui (branche docking, MIT). Ce choix est motivé, pas par défaut :
 

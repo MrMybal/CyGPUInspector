@@ -61,3 +61,8 @@ The complete LLVM/NCSA, MIT and Microsoft license texts accompany those DLLs.
 dxil.dll is a separate component under Microsoft Software License Terms.
 
 Repository links supplement, and never replace, the complete license texts.
+
+- CyDoc 0.1.0, revision 774f2a7eabf7dd181a98ffc5add115b580b67f42:
+  https://github.com/MrMybal/CyDoc
+  MIT; full original text and generation dependency notices: CyDoc/.
+  Reproducible local package provenance: ThirdParty/CyDoc/ORIGIN.json.

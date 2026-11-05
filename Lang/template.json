@@ -3,6 +3,8 @@
  "name": "Language name, as that language writes it",
  "note": "Each key is the English source text and is also what the interface falls back to. Leave a value empty to keep the English. Do not translate a %s, a %u or anything after ### - the first two are where numbers and names are inserted, the last is how ImGui recognises a widget.",
  "strings": {
+  "Help for this view": "",
+  "User guide": "",
   "#%u": "",
   "#%u %s, %s, %u draws##s%u": "",
   "#%u, new": "",

@@ -1,0 +1,105 @@
+name: Documentation
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/documentation.yml'
+      - 'README*.md'
+      - 'Docs/**'
+      - 'Help/**'
+      - 'Assets/**'
+      - 'LICENCES/**'
+      - 'LICENSE'
+      - 'THIRD-PARTY.md'
+      - 'Documentation/package*.json'
+      - 'ThirdParty/CyDoc/**'
+      - 'Tools/build_help.mjs'
+      - 'Tools/check_help_export.mjs'
+      - 'Tests/check_cydoc.mjs'
+      - 'CyGPUInspectorCore/Include/CyGPUInspectorCore/Localization.hpp'
+      - 'CyGPUInspectorCore/Include/CyGPUInspectorCore/ModPackage.hpp'
+      - 'CyGPUInspectorCore/Include/CyGPUInspectorCore/Version.hpp'
+      - 'CyGPUInspectorCore/Include/CyGPUInspectorCore/InProcessApi.h'
+      - 'CyGPUInspectorApp/Source/Help/HelpLauncher.hpp'
+  pull_request:
+    paths:
+      - '.github/workflows/documentation.yml'
+      - 'README*.md'
+      - 'Docs/**'
+      - 'Help/**'
+      - 'Assets/**'
+      - 'LICENCES/**'
+      - 'LICENSE'
+      - 'THIRD-PARTY.md'
+      - 'Documentation/package*.json'
+      - 'ThirdParty/CyDoc/**'
+      - 'Tools/build_help.mjs'
+      - 'Tools/check_help_export.mjs'
+      - 'Tests/check_cydoc.mjs'
+      - 'CyGPUInspectorCore/Include/CyGPUInspectorCore/Localization.hpp'
+      - 'CyGPUInspectorCore/Include/CyGPUInspectorCore/ModPackage.hpp'
+      - 'CyGPUInspectorCore/Include/CyGPUInspectorCore/Version.hpp'
+      - 'CyGPUInspectorCore/Include/CyGPUInspectorCore/InProcessApi.h'
+      - 'CyGPUInspectorApp/Source/Help/HelpLauncher.hpp'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: documentation-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Check out documentation sources
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+      - name: Set up Node.js
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: Documentation/package-lock.json
+      - name: Install pinned documentation dependencies
+        run: npm --prefix Documentation ci
+      - name: Compile and validate the complete CyDoc export
+        run: npm --prefix Documentation run build:pages
+      - name: Verify pages, translations, links, modules and artifact inventory
+        run: npm --prefix Documentation run check:export
+      - name: Install the browser used by documentation tests
+        working-directory: Documentation
+        run: npx playwright install --with-deps chromium
+      - name: Test the application manual through file URLs
+        run: node Tests/check_cydoc.mjs build/pages/site build/pages/checks/file
+      - name: Test the hosted reader under the repository subpath
+        env:
+          CYGI_DOCS_TEST_TRANSPORT: http
+        run: node Tests/check_cydoc.mjs build/pages/site build/pages/checks/http
+      - name: Upload only the complete documentation export
+        if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+        uses: actions/upload-pages-artifact@7b1f4a764d45c48632c6b24a0339c27f5614fb0b # v4
+        with:
+          path: build/pages/site
+
+  deploy:
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Configure GitHub Pages
+        uses: actions/configure-pages@983d7736d9b0ae728b81ab479565c72886d7745b # v5
+      - name: Deploy the documentation
+        id: deployment
+        uses: actions/deploy-pages@d6db90164ac5ed86f2b6aed7e0febac5b3c0c03e # v4

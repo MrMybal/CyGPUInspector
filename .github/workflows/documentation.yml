@@ -103,3 +103,33 @@ jobs:
       - name: Deploy the documentation
         id: deployment
         uses: actions/deploy-pages@d6db90164ac5ed86f2b6aed7e0febac5b3c0c03e # v4
+      - name: Check out the verification tools
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+      - name: Set up Node.js for published-site verification
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: Documentation/package-lock.json
+      - name: Install pinned verification dependencies
+        run: npm --prefix Documentation ci
+      - name: Download the exact Pages artifact
+        uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0 # v5
+        with:
+          name: github-pages
+          path: build/pages/download
+      - name: Extract the verified documentation export
+        run: |
+          mkdir -p build/pages/site
+          tar -xf build/pages/download/artifact.tar -C build/pages/site
+      - name: Verify the files served by GitHub Pages
+        env:
+          DOCS_BASE_URL: ${{ steps.deployment.outputs.page_url }}
+        run: node Tools/check_help_export.mjs build/pages/site --url "$DOCS_BASE_URL"
+      - name: Install the browser for the published reader
+        working-directory: Documentation
+        run: npx playwright install --with-deps chromium
+      - name: Test the actual public reader
+        env:
+          CYGI_DOCS_URL: ${{ steps.deployment.outputs.page_url }}index.html
+        run: node Tests/check_cydoc.mjs build/pages/site build/pages/checks/published

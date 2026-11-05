@@ -125,6 +125,7 @@ try {
  const media=touch.locator('[data-cydoc-id="figure-0"]'); await media.scrollIntoViewIfNeeded();
  await media.locator('[data-action="expand"]').waitFor();
  check(await media.locator('[data-action="expand"]').isVisible(),'touch controls stay accessible');
+ await touch.waitForFunction(()=>{const image=document.querySelector('[data-cydoc-id="figure-0"] img');return image?.complete&&image.naturalWidth>100;});
  await touch.screenshot({path:path.join(output,'touch-fr.png')}); await mobile.close();
  check(errors.length===0,'no browser runtime errors'); check(requests.length===0,offline?'no HTTP or CDN requests':`no requests outside the documentation site: ${requests.join(', ')}`);
  check(failures.length===0,'no missing local resources');

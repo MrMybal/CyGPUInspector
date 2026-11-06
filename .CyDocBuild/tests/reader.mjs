@@ -88,8 +88,9 @@ try {
  // A real keyboard round trip clears a tooltip dismissed by Escape, across browser engines.
  await page.keyboard.press('Tab'); await page.keyboard.press('Shift+Tab');
  await page.waitForFunction(()=>document.activeElement?.classList.contains('brand'));
- const tooltip=page.getByRole('tooltip'); await tooltip.waitFor();
- check((await tooltip.innerText()).includes('CyGPUInspector'),'keyboard tooltip exposes the full application name');
+ const tooltip=page.locator('[role="tooltip"]'); await tooltip.waitFor({state:'visible'});
+ // Keep the same DOM tooltip when a subsequent scroll/toggle hides it between reads.
+ check((await tooltip.textContent()).includes('CyGPUInspector'),'keyboard tooltip exposes the full application name');
  await page.keyboard.press('Escape');
  await page.locator('.theme-picker summary').click();
  await page.locator('[data-set-theme="contrast"]').click();

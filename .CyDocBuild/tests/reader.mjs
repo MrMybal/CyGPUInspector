@@ -29,7 +29,13 @@ assert.equal(data.pages.filter(p=>p.kind==='api').length,16);
 assert(!data.pages.some(p=>p.kind==='source'));
 assert(!data.pages.some(p=>p.source&&/AssistantProvider|AppData|node_modules/.test(p.source)));
 const browser=await chromium.launch({headless:true,executablePath:process.env.CYGI_TEST_BROWSER||(process.platform==='win32'?'C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe':undefined),args:['--disable-background-networking','--disable-extensions']});
-const errors=[],requests=[],failures=[],localRequests=[];
+const errors=[],requests=[],failures=[],localRequests=[],cancelledRequests=[];
+const requestFailure=request=>{
+ const reason=request.failure()?.errorText||'Unknown network error';
+ // Navigation and closing a context cancel in-flight requests without implying a missing file.
+ if(reason==='net::ERR_ABORTED'){cancelledRequests.push(request.url());return;}
+ failures.push(`${reason}: ${request.url()}`);
+};
 let checks=0;
 const check=(condition,message)=>{assert(condition,message);checks++;console.log('PASS: '+message);};
 let server;
@@ -60,7 +66,7 @@ const context=await browser.newContext({viewport:{width:1500,height:1000}});
 await context.route(/^https?:/,requestPolicy);
 const page=await context.newPage();
 page.on('pageerror',error=>errors.push(error.message));
-page.on('requestfailed',request=>failures.push(request.url()));
+page.on('requestfailed',requestFailure);
 page.on('response',response=>{if(response.status()>=400)failures.push(`${response.status()} ${response.url()}`);});
 async function go(route){
  const [locale,id]=route.split('?')[0].split('/');
@@ -141,7 +147,7 @@ try {
  check(Math.abs((await page.evaluate(()=>window.scrollY))-position)<180,'reading position restored on return');
  const mobile=await browser.newContext({viewport:{width:390,height:844},isMobile:true,hasTouch:true});
  await mobile.route(/^https?:/,requestPolicy);
- const touch=await mobile.newPage(); touch.on('pageerror',error=>errors.push(error.message)); touch.on('requestfailed',request=>failures.push(request.url()));
+ const touch=await mobile.newPage(); touch.on('pageerror',error=>errors.push(error.message)); touch.on('requestfailed',requestFailure);
  touch.on('response',response=>{if(response.status()>=400)failures.push(`${response.status()} ${response.url()}`);});
  await touch.goto(base+'#/fr/welcome?media=figure-0'); await touch.waitForSelector('.cydoc-viewer');
  const media=touch.locator('[data-cydoc-id="figure-0"]'); await media.scrollIntoViewIfNeeded();
@@ -153,7 +159,7 @@ try {
  check(await touch.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),'narrow reader has no page overflow');
  await mobile.close();
  check(errors.length===0,'no browser runtime errors'); check(requests.length===0,offline?'no HTTP or CDN requests':`no requests outside the documentation site: ${requests.join(', ')}`);
- check(failures.length===0,'no missing local resources');
- await fs.writeFile(path.join(output,'results.json'),JSON.stringify({passed:true,checks,pages:data.pages.length,errors,requests,failures,localRequests:localRequests.length,url:base},null,2));
+ check(failures.length===0,'no missing local resources: '+failures.join(', '));
+ await fs.writeFile(path.join(output,'results.json'),JSON.stringify({passed:true,checks,pages:data.pages.length,errors,requests,failures,cancelledRequests,localRequests:localRequests.length,url:base},null,2));
  console.log(`${checks} browser checks passed, ${data.pages.length} compiled pages, ${offline?'file:// only':'same-origin HTTP(S)'}`);
 } finally { await browser.close(); if(server){server.closeAllConnections();await new Promise(resolve=>server.close(resolve));} }

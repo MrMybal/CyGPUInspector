@@ -82,7 +82,8 @@ try {
  await headerSearch.fill('shader');
  await page.locator('.search-popover[open] .search-result').first().waitFor();
  check(await page.locator('.search-popover').isVisible(),'header search returns live results');
- await page.keyboard.press('Escape'); await headerSearch.fill('');
+ await headerSearch.fill(''); await page.keyboard.press('Escape');
+ await page.locator('.search-dialog').waitFor({state:'hidden'});
  await page.locator('.brand').focus();
  const tooltip=page.getByRole('tooltip'); await tooltip.waitFor();
  check((await tooltip.innerText()).includes('CyGPUInspector'),'keyboard tooltip exposes the full application name');

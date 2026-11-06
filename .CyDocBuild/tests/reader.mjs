@@ -85,6 +85,9 @@ try {
  await headerSearch.fill(''); await page.keyboard.press('Escape');
  await page.locator('.search-dialog').waitFor({state:'hidden'});
  await page.locator('.brand').focus();
+ // A real keyboard round trip clears a tooltip dismissed by Escape, across browser engines.
+ await page.keyboard.press('Tab'); await page.keyboard.press('Shift+Tab');
+ await page.waitForFunction(()=>document.activeElement?.classList.contains('brand'));
  const tooltip=page.getByRole('tooltip'); await tooltip.waitFor();
  check((await tooltip.innerText()).includes('CyGPUInspector'),'keyboard tooltip exposes the full application name');
  await page.keyboard.press('Escape');

@@ -1,4 +1,4 @@
-CyGPUInspector 0.4.0
+CyGPUInspector 0.4.1
 ====================
 
 (English: see START-HERE.txt)
@@ -62,7 +62,7 @@ PNG et en DDS, dans App\Images\.
      CyGPUInspector.Capture  dans la console. Seul le rendu 3D du viewport principal est capturé,
      pas l'éditeur autour.
 
-Détails : Docs\fr\UnrealPlugin.md.
+Détails : App\Documentation\Documentation.html#/fr/unreal.
 
 
 4. L'ASSISTANT IA ET L'ÉDITEUR HLSL
@@ -81,7 +81,7 @@ propre fenêtre : rechercher et remplacer, erreurs du compilateur marquées sur 
 compilation de test pour n'importe quel profil (F7), Compiler et injecter (F5). L'onglet Analyse IA
 nettoie, classifie ou explique le shader sélectionné.
 
-Détails : Docs\fr\AI.md et Docs\fr\StandaloneApp.md.
+Détails : App\Documentation\Documentation.html#/fr/ai et App\Documentation\Documentation.html#/fr/navigation.
 
 
 5. APPLIQUER UN MOD CHEZ QUELQU'UN D'AUTRE
@@ -121,7 +121,7 @@ chargement. Les suppressions de draws, elles, sont immédiates.
     RunTests.cmd                   lance les cinq suites de tests
     CyGPUInspectorFakeSession.exe  le producteur synthétique
 
-  Docs\                            la documentation complète (Docs\fr\ en français)
+  App\Documentation\               lecteur local complet anglais/français
   Licenses\                        licences des binaires tiers livrés ici
   THIRD-PARTY.md                   composants tiers et leurs licences
   LICENSE                          GNU Affero General Public License v3 ou ultérieure
@@ -130,7 +130,7 @@ chargement. Les suppressions de draws, elles, sont immédiates.
 7. CE QU'IL NE FAIT PAS
 ------------------------
 
-À lire avant de signaler un bug : Docs\fr\Limitations.md
+À lire avant de signaler un bug : App\Documentation\Documentation.html#/fr/troubleshooting
 
   - Il ne rejoue pas la frame. La vraie frame est observée à travers l'API officielle des add-ons
     ReShade : il rapporte ce qui s'est passé, il ne le ré-exécute pas.

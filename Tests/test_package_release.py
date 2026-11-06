@@ -66,40 +66,40 @@ class LicenceDeliveryTests(unittest.TestCase):
 
 class HelpDeliveryTests(unittest.TestCase):
     def setUp(self):
-        self.files = {'App/Help/' + name: Path(source).read_bytes()
+        self.files = {'App/Documentation/' + name: Path(source).read_bytes()
                       for name, source in PACKAGE.help_sources().items()}
 
     def test_complete_bilingual_bundle(self):
         self.assertEqual(PACKAGE.validate_help(self.files.__getitem__), [])
 
     def test_missing_compiled_pages_rejects_package(self):
-        del self.files['App/Help/data.js']
+        del self.files['App/Documentation/DocData/data.js']
         self.assertTrue(PACKAGE.validate_help(self.files.__getitem__))
 
     def test_missing_image_rejects_package(self):
-        del self.files['App/Help/assets/media/overview-fr.png']
+        del self.files['App/Documentation/DocData/assets/media/overview-fr.png']
         self.assertTrue(PACKAGE.validate_help(self.files.__getitem__))
 
     def test_modified_article_rejects_package(self):
-        self.files['App/Help/data.js'] = b'old guide'
-        self.assertIn('help differs from generated export: data.js',
+        self.files['App/Documentation/DocData/data.js'] = b'old guide'
+        self.assertIn('help differs from generated export: DocData/data.js',
                       PACKAGE.validate_help(self.files.__getitem__))
 
     def test_stale_source_rejects_package(self):
-        receipt = json.loads(self.files['App/Help/delivery.json'])
+        receipt = json.loads(self.files['App/Documentation/DocData/delivery.json'])
         receipt['inputs']['README.md'] = '0' * 64
-        self.files['App/Help/delivery.json'] = json.dumps(receipt).encode()
+        self.files['App/Documentation/DocData/delivery.json'] = json.dumps(receipt).encode()
         self.assertIn('help export is stale for source: README.md',
                       PACKAGE.validate_help(self.files.__getitem__))
 
     def test_unneeded_module_rejects_package(self):
-        receipt = json.loads(self.files['App/Help/delivery.json'])
+        receipt = json.loads(self.files['App/Documentation/DocData/delivery.json'])
         receipt['modules'].append('mesh')
-        self.files['App/Help/delivery.json'] = json.dumps(receipt).encode()
+        self.files['App/Documentation/DocData/delivery.json'] = json.dumps(receipt).encode()
         self.assertTrue(PACKAGE.validate_help(self.files.__getitem__))
 
     def test_missing_inventory_rejects_package(self):
-        del self.files['App/Help/delivery.json']
+        del self.files['App/Documentation/DocData/delivery.json']
         self.assertTrue(PACKAGE.validate_help(self.files.__getitem__))
 
 

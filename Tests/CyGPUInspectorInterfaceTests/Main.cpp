@@ -167,20 +167,22 @@ namespace
 	{
 		const auto root = std::filesystem::temp_directory_path() /
 			(std::wstring(L"CyGPUInspector help é # % ") + std::to_wstring(std::chrono::steady_clock::now().time_since_epoch().count()));
-		std::filesystem::create_directory(root);
+		std::filesystem::create_directories(root / "DocData");
 		auto write = [&](const char *name, const std::string &text) { std::ofstream file(root / name, std::ios::binary); file << text; };
-		write("index.html", "<!doctype html><title>Local help fixture</title>");
-		write("manifest.json", R"({"schemaVersion":1,"aliases":{"ref-MCP":"ref-mcp"},"pages":[
+		write("Documentation.html", "<!doctype html><title>Local help fixture</title>");
+		write("DocData/manifest.json", R"({"schemaVersion":1,"aliases":{"ref-MCP":"ref-mcp","old-setup":"welcome#first-steps"},"pages":[
 			{"id":"welcome","locale":"en","headings":[{"id":"first-steps"}],"anchors":[],"html":"<div data-cydoc-id=\"figure-0\"></div>"},
 			{"id":"ref-mcp","locale":"en","headings":[],"html":"MCP"}]})");
-		write("legacy-routes.json", R"({"welcome":{"fr":{"premiers-pas":"first-steps"}}})");
+		write("DocData/legacy-routes.json", R"({"welcome":{"fr":{"premiers-pas":"first-steps"}}})");
 		std::string error;
-		const auto index = root / "index.html";
+		const auto index = root / "Documentation.html";
 		auto url = cygi::HelpLauncher::BuildUrl(index,"welcome","en",error);
 		Check(error.empty() && url.rfind(L"file:///",0) == 0, "CyDoc opens through a local file URL");
 		Check(url.find(L"%20") != std::wstring::npos && url.find(L"%23") != std::wstring::npos && url.find(L"%25") != std::wstring::npos && url.find(L"%C3%A9") != std::wstring::npos,
 			"Windows URL API encodes spaces, fragment characters and percent signs in installation paths");
 		Check(url.find(L"#/en/welcome") != std::wstring::npos, "native route defaults to English");
+		url = cygi::HelpLauncher::BuildUrl(index,"old-setup","en",error);
+		Check(error.empty() && url.find(L"#/en/welcome/first-steps") != std::wstring::npos, "native aliases can retain a specific section");
 		url = cygi::HelpLauncher::BuildUrl(index,"ref-MCP","fr",error);
 		Check(error.empty() && url.find(L"#/fr/ref-mcp") != std::wstring::npos, "legacy page alias retains requested locale and English fallback");
 		url = cygi::HelpLauncher::BuildUrl(index,"help:welcome#premiers-pas","fr",error);
@@ -194,9 +196,10 @@ namespace
 			cygi::HelpLauncher::ContextTopic("MCP") == "mcp", "contextual F1 uses stable panel identities across languages");
 		Check(cygi::HelpLauncher::ContextTopic("HLSL editor") == "hlsl" &&
 			cygi::HelpLauncher::ContextTopic("unrecognised") == "welcome", "contextual help has a predictable home fallback");
-		write("manifest.json", "{}");
+		write("DocData/manifest.json", "{}");
 		Check(cygi::HelpLauncher::BuildUrl(index,"welcome","en",error).empty(), "missing or invalid CyDoc bundle is recoverable");
-		for (const char *name : {"index.html","manifest.json","legacy-routes.json"}) std::filesystem::remove(root / name);
+		for (const char *name : {"Documentation.html","DocData/manifest.json","DocData/legacy-routes.json"}) std::filesystem::remove(root / name);
+		std::filesystem::remove(root / "DocData");
 		std::filesystem::remove(root);
 	}
 }

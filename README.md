@@ -131,7 +131,7 @@ the MCP panel. See [Docs/MCP.md](Docs/MCP.md).
 **F1** or **Help > User guide** opens the integrated offline documentation: a
 searchable English/French manual with application screenshots, diagrams, section
 navigation and the full technical references. English is the guide's default;
-its language selector does not change application preferences. Keep `App/Help/`
+its language selector does not change application preferences. Keep `App/Documentation/`
 with the executable when copying a release.
 
 English is the base language: the code, the comments, the documentation and every string in the
@@ -149,7 +149,7 @@ and Node.js 22+ for generating the local CyDoc manual. Native dependencies and t
 pinned CyDoc archive are vendored in `ThirdParty/`. Install generation dependencies once:
 
 ```sh
-npm --prefix Documentation ci
+npm --prefix .CyDocBuild ci
 ```
 
 ```
@@ -168,7 +168,7 @@ This configures CMake with Ninja and builds everything into `bin/Release/`. The 
 | `CyGPUInjector.addon64` | same, to apply an exported mod |
 | `CyGPUInspectorApp.exe` | anywhere; it finds running sessions by itself |
 | `Lang/` | next to `CyGPUInspectorApp.exe` (the build copies it there) |
-| `Help/` | next to `CyGPUInspectorApp.exe`; opens locally in a modern browser |
+| `Documentation/` | next to `CyGPUInspectorApp.exe`; opens locally in a modern browser |
 
 ## Try without a game
 

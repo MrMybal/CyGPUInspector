@@ -7,17 +7,17 @@ on:
       - '.github/workflows/documentation.yml'
       - 'README*.md'
       - 'Docs/**'
-      - 'Help/**'
+      - '.CyDocBuild/**'
       - 'Assets/**'
       - 'LICENCES/**'
       - 'LICENSE'
       - 'THIRD-PARTY.md'
-      - 'Documentation/package*.json'
+      - '.CyDocBuild/package*.json'
       - 'ThirdParty/CyDoc/**'
-      - 'Tools/build_help.mjs'
-      - 'Tools/check_help_export.mjs'
-      - 'Tests/check_cydoc.mjs'
-      - 'Tests/check_readme_links.mjs'
+      - '.CyDocBuild/build.mjs'
+      - '.CyDocBuild/check.mjs'
+      - '.CyDocBuild/tests/reader.mjs'
+      - '.CyDocBuild/tests/readme.mjs'
       - 'CyGPUInspectorCore/Include/CyGPUInspectorCore/Localization.hpp'
       - 'CyGPUInspectorCore/Include/CyGPUInspectorCore/ModPackage.hpp'
       - 'CyGPUInspectorCore/Include/CyGPUInspectorCore/Version.hpp'
@@ -28,17 +28,17 @@ on:
       - '.github/workflows/documentation.yml'
       - 'README*.md'
       - 'Docs/**'
-      - 'Help/**'
+      - '.CyDocBuild/**'
       - 'Assets/**'
       - 'LICENCES/**'
       - 'LICENSE'
       - 'THIRD-PARTY.md'
-      - 'Documentation/package*.json'
+      - '.CyDocBuild/package*.json'
       - 'ThirdParty/CyDoc/**'
-      - 'Tools/build_help.mjs'
-      - 'Tools/check_help_export.mjs'
-      - 'Tests/check_cydoc.mjs'
-      - 'Tests/check_readme_links.mjs'
+      - '.CyDocBuild/build.mjs'
+      - '.CyDocBuild/check.mjs'
+      - '.CyDocBuild/tests/reader.mjs'
+      - '.CyDocBuild/tests/readme.mjs'
       - 'CyGPUInspectorCore/Include/CyGPUInspectorCore/Localization.hpp'
       - 'CyGPUInspectorCore/Include/CyGPUInspectorCore/ModPackage.hpp'
       - 'CyGPUInspectorCore/Include/CyGPUInspectorCore/Version.hpp'
@@ -65,27 +65,27 @@ jobs:
         with:
           node-version: '22'
           cache: npm
-          cache-dependency-path: Documentation/package-lock.json
+          cache-dependency-path: .CyDocBuild/package-lock.json
       - name: Install pinned documentation dependencies
-        run: npm --prefix Documentation ci
+        run: npm --prefix .CyDocBuild ci
       - name: Compile and validate the complete CyDoc export
-        run: npm --prefix Documentation run build:pages
+        run: npm --prefix .CyDocBuild run build:pages
       - name: Verify pages, translations, links, modules and artifact inventory
-        run: npm --prefix Documentation run check:export
+        run: npm --prefix .CyDocBuild run check:export
       - name: Install the browser used by documentation tests
-        working-directory: Documentation
+        working-directory: .CyDocBuild
         run: npx playwright install --with-deps chromium
       - name: Test the application manual through file URLs
-        run: node Tests/check_cydoc.mjs build/pages/site build/pages/checks/file
+        run: node .CyDocBuild/tests/reader.mjs .CyDocBuild/internal/pages/site .CyDocBuild/internal/pages/checks/file
       - name: Test the hosted reader under the repository subpath
         env:
           CYGI_DOCS_TEST_TRANSPORT: http
-        run: node Tests/check_cydoc.mjs build/pages/site build/pages/checks/http
+        run: node .CyDocBuild/tests/reader.mjs .CyDocBuild/internal/pages/site .CyDocBuild/internal/pages/checks/http
       - name: Upload only the complete documentation export
         if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
         uses: actions/upload-pages-artifact@7b1f4a764d45c48632c6b24a0339c27f5614fb0b # v4
         with:
-          path: build/pages/site
+          path: .CyDocBuild/internal/pages/site
 
   deploy:
     if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
@@ -112,29 +112,29 @@ jobs:
         with:
           node-version: '22'
           cache: npm
-          cache-dependency-path: Documentation/package-lock.json
+          cache-dependency-path: .CyDocBuild/package-lock.json
       - name: Install pinned verification dependencies
-        run: npm --prefix Documentation ci
+        run: npm --prefix .CyDocBuild ci
       - name: Download the exact Pages artifact
         uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0 # v5
         with:
           name: github-pages
-          path: build/pages/download
+          path: .CyDocBuild/internal/pages/download
       - name: Extract the verified documentation export
         run: |
-          mkdir -p build/pages/site
-          tar -xf build/pages/download/artifact.tar -C build/pages/site
+          mkdir -p .CyDocBuild/internal/pages/site
+          tar -xf .CyDocBuild/internal/pages/download/artifact.tar -C .CyDocBuild/internal/pages/site
       - name: Verify the files served by GitHub Pages
         env:
           DOCS_BASE_URL: ${{ steps.deployment.outputs.page_url }}
-        run: node Tools/check_help_export.mjs build/pages/site --url "$DOCS_BASE_URL"
+        run: node .CyDocBuild/check.mjs .CyDocBuild/internal/pages/site --url "$DOCS_BASE_URL"
       - name: Test the actual public reader with the runner's Chrome
         env:
-          CYGI_DOCS_URL: ${{ steps.deployment.outputs.page_url }}index.html
+          CYGI_DOCS_URL: ${{ steps.deployment.outputs.page_url }}Documentation.html
         run: |
           cygi_browser_path="$(command -v google-chrome)"
-          CYGI_TEST_BROWSER="$cygi_browser_path" node Tests/check_cydoc.mjs build/pages/site build/pages/checks/published
+          CYGI_TEST_BROWSER="$cygi_browser_path" node .CyDocBuild/tests/reader.mjs .CyDocBuild/internal/pages/site .CyDocBuild/internal/pages/checks/published
       - name: Follow both published README links into the visual reader
         run: |
           cygi_browser_path="$(command -v google-chrome)"
-          CYGI_TEST_BROWSER="$cygi_browser_path" node Tests/check_readme_links.mjs build/pages/checks/readme
+          CYGI_TEST_BROWSER="$cygi_browser_path" node .CyDocBuild/tests/readme.mjs .CyDocBuild/internal/pages/checks/readme

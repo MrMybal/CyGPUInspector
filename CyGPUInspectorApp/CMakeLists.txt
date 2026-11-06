@@ -133,8 +133,8 @@ add_dependencies(CyGPUInspectorApp CyGPUInspectorLang)
 # CyDoc is generated at build time; the reader itself has no Node/runtime dependency.
 find_program(CYGI_NODE_EXECUTABLE NAMES node REQUIRED)
 add_custom_target(CyGPUInspectorHelp ALL
-    COMMAND "${CYGI_NODE_EXECUTABLE}" "${CMAKE_SOURCE_DIR}/Tools/build_help.mjs"
-            --output "${CYGI_OUTPUT_DIR}/Help"
+    COMMAND "${CYGI_NODE_EXECUTABLE}" "${CMAKE_SOURCE_DIR}/.CyDocBuild/build.mjs"
+            --output "${CYGI_OUTPUT_DIR}/Documentation"
     WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}"
     COMMENT "Generating and validating the offline CyDoc manual" VERBATIM)
 add_dependencies(CyGPUInspectorApp CyGPUInspectorHelp)

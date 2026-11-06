@@ -30,11 +30,11 @@ namespace cygi
 		const std::string &language, std::string &error)
 	{
 		error.clear();
-		std::ifstream file(index.parent_path() / "manifest.json", std::ios::binary);
+		std::ifstream file(index.parent_path() / "DocData/manifest.json", std::ios::binary);
 		Json manifest;
 		if (!std::filesystem::is_regular_file(index) || !Json::Parse({std::istreambuf_iterator<char>(file), {}}, manifest) ||
 			manifest["schemaVersion"].AsUInt() != 1)
-		{ error = "The offline documentation is missing or invalid. Restore the complete Help folder beside the application."; return {}; }
+		{ error = "The offline documentation is missing or invalid. Restore the complete Documentation folder beside the application."; return {}; }
 		std::string page = requested.empty() ? "welcome" : requested, anchor;
 		if (page.rfind("help:", 0) == 0) page.erase(0, 5);
 		if (page.rfind("doc:", 0) == 0) page.erase(0, 4);
@@ -42,7 +42,12 @@ namespace cygi
 		if (const auto pos = page.find('?'); pos != std::string::npos) { query = page.substr(pos + 1); page.erase(pos); }
 		if (const auto pos = page.find('#'); pos != std::string::npos) { anchor = page.substr(pos + 1); page.erase(pos); }
 		const auto &alias = manifest["aliases"][page].AsString();
-		if (!alias.empty()) page = alias;
+		if (!alias.empty())
+		{
+			page = alias;
+			if (const auto pos = page.find('#'); pos != std::string::npos)
+			{ if (anchor.empty()) anchor = page.substr(pos + 1); page.erase(pos); }
+		}
 		const Json *found = nullptr;
 		const std::string locale = language == "fr" ? "fr" : "en";
 		for (const auto &item : manifest["pages"].Items())
@@ -53,7 +58,7 @@ namespace cygi
 		if (!found) { error = "The requested documentation page is not available."; return {}; }
 		if (!anchor.empty())
 		{
-			std::ifstream mapping(index.parent_path() / "legacy-routes.json"); Json routes;
+			std::ifstream mapping(index.parent_path() / "DocData/legacy-routes.json"); Json routes;
 			if (Json::Parse({std::istreambuf_iterator<char>(mapping), {}}, routes))
 			{
 				const auto &translated = routes[page][locale][anchor].AsString();
@@ -114,12 +119,12 @@ namespace cygi
 		{
 			m_pending = false;
 			wchar_t executable[32768] = {}; GetModuleFileNameW(nullptr, executable, 32768);
-			const auto url = BuildUrl(std::filesystem::path(executable).parent_path() / "Help/index.html", m_topic, m_language, m_error);
+			const auto url = BuildUrl(std::filesystem::path(executable).parent_path() / "Documentation/Documentation.html", m_topic, m_language, m_error);
 			if (!url.empty())
 			{
 				if (!m_output.empty()) { std::ofstream output(m_output, std::ios::binary); output << Utf8(url); if (!output) m_error = "The documentation URL file could not be written."; }
 				else if (reinterpret_cast<INT_PTR>(ShellExecuteW(nullptr, L"open", url.c_str(), nullptr, nullptr, SW_SHOWNORMAL)) <= 32)
-					m_error = "The local documentation could not be opened. Open Help/index.html with a modern browser.";
+					m_error = "The local documentation could not be opened. Open Documentation/Documentation.html with a modern browser.";
 			}
 			if (!m_error.empty()) ImGui::OpenPopup("Offline help###help-error");
 		}

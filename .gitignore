@@ -26,3 +26,7 @@ CyGPUInspectorUnreal/**/Binaries/ThirdParty/**/*.addon64
 __pycache__/
 *.pyc
 /Documentation/node_modules/
+
+/.CyDocBuild/node_modules/
+/.CyDocBuild/internal/
+/Documentation/

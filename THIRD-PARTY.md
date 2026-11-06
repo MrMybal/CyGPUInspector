@@ -137,7 +137,7 @@ is in a currently private repository; the complete license is included in
 
 ## CyDoc offline documentation
 
-The local reader uses CyDoc 0.1.0 (MIT), pinned to revision `774f2a7`.
+The local reader uses CyDoc 0.1.0 (MIT), pinned to revision `6ddf9a5`.
 Only its image reader is distributed; no Three.js or 3D runtime is included.
 Full CyDoc, marked, PrismJS and esbuild notices are preserved under
 `LICENCES/CyDoc/` and in the exported reader. Node.js and these generation

@@ -5,7 +5,7 @@
 
 namespace cygi
 {
-	// Only public product headers are included in the manual's lexical source index.
+	// Launch the local manual using stable product topic IDs.
 	class HelpLauncher
 	{
 	public:

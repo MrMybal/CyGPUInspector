@@ -1,0 +1,266 @@
+{
+  "symbols": [
+    {
+      "key": "request-capture",
+      "name": "CyGPUInspectorRS_RequestCapture",
+      "kind": "function",
+      "language": "c",
+      "signature": "int32_t CyGPUInspectorRS_RequestCapture(const CygiCaptureOptions *options);",
+      "description": "Demander une capture profonde bornée dans le processus qui héberge l’add-on ReShade. Le standalone connecté enregistre le résultat. Une nouvelle requête remplace celle en attente.\n\nEn-tête: `CyGPUInspectorCore/InProcessApi.h`. Module : CyGPUInspectorRS.addon64 ; résoudre l’export nommé dans le processus hôte.",
+      "parameters": [
+        {
+          "name": "options",
+          "type": "const CygiCaptureOptions *",
+          "description": "Options initialisées ; size décrit la structure de l’appelant. frame_count est borné à 1–8."
+        }
+      ],
+      "returnType": "int32_t",
+      "returns": "1 si la requête est mise en attente du prochain present ; 0 sans device ou si les options sont nulles/trop petites. La fin est asynchrone.",
+      "references": [
+        {
+          "key": "get-status",
+          "name": "CyGPUInspectorRS_GetStatus"
+        },
+        {
+          "key": "get-version",
+          "name": "CyGPUInspectorRS_GetApiVersion"
+        },
+        {
+          "key": "set-viewport",
+          "name": "CyGPUInspectorRS_SetViewportScope"
+        }
+      ]
+    },
+    {
+      "key": "get-status",
+      "name": "CyGPUInspectorRS_GetStatus",
+      "kind": "function",
+      "language": "c",
+      "signature": "int32_t CyGPUInspectorRS_GetStatus(CygiStatus *status);",
+      "description": "Lire l’état récent des devices, de la connexion, de la capture et de la frame. Suivre capture_stage ; une requête acceptée n’est pas une capture terminée.\n\nEn-tête: `CyGPUInspectorCore/InProcessApi.h`. Module : CyGPUInspectorRS.addon64 ; résoudre l’export nommé dans le processus hôte.",
+      "parameters": [
+        {
+          "name": "status",
+          "type": "CygiStatus *",
+          "description": "Structure accessible en écriture, avec size = sizeof(CygiStatus) ; le champ size doit au minimum être présent."
+        }
+      ],
+      "returnType": "int32_t",
+      "returns": "1 après copie du préfixe pris en charge ; 0 si status est nul ou trop petit. Le champ size renvoyé indique les octets écrits.",
+      "references": [
+        {
+          "key": "request-capture",
+          "name": "CyGPUInspectorRS_RequestCapture"
+        },
+        {
+          "key": "get-version",
+          "name": "CyGPUInspectorRS_GetApiVersion"
+        },
+        {
+          "key": "set-viewport",
+          "name": "CyGPUInspectorRS_SetViewportScope"
+        }
+      ]
+    },
+    {
+      "key": "get-version",
+      "name": "CyGPUInspectorRS_GetApiVersion",
+      "kind": "function",
+      "language": "c",
+      "signature": "uint32_t CyGPUInspectorRS_GetApiVersion(void);",
+      "description": "Vérifier la version de l’API exportée avant un appel spécifique comme SetViewportScope.\n\nEn-tête: `CyGPUInspectorCore/InProcessApi.h`. Module : CyGPUInspectorRS.addon64 ; résoudre l’export nommé dans le processus hôte.",
+      "parameters": [],
+      "returnType": "uint32_t",
+      "returns": "Version de l’API locale de l’add-on ; l’en-tête actuel définit 2.",
+      "references": [
+        {
+          "key": "request-capture",
+          "name": "CyGPUInspectorRS_RequestCapture"
+        },
+        {
+          "key": "get-status",
+          "name": "CyGPUInspectorRS_GetStatus"
+        },
+        {
+          "key": "set-viewport",
+          "name": "CyGPUInspectorRS_SetViewportScope"
+        }
+      ]
+    },
+    {
+      "key": "set-viewport",
+      "name": "CyGPUInspectorRS_SetViewportScope",
+      "kind": "function",
+      "language": "c",
+      "signature": "int32_t CyGPUInspectorRS_SetViewportScope(const CygiViewportScope *scope);",
+      "description": "Délimiter la capture au viewport de l’hôte grâce aux textures marqueurs et à son image finale. La version 2 est nécessaire. Garder ces ressources valides pendant l’utilisation du périmètre.\n\nEn-tête: `CyGPUInspectorCore/InProcessApi.h`. Module : CyGPUInspectorRS.addon64 ; résoudre l’export nommé dans le processus hôte.",
+      "parameters": [
+        {
+          "name": "scope",
+          "type": "const CygiViewportScope *",
+          "description": "Structure complète de version 2. begin_marker/end_marker sont les handles natifs des textures marqueurs ; final_image est le résultat du viewport. Trois zéros effacent le périmètre."
+        }
+      ],
+      "returnType": "int32_t",
+      "returns": "1 si le périmètre est enregistré ; 0 si le pointeur est nul ou si size est inférieur à sizeof(CygiViewportScope).",
+      "references": [
+        {
+          "key": "request-capture",
+          "name": "CyGPUInspectorRS_RequestCapture"
+        },
+        {
+          "key": "get-status",
+          "name": "CyGPUInspectorRS_GetStatus"
+        },
+        {
+          "key": "get-version",
+          "name": "CyGPUInspectorRS_GetApiVersion"
+        }
+      ]
+    },
+    {
+      "key": "save",
+      "name": "cygi::ModPackage::Save",
+      "kind": "function",
+      "language": "cpp",
+      "signature": "bool cygi::ModPackage::Save(const std::string &directory, std::string &error) const;",
+      "description": "Enregistrer les remplacements/désactivations explicites dans un dossier .cygimod portable. Conserver la provenance des sources disponibles.\n\nEn-tête: `CyGPUInspectorCore/ModPackage.hpp`. Module : CyGPUInspectorCore.",
+      "parameters": [
+        {
+          "name": "directory",
+          "type": "const std::string &",
+          "description": "Dossier de destination du paquet, créé au besoin."
+        },
+        {
+          "name": "error",
+          "type": "std::string &",
+          "description": "Reçoit l’explication en cas d’échec."
+        }
+      ],
+      "returnType": "bool",
+      "returns": "True en cas de succès ; false en cas d’échec. Le manifeste et les shaders du paquet sont remplacés ; les autres fichiers sont conservés.",
+      "references": [
+        {
+          "key": "load",
+          "name": "cygi::ModPackage::Load"
+        },
+        {
+          "key": "looks-like",
+          "name": "cygi::ModPackage::LooksLikePackage"
+        },
+        {
+          "key": "suggest-name",
+          "name": "cygi::ModPackage::SuggestDirectoryName"
+        }
+      ]
+    },
+    {
+      "key": "load",
+      "name": "cygi::ModPackage::Load",
+      "kind": "function",
+      "language": "cpp",
+      "signature": "static bool cygi::ModPackage::Load(const std::string &directory, ModPackage &out, std::string &error, bool load_byte_code = true);",
+      "description": "Lire un paquet écrit par Save. L’appariement repose sur les hashes sémantiques, pas sur les identifiants temporaires des shaders.\n\nEn-tête: `CyGPUInspectorCore/ModPackage.hpp`. Module : CyGPUInspectorCore.",
+      "parameters": [
+        {
+          "name": "directory",
+          "type": "const std::string &",
+          "description": "Dossier du paquet contenant mod.json."
+        },
+        {
+          "name": "out",
+          "type": "ModPackage &",
+          "description": "Reçoit le paquet lu. Utiliser seulement après succès."
+        },
+        {
+          "name": "error",
+          "type": "std::string &",
+          "description": "Explication de l’échec."
+        },
+        {
+          "name": "load_byte_code",
+          "type": "bool",
+          "description": "True charge les blobs shader ; false ne lit que le manifeste pour les listes."
+        }
+      ],
+      "returnType": "bool",
+      "returns": "True si le paquet est chargé ; false si la lecture ou la validation échoue.",
+      "references": [
+        {
+          "key": "save",
+          "name": "cygi::ModPackage::Save"
+        },
+        {
+          "key": "looks-like",
+          "name": "cygi::ModPackage::LooksLikePackage"
+        },
+        {
+          "key": "suggest-name",
+          "name": "cygi::ModPackage::SuggestDirectoryName"
+        }
+      ]
+    },
+    {
+      "key": "looks-like",
+      "name": "cygi::ModPackage::LooksLikePackage",
+      "kind": "function",
+      "language": "cpp",
+      "signature": "static bool cygi::ModPackage::LooksLikePackage(const std::string &directory);",
+      "description": "Utiliser pour lister les dossiers avant de charger le paquet choisi.\n\nEn-tête: `CyGPUInspectorCore/ModPackage.hpp`. Module : CyGPUInspectorCore.",
+      "parameters": [
+        {
+          "name": "directory",
+          "type": "const std::string &",
+          "description": "Dossier candidat à examiner."
+        }
+      ],
+      "returnType": "bool",
+      "returns": "True si le dossier ressemble à un paquet ; ce contrôle léger ne remplace pas la validation de Load.",
+      "references": [
+        {
+          "key": "save",
+          "name": "cygi::ModPackage::Save"
+        },
+        {
+          "key": "load",
+          "name": "cygi::ModPackage::Load"
+        },
+        {
+          "key": "suggest-name",
+          "name": "cygi::ModPackage::SuggestDirectoryName"
+        }
+      ]
+    },
+    {
+      "key": "suggest-name",
+      "name": "cygi::ModPackage::SuggestDirectoryName",
+      "kind": "function",
+      "language": "cpp",
+      "signature": "static std::string cygi::ModPackage::SuggestDirectoryName(const std::string &name);",
+      "description": "Créer un nom de dossier adapté ; cet appel n’enregistre et n’applique aucun paquet.\n\nEn-tête: `CyGPUInspectorCore/ModPackage.hpp`. Module : CyGPUInspectorCore.",
+      "parameters": [
+        {
+          "name": "name",
+          "type": "const std::string &",
+          "description": "Nom lisible du paquet."
+        }
+      ],
+      "returnType": "std::string",
+      "returns": "Nom de dossier nettoyé avec l’extension .cygimod.",
+      "references": [
+        {
+          "key": "save",
+          "name": "cygi::ModPackage::Save"
+        },
+        {
+          "key": "load",
+          "name": "cygi::ModPackage::Load"
+        },
+        {
+          "key": "looks-like",
+          "name": "cygi::ModPackage::LooksLikePackage"
+        }
+      ]
+    }
+  ]
+}

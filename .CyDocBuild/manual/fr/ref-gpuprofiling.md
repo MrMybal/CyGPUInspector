@@ -1,0 +1,175 @@
+---
+id: ref-gpuprofiling
+title: Mécanismes du profilage GPU
+description: Détails techniques : Lire les intervalles GPU, suivre plusieurs frames et interpréter les mesures manquantes.
+section: Référence technique
+order: 24
+parent: timeline
+sourceRevision: 62cd2273ede9
+---
+
+# Profiling GPU {#gpu-profiling}
+
+
+
+## Mécanisme {#mechanism}
+
+L'API ReShade expose tout le nécessaire :
+
+* `device::create_query_heap(query_type::timestamp, count, &heap)` ;
+* `command_list::end_query(heap, query_type::timestamp, index)` autour d'une portion de frame ;
+* `command_list::copy_query_heap_results(...)` vers un tampon de relecture qui nous appartient ;
+* `command_queue::signal(fence, value)` et `device::get_completed_fence_value(fence)` pour savoir
+  quand cette copie a réellement été exécutée ;
+* `device::map_buffer_region(...)` pour la lire ;
+* `command_queue::get_timestamp_frequency()` pour convertir les ticks en millisecondes.
+
+La disponibilité est détectée en créant un heap de test à l'initialisation du device, parce que
+`device_caps` ne l'annonce pas.
+
+### Pourquoi pas `get_query_heap_results` {#why-not-get-query-heap-results}
+
+C'est la fonction évidente, et elle ne fonctionne pas ici. En D3D12, ReShade tient une fence par
+requête et renvoie `false` tant que cette fence n'a pas été signalée — mais il ne signale que les
+fences des requêtes émises par son propre runtime. Les requêtes qu'un add-on enregistre sur les
+command lists **du jeu** n'ont aucune fence derrière elles, donc l'appel renvoie `false` pour
+toujours. Le premier essai de ce code sur un vrai jeu D3D12 a résolu **zéro** frame sur plusieurs
+centaines pendant que les query heaps se remplissaient, et la timeline annonçait « pas de timings
+GPU » sans moyen de savoir pourquoi.
+
+`copy_query_heap_results` n'a pas cette condition : c'est un `ResolveQueryData` vers un tampon qui
+nous appartient, donc la synchronisation devient la nôtre, et c'est à cela que sert la fence
+ci-dessus. Tout cela reste l'API add-on officielle, et rien de l'usage que le jeu fait de D3D12
+n'est intercepté ni remplacé.
+
+Une fréquence nulle n'est jamais retenue non plus. Un jeu D3D12 crée plusieurs queues, et ce code
+s'exécute une fois par queue ; une queue de copie qui n'annonce aucune fréquence de timestamp ne
+doit pas écraser celle de la queue graphique, sans quoi chaque tick devient inconvertible et la
+timeline n'affiche de nouveau rien.
+
+## La contrainte qui décide de tout {#the-constraint-that-decides-everything}
+
+ReShade appelle un add-on **avant** une commande, jamais après. Un draw ne peut donc pas être
+encadré par deux timestamps. Ce qui est mesuré est l'**intervalle entre une commande enregistrée
+et la suivante** : le temps attribué à un draw est le temps écoulé de son début au début de la
+commande enregistrée suivante. C'est ce que tout intercepteur « avant seulement » peut mesurer
+honnêtement, et l'interface le dit au lieu de laisser croire à une mesure exacte par draw.
+
+Conséquence pratique : un seul timestamp par point de mesure, pas deux. Le nombre de requêtes est
+divisé par deux et le coût GPU avec.
+
+## Quelle commande un timestamp mesure {#which-command-a-timestamp-measures}
+
+Un timestamp est pris pendant l'**enregistrement** d'une command list, et à ce moment le seul
+numéro qu'ait la commande est sa position dans cette liste. Quelle commande de la **frame** c'est
+n'existe qu'une fois la liste exécutée et ses événements fusionnés dans la frame. Une marque est
+donc remise sans attribution, la liste la garde, et quand la liste est fusionnée la marque apprend
+où la liste a atterri (`GpuTimer::Attribute`). Une liste réinitialisée sans avoir été exécutée ne
+s'est jamais exécutée, et ses marques continuent de ne rien mesurer.
+
+C'était faux dans la première version et D3D11 le masquait : là, l'unique contexte immédiat numérote
+ses commandes comme la frame. En D3D12 chaque command list numérote à partir de zéro, et toutes les
+mesures d'une frame tombaient sur ses premières commandes — sur Scorn, 66 mesures sur les
+événements 1 à 83 d'une frame de 200 commandes.
+
+## Ordre d'exécution, et où commence chaque mesure {#execution-order-and-where-each-measurement-starts}
+
+Le heap est rempli dans l'ordre d'**enregistrement**, à travers tous les threads sur lesquels le
+jeu enregistre ; le GPU exécute les listes dans l'ordre d'**exécution**. Les timestamps sont donc
+triés par temps avant toute mesure, et chacun dure jusqu'au point suivant que le GPU a réellement
+atteint. Chaque résultat porte aussi `gpu_start`, sa position depuis le premier point mesuré de la
+frame : c'est ce qui permet à la vue de timing de placer une passe là où elle s'est exécutée plutôt
+que bout à bout.
+
+Une valeur que le GPU n'a pas écrite cette frame — une requête dont la liste n'a jamais été
+exécutée garde ce que le slot contenait quatre frames plus tôt — est plus ancienne que le timestamp
+de fermeture de la frame précédente, et elle est jetée au lieu de devenir une durée énorme. La
+ligne de journal les compte comme `stale discarded`.
+
+`gpu_start` a été ajouté sans casser le format : `TimingResultsRecord` dit combien d'octets prend
+chaque résultat (le champ s'appelait `reserved` et valait zéro), donc une application lit les
+résultats de seize octets d'un add-on plus ancien comme des résultats sans position, et le dit dans
+la vue.
+
+## Lecture différée {#deferred-read-back}
+
+Quatre heaps en anneau, chacun avec son propre tampon de relecture, résultats lus pour la frame
+N-3. On n'attend **jamais** le GPU : une copie dont la fence n'est pas encore passée est simplement
+retentée la frame suivante. Les résultats transportent donc **leur propre numéro de frame**,
+affiché dans l'interface, plutôt que d'être attribués à la frame affichée.
+
+Un slot est abandonné au bout de quatre tentatives. Cela compte plus qu'il n'y paraît : un slot
+jamais libéré retient aussi ses requêtes, et dès que les quatre sont retenus le heap est plein,
+toute marque ultérieure est jetée et le chronomètre ne se rétablit plus de toute la session.
+L'add-on journalise, une fois par seconde tant qu'un niveau de timing est actif, combien de frames
+ont été résolues, combien ont été abandonnées et combien de marques ont été jetées : une panne de
+ce genre est donc visible dans `ReShade.log` au lieu d'être une colonne vide dans l'interface.
+
+## Niveaux {#levels}
+
+| Niveau | Ce qui est instrumenté | État |
+|---|---|---|
+| `Tracking` et en dessous | rien | — |
+| `Pass Timing` | un timestamp à chaque changement de cible de rendu | **implémenté** |
+| `Full Draw Timing` | un timestamp par draw et par dispatch | **implémenté** |
+| `Selected Shader` / `Selected Draw` / `Selected Resource` | en plus de `Pass Timing`, un timestamp avant chaque commande que la cible désigne et un à la commande suivante | **implémenté** |
+
+L'agrégation par shader et par passe est faite **côté standalone**, à partir des mesures par
+commande : c'est gratuit et cela évite d'embarquer la logique d'agrégation dans le jeu.
+
+`Full Draw Timing` peut diviser le framerate par deux. C'est un mode diagnostic, activé
+explicitement, et annoncé comme tel dans l'interface (§23, §67).
+
+### Selected Shader, Selected Draw, Selected Resource {#selected-shader-selected-draw-selected-resource}
+
+Avec `Pass Timing` seul, la mesure d'un draw court jusqu'au changement de cible de rendu suivant : un
+shader dessiné au milieu d'une passe n'a pas de temps à lui. Une **mesure ciblée** règle cela pour les
+commandes que l'utilisateur regarde, sans payer pour toutes les commandes de la frame :
+
+* **Selected Shader** — les draws et dispatches de tous les pipelines qui utilisent le shader. Le
+  standalone envoie les pipelines qu'il connaît, jusqu'à 64, et les renvoie quand le jeu en crée de
+  nouveaux ;
+* **Selected Draw** — une commande, reconnue par son pipeline, ses cibles et ses compteurs plutôt que
+  par sa position, qu'une command list ne connaît pas pendant l'enregistrement ;
+* **Selected Resource** — les draws dont la cible de rendu 0 ou la cible de profondeur est la
+  ressource.
+
+Pour chaque commande désignée, l'add-on prend un timestamp juste avant et un à la commande suivante,
+qui clôt la mesure : deux timestamps par commande, en plus des frontières de passes. La même fonction
+`TimingFocusMatches` décide dans l'add-on et dans le producteur de test.
+
+Les boutons sont dans le panneau Details : **Mesurer ce shader précisément** (onglet Shader),
+**Mesurer ce draw précisément** (onglet Event), **Mesurer les draws qui écrivent dans cette
+ressource** (onglet Resource). Ils montent le niveau à `Pass Timing` s'il était plus bas ; en
+`Full Draw Timing`, toutes les commandes sont déjà mesurées. Une mesure ciblée appartient au
+standalone qui l'a demandée : l'add-on l'abandonne quand un standalone se connecte.
+
+## Restitution {#presentation}
+
+* par passe : `Depth Prepass 0.42 ms · GBuffer 1.31 ms · Lighting 2.82 ms …` ;
+* par shader : appels, total GPU, moyenne, maximum, dans l'onglet Shader du panneau Details — à
+  partir des commandes mesurées seules, donc sous une mesure Selected Shader ou en `Full Draw Timing` ;
+* par draw : sa propre valeur, dans l'onglet Event, sous une mesure ciblée qui le désigne ou en
+  `Full Draw Timing` ;
+* par ressource, sous une mesure Selected Resource : le nombre de draws qui y écrivent et leur total
+  GPU.
+
+Le nombre de timestamps par frame est plafonné (`MaxTimestamps`, 16384 par défaut) ; au-delà, les
+marques sont comptées comme abandonnées plutôt que d'agrandir le heap en plein rendu.
+
+## Limites {#limits}
+
+* Le temps d'une commande inclut ce qui se passe entre elle et la commande enregistrée suivante
+  (changements d'état, commandes non suivies).
+* En D3D12 avec plusieurs command lists, les intervalles de listes différentes ne sont pas
+  comparables directement : les timestamps sont sur la même queue mais l'ordre d'enregistrement
+  n'est pas l'ordre d'exécution.
+* Les résultats viennent de la frame N-3 et sont rapprochés de la frame courante par index
+  d'événement. D'une frame à l'autre le contenu est presque identique, mais c'est une
+  approximation — le numéro de frame mesuré est affiché pour cette raison.
+
+## Mesure du coût de l'outil {#measuring-the-cost-of-the-tool}
+
+Indépendamment du profiling du jeu, l'add-on mesure déjà son propre temps CPU par frame
+(`FrameEndRecord::addon_cpu_ms`) et son débit IPC (`StatsRecord`). Le §68 demande d'étendre cela à
+la VRAM des textures partagées et à la comparaison entre modes ; les compteurs sont en place.

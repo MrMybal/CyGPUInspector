@@ -1,0 +1,68 @@
+CyGPUInspector 0.4.0 - sources and component notices
+Copyright (C) 2026 Cyberalien.
+
+Product source: https://github.com/MrMybal/CyGPUInspector
+Build instructions: https://github.com/MrMybal/CyGPUInspector/blob/main/README.md
+License and distribution: see Docs/Licensing.md and THIRD-PARTY.md.
+CyGPUInspector is licensed under GNU AGPL v3 or later. The full text is in
+CyGPUInspector-AGPL-3.0.txt. Each third-party component retains its own license.
+
+Included components (versions are pinned by the source checkout):
+- CyUI 1.2.0, revision ff023e646c6a3038b3dfbfd53f6d2b4a2f5955e3:
+  https://github.com/MrMybal/CyUI
+  Vendored source and provenance: ThirdParty/CyUI/ (ORIGIN.txt).
+  MIT; full text: CyUI/LICENSE.txt.
+  Upstream license (repository currently private): https://github.com/MrMybal/CyUI/blob/ff023e646c6a3038b3dfbfd53f6d2b4a2f5955e3/LICENSE
+- ReShade SDK 6.8.x, API 20: https://github.com/crosire/reshade
+  BSD-3-Clause; full text: ReShade-SDK/LICENSE.md.
+- ReShade 6.8.0, official full add-on support build: https://reshade.me
+  Source: https://github.com/crosire/reshade/tree/v6.8.0
+  BSD-3-Clause; full text and embedded dependency notices: ReShade/.
+- Dear ImGui docking 1.93 WIP: https://github.com/ocornut/imgui
+  MIT; full text: DearImGui/LICENSE.txt.
+- Dear ImGui 1.92.5 headers for the ReShade overlay:
+  https://github.com/ocornut/imgui/tree/v1.92.5
+  MIT; full text: DearImGui-ReShade/LICENSE.txt.
+- ImGuiColorTextEdit, CyUI's pinned native editor with serialization/syntax patches:
+  https://github.com/goossens/ImGuiColorTextEdit
+  MIT; full text and exact snapshot hashes: ImGuiColorTextEdit/.
+- Lexilla, Scintilla headers and SciTE keyword/property data (Code module):
+  https://github.com/ScintillaOrg/lexilla
+  https://github.com/mirror/scintilla
+  https://github.com/mirror/scite
+  Permissive licenses; complete texts: Lexilla/, Scintilla/, SciTE/.
+  Revisions and archive hashes: ThirdParty/CyUI/third_party/code-syntax.lock.json.
+- 3Dmigoto HLSL decompiler, commit 8f329bd:
+  https://github.com/bo3b/3Dmigoto
+  GPL-3.0; full text and provenance: 3Dmigoto/.
+- dxil-spirv 2.73.0, commit bed30ff2115d845fb6bf8752bcbe1c681efb0e01:
+  https://github.com/HansKristian-Work/dxil-spirv
+  MIT; full text: dxil-spirv/LICENSE.MIT.
+- dxbc-spirv (revision vendored with dxil-spirv):
+  https://github.com/doitsujin/dxbc-spirv
+  MIT; full text: dxbc-spirv/LICENSE.
+- Khronos SPIR-V headers (revision vendored with dxil-spirv):
+  https://github.com/KhronosGroup/SPIRV-Headers
+  Full text: SPIRV-Headers/LICENSE.
+- RenderDoc LLVM bitcode reader (revision vendored with dxil-spirv):
+  https://github.com/baldurk/renderdoc
+  MIT; complete source-header notice: RenderDoc-bitcode-reader/LICENSE.txt.
+- glslang SPIR-V builder (revision vendored with dxil-spirv):
+  https://github.com/KhronosGroup/glslang
+  BSD-3-Clause; complete source-header notice: glslang-SPIR-V-builder/LICENSE.txt.
+- SPIRV-Cross, commit be71ee8c12cd7dc5ca8fa9581f708c2e8561fe2a:
+  https://github.com/KhronosGroup/SPIRV-Cross
+  Apache-2.0 OR MIT; complete notices: SPIRV-Cross/.
+
+When Microsoft DirectX Shader Compiler is included in a binary release:
+https://github.com/microsoft/DirectXShaderCompiler
+See DirectXShaderCompiler/ORIGIN.txt for the exact version and archive hash.
+The complete LLVM/NCSA, MIT and Microsoft license texts accompany those DLLs.
+dxil.dll is a separate component under Microsoft Software License Terms.
+
+Repository links supplement, and never replace, the complete license texts.
+
+- CyDoc 0.1.0, revision 6ddf9a582defb2f11fbb3f992afef6f98dcadc93:
+  https://github.com/MrMybal/CyDoc
+  MIT; full original text and generation dependency notices: CyDoc/.
+  Reproducible local package provenance: .CyDocBuild/vendor/ORIGIN.json.

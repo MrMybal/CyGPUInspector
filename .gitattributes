@@ -4,3 +4,10 @@ LICENCES/glslang-SPIR-V-builder/LICENSE.txt text eol=lf
 # Preserve whitespace from unmodified upstream license notices.
 LICENCES/** -whitespace
 CyGPUInspectorUnreal/CyGPUInspector/LICENCES/** -whitespace
+
+.CyDocBuild/** text eol=lf
+.CyDocBuild/vendor/*.tgz -text
+.CyDocBuild/assets/** -text
+
+# Preserve the exact bytes and whitespace of original dependency notices.
+.CyDocBuild/assets/notices/** -whitespace

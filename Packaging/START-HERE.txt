@@ -1,4 +1,4 @@
-CyGPUInspector 0.4.0
+CyGPUInspector 0.4.1
 ====================
 
 (Français : voir COMMENCER-ICI.txt)
@@ -58,7 +58,7 @@ A deep capture ("Deep capture" panel > "Capture now") saves the frame's final im
   c) Press "Capture" in the level editor toolbar, or type  CyGPUInspector.Capture  in the console.
      Only the 3D render of the main viewport is captured, not the editor around it.
 
-Details: Docs\UnrealPlugin.md.
+Details: App\Documentation\Documentation.html#/en/unreal.
 
 
 4. THE AI ASSISTANT AND THE HLSL EDITOR
@@ -75,7 +75,7 @@ compile and inject. "Open in a window" gives the full editor in its own window: 
 compiler errors marked on their lines, test compilation for any profile (F7), Compile & Inject (F5).
 The AI Analysis tab cleans up, classifies or explains the selected shader.
 
-Details: Docs\AI.md and Docs\StandaloneApp.md.
+Details: App\Documentation\Documentation.html#/en/ai and App\Documentation\Documentation.html#/en/navigation.
 
 
 5. APPLYING A MOD ON SOMEONE ELSE'S MACHINE
@@ -115,7 +115,7 @@ Draw suppressions, on the other hand, are immediate.
     RunTests.cmd                   runs the five test suites
     CyGPUInspectorFakeSession.exe  the synthetic producer
 
-  Docs\                            the full documentation (Docs\fr\ for French)
+  App\Documentation\               complete English/French local reader
   LICENCES\                       full product/third-party licences and SOURCES.txt
   Licenses\                        compatibility copy of the third-party notices
   THIRD-PARTY.md                   third-party components and their licences
@@ -125,7 +125,7 @@ Draw suppressions, on the other hand, are immediate.
 7. WHAT IT DOES NOT DO
 -----------------------
 
-Read before reporting a bug: Docs\Limitations.md
+Read before reporting a bug: App\Documentation\Documentation.html#/en/troubleshooting
 
   - It does not replay the frame. The real frame is observed through the official ReShade add-on
     API, so it reports what happened rather than re-executing it.

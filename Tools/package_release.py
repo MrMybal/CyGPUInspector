@@ -108,9 +108,9 @@ def help_sources():
     """The official CyDoc export inventory; personal or retired files never enter a package."""
     import json
     from pathlib import Path
-    directory = Path(BIN) / 'Help'
-    delivery = json.loads((directory / 'delivery.json').read_text(encoding='utf-8'))
-    return {name: str(directory / name) for name in [*delivery['files'], 'delivery.json']}
+    directory = Path(BIN) / 'Documentation'
+    delivery = json.loads((directory / 'DocData/delivery.json').read_text(encoding='utf-8'))
+    return {name: str(directory / name) for name in [*delivery['files'], 'DocData/delivery.json']}
 
 
 def validate_help(read_file):
@@ -122,12 +122,12 @@ def validate_help(read_file):
         p = PurePosixPath(name)
         return not p.is_absolute() and '..' not in p.parts and ':' not in name
     try:
-        receipt = json.loads(read_file('App/Help/delivery.json'))
+        receipt = json.loads(read_file('App/Documentation/DocData/delivery.json'))
         assert receipt['schema'] == 1 and receipt['modules'] == ['image']
         for name, digest in receipt['files'].items():
             assert safe(name), name
             try:
-                if hashlib.sha256(read_file('App/Help/' + name)).hexdigest() != digest:
+                if hashlib.sha256(read_file('App/Documentation/' + name)).hexdigest() != digest:
                     problems.append('help differs from generated export: ' + name)
             except (KeyError, FileNotFoundError):
                 problems.append('missing help content: ' + name)
@@ -135,11 +135,14 @@ def validate_help(read_file):
             assert safe(name), name
             if hashlib.sha256((Path(ROOT) / name).read_bytes()).hexdigest() != digest:
                 problems.append('help export is stale for source: ' + name)
-        manifest = json.loads(read_file('App/Help/manifest.json'))
+        manifest = json.loads(read_file('App/Documentation/DocData/manifest.json'))
         assert manifest['schemaVersion'] == 1 and manifest['defaultLocale'] == 'en'
+        assert 'Documentation.html' in receipt['files'] and 'DocAI.md' in receipt['files']
+        assert not any(p.get('kind') == 'source' for p in manifest['pages'])
+        assert not any('.CyDocBuild' in name or 'node_modules' in name for name in receipt['files'])
         assert {x['code'] for x in manifest['locales']} == {'en', 'fr'}
-        assert 'media-image.js' in receipt['files']
-        assert not any('media-' + name + '.js' in receipt['files'] for name in ('mesh','graph','gif','video','gallery'))
+        assert 'DocData/media-image.js' in receipt['files']
+        assert not any('DocData/media-' + name + '.js' in receipt['files'] for name in ('mesh','graph','gif','video','gallery'))
     except (AssertionError, KeyError, ValueError, FileNotFoundError):
         problems.append('invalid or incomplete CyDoc export')
     return problems
@@ -220,8 +223,8 @@ def main():
     node = shutil.which('node')
     if not node:
         parser.error('Node.js 22+ is required to generate the CyDoc manual before packaging.')
-    subprocess.run([node, os.path.join(ROOT, 'Tools', 'build_help.mjs'), '--output',
-                    os.path.join(BIN, 'Help')], cwd=ROOT, check=True)
+    subprocess.run([node, os.path.join(ROOT, '.CyDocBuild', 'build.mjs'), '--output',
+                    os.path.join(BIN, 'Documentation')], cwd=ROOT, check=True)
 
     name = 'CyGPUInspector-{}-win64'.format(args.version)
     out_root = os.path.abspath(args.output_root)
@@ -294,6 +297,17 @@ def main():
     # Documentation and notices.
     for doc in ('README.md', 'README.fr.md', 'LICENSE', 'THIRD-PARTY.md'):
         copy(os.path.join(ROOT, doc), os.path.join(stage, doc))
+    for readme in ('README.md', 'README.fr.md'):
+        installed_readme = os.path.join(stage, readme)
+        with open(installed_readme, encoding='utf-8') as file:
+            text = file.read()
+        text = text.replace('https://mrmybal.github.io/CyGPUInspector/#/',
+                            'App/Documentation/Documentation.html#/')
+        # Source links remain repository links; authoring inputs are not part of the ZIP.
+        text = re.sub(r'\]\((Docs/[^)]*)\)',
+                      lambda match: '](https://github.com/MrMybal/CyGPUInspector/tree/main/' + match.group(1) + ')', text)
+        with open(installed_readme, 'w', encoding='utf-8', newline='\n') as file:
+            file.write(text)
     for note in ('START-HERE.txt', 'COMMENCER-ICI.txt'):
         copy(os.path.join(ROOT, 'Packaging', note), os.path.join(stage, note))
     if not args.dxc:
@@ -310,10 +324,9 @@ def main():
             assert line in text, (note, line)
             with open(path, 'w', encoding='utf-8', newline='') as file:
                 file.write(text.replace(line, replacement))
-    copy_tree(os.path.join(ROOT, 'Docs'), os.path.join(stage, 'Docs'))
-    copy_tree(os.path.join(ROOT, 'Assets'), os.path.join(stage, 'Assets'))
+    copy_tree(os.path.join(ROOT, 'Assets'), os.path.join(stage, 'Assets'), skip=('.md',))
     for relative, source in help_sources().items():
-        copy(source, os.path.join(stage, 'App', 'Help', relative))
+        copy(source, os.path.join(stage, 'App', 'Documentation', relative))
     copy_tree(os.path.join(ROOT, 'LICENCES'), os.path.join(stage, 'LICENCES'))
 
     # The licences of what is compiled into the binaries.

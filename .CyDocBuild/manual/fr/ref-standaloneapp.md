@@ -1,0 +1,175 @@
+---
+id: ref-standaloneapp
+title: Référence complète du standalone
+description: Détails techniques : Retrouver les panneaux, suivre les sélections et régler apparence ou langue.
+section: Référence technique
+order: 35
+parent: navigation
+sourceRevision: 7f71d802088a
+---
+
+# CyGPUInspectorApp — le standalone {#cygpuinspectorapp-the-standalone}
+
+## Apparence et navigation {#appearance-and-navigation}
+
+L’interface utilise **CyUI 1.2.0**, inclus dans le projet avec le Dear ImGui existant.
+Le thème bleu **Navy** est choisi par défaut. **Affichage > Apparence** permet de
+changer de thème, de densité et de taille d’affichage (85 à 175 %). Ces préférences
+s’ajoutent au fichier de réglages existant, sans remplacer la langue ni les paramètres
+des fournisseurs IA. L’affichage suit également le DPI du moniteur.
+
+La barre supérieure donne accès aux vues Inspecter, Captures, Shaders et Assistant IA,
+ainsi qu’aux actions de capture. Les vues sélectionnent les onglets utiles sans déplacer
+vos panneaux. **Affichage > Panneaux** permet de retrouver chaque panneau. La barre
+inférieure affiche la session, la frame et le temps GPU. Les tableaux étroits peuvent
+défiler horizontalement ; les contrôles de prévisualisation sont regroupés dans
+**Réglages d’affichage**. F5 actualise les connexions et Ctrl+S enregistre une frame
+lorsque vous ne travaillez pas dans un champ texte ou dans l’éditeur HLSL, qui conserve
+ses propres raccourcis.
+
+## Technologie {#technology}
+
+### Documentation intégrée hors ligne {#integrated-offline-documentation}
+
+F1 ou Aide > Guide utilisateur ouvre le lecteur local CyDoc dans un navigateur, en anglais initialement,
+avec un sélecteur français indépendant des réglages de l’application. Il propose
+guides par tâches, références techniques complètes, recherche dans les textes,
+historique des articles, sections, captures et schémas localisés. Les images
+gèrent zoom, déplacement, annotations et agrandissement dans la fenêtre ; les
+schémas sont compilés en SVG accessibles. Le dossier `Documentation/` est recherché à côté de l’EXE indépendamment
+du dossier de travail. Un navigateur moderne est requis ; aucun jeu, réseau, moteur
+de navigateur embarqué, Node.js ou compte fournisseur n’est nécessaire à la lecture.
+Le manuel distribué comprend les éditions anglaise et française complètes. Une image absente laisse l’article lisible.
+
+Pour un rendu scripté, utilisez `--help-language=en` (ou `fr`) puis
+`--help-topic=welcome`, `capture`, `hlsl` ou un autre ID stable du manifeste.
+
+Win32 + Direct3D 11 + Dear ImGui (branche docking, MIT). Ce choix est motivé, pas par défaut :
+
+* le standalone doit **ouvrir des textures D3D partagées** venant du jeu et les afficher sans
+  copie CPU ; un device D3D11 dans le processus rend cela direct, sans couche d'interop ;
+* il doit afficher des **dizaines de milliers de lignes** sans ralentir : `ImGuiListClipper` ne
+  construit que les lignes visibles ;
+* le cœur du projet est du C++ natif (IPC, D3D, décompilation) : Qt 6 est absent de la machine et
+  impose sa propre licence, Avalonia et WinUI 3 imposeraient un pont C++/C# pour tout le cœur.
+
+Coût accepté : les widgets riches (éditeur de code, graphe) sont à écrire nous-mêmes.
+
+## Panneaux {#panels}
+
+| Panneau | Contenu |
+|---|---|
+| Connections | applications détectées, connexion, niveau de tracking, capacités, resynchronisation |
+| Frame timeline | l'historique des frames récentes, les passes en barres proportionnelles au temps GPU, ces mêmes passes en liste triable, et tout ce que contient celle qui est sélectionnée |
+| Deep capture | armement de la capture ponctuelle, bindings par registre, état du pipeline, barrières ; l'image capturée et les buffers de la frame, enregistrés dans le dossier de la capture sous `Images/` et listés là |
+| Frame graph | passes déduites, confiance, ressources écrites et lues, shaders, renommage |
+| Shaders | id, étage, format, draws/frame, ms GPU ; filtre texte, filtre « cette frame ». Le shader model, la taille et la signature sont des colonnes de la même table, masquées par défaut et rappelées par son menu contextuel |
+| Resources | id, type, dimensions, format, mips, écritures/frame, usage ; filtre « render targets seulement » |
+| Frame events | la frame complète, virtualisée ; les événements du shader sélectionné sont surlignés, et trois filtres réduisent la liste aux dessins, aux commandes d'un shader ou à celles d'une passe |
+| Preview | image GPU partagée, canal RGB/R/G/B/A, profondeur linéarisée, plage, mip, slice |
+| Shader code | onglets Disassembly / Bindings / HLSL / AI Analysis / Tools. L'onglet HLSL affiche la reconstruction de chaque décompilateur colorée en HLSL, modifiable, avec Compiler, Compiler et injecter et Ouvrir dans une fenêtre |
+| Assistant IA | connexion au fournisseur, tchat avec l'assistant qui lit la frame avec les outils de CyGPUInspector, mode d'autorisation. Voir [AI.md](doc:ref-ai) |
+| Éditeur HLSL | une fenêtre à part (Affichage > Éditeur HLSL) : l'éditeur complet, voir ci-dessous |
+| Mod export | ce qui a été remplacé ou désactivé, et le paquet vers lequel cela s'exporte |
+| Captures | enregistrement, réouverture et comparaison des captures hors ligne : la comparaison liste les shaders qui n'ont tourné que dans une frame ou ont tourné différemment, et les ressources présentes d'un seul côté (§45). `compare_captures` la donne à un agent et à l'assistant IA, `live` désignant la frame du jeu connecté |
+| Profil du jeu | ce que l'outil retient du jeu : sessions, shaders nouveaux ou déjà connus, état enregistré des shaders désactivés et remplacés, captures du jeu. Voir [Database.md](doc:ref-database) |
+| MCP | niveau de permission et journal de chaque appel |
+| Details | onglets Shader / Resource / Event / Log, avec les actions runtime, le graphe de dépendances, le temps GPU d'un shader (appels, total, moyenne, max) et les boutons qui mesurent à part un shader, un draw ou les draws qui écrivent dans une ressource. Voir [GPUProfiling.md](doc:ref-gpuprofiling) |
+| Status | débit IPC, octets en attente, pertes, coût de l'add-on, compteurs côté jeu |
+
+Sélectionner un shader surligne ses draw calls dans la frame ; sélectionner un événement
+sélectionne son shader et sa render target. C'est la boucle de navigation demandée au §84. Elle
+fonctionne aussi dans l'autre sens : choisir une passe, dans les barres ou dans la liste, fait
+défiler Frame events jusqu'à sa première commande au lieu de laisser la liste où elle était, et
+les ressources et les shaders affichés à côté des barres sont eux-mêmes la sélection.
+
+## Rechercher des shaders {#searching-shaders}
+
+Le champ de recherche du panneau Shaders accepte du texte simple (un morceau de la signature ou de
+l'étage) ou des mots qui restreignent chacun la liste, tous devant correspondre (§46) :
+
+| Mot | Garde les shaders qui |
+|---|---|
+| `stage:cs`, `stage:ps,vs` | sont de cet étage (`vs ps cs gs hs ds ms as`, ou les noms complets) |
+| `writes:rgba16f`, `writes:depth`, `writes:hdr`, `writes:#12` | dessinent dans une cible de ce format, une cible de profondeur, n'importe quel format flottant, ou cette ressource |
+| `reads:depth`, `reads:#7` | ont cette ressource liée en lecture — demande une capture profonde de la frame |
+| `ms>0.2`, `calls>1000` | coûtent plus de 0,2 ms de GPU, exécutent plus de 1000 draws et dispatches dans la frame |
+| `format:dxil`, `sm:6` | ont ce format de bytecode, ce shader model |
+| `tag:bloom`, `name:tonemap` | portent ce tag ou ce nom dans leurs notes |
+| `used`, `disabled`, `replaced`, `new` | ont tourné dans la frame, sont désactivés, sont remplacés, sont nouveaux dans le profil du jeu |
+
+« Trouver les shaders qui écrivent du RGBA16F » s'écrit `writes:rgba16f` ; « les compute shaders qui
+écrivent cette ressource » s'écrit `stage:cs writes:#12`. Les cibles couleur comptent pour le pixel
+shader d'un draw, une cible de profondeur pour tout son pipeline, et les UAV et ressources lues
+viennent des liaisons d'une capture profonde. Un mot non compris est affiché, jamais ignoré en
+silence. Le même texte est la `query` de l'outil MCP `find_shaders` : un agent et l'assistant IA
+cherchent de la même façon.
+
+## Éditeur HLSL {#hlsl-editor}
+
+Le HLSL du shader sélectionné est un seul document, affiché soit dans l'onglet HLSL, soit dans une
+fenêtre à part (**Ouvrir dans une fenêtre**, ou Affichage > Éditeur HLSL). Cette fenêtre est une
+vraie fenêtre Windows, avec la barre de titre du système : elle peut aller sur un autre écran et être
+agrandie. Elle offre
+
+* la coloration syntaxique, les numéros de ligne, les parenthèses appariées, annuler et rétablir,
+  rechercher et remplacer (Ctrl+F), le retour à la ligne, l'affichage des espaces et une minimap
+  (CyUI CodeEditor, MIT) ;
+* **Charger une reconstruction** : la sortie de n'importe quel décompilateur pour ce shader, ou
+  n'importe lequel de ses nettoyages IA ;
+* un point d'entrée et un profil pour **tester la compilation** (F7), préremplis avec le profil du
+  shader ; FXC pour le Shader Model 5, DXC pour le Shader Model 6 ;
+* les erreurs et avertissements du compilateur **marqués sur leurs lignes**, avec le message en
+  info-bulle, et listés sous l'éditeur : un clic amène à la ligne ;
+* **Compiler et injecter** (F5) dans le jeu en cours, avec le profil propre au shader, et
+  **Restaurer l'original** ;
+* l'ouverture et l'enregistrement de fichiers `.hlsl` (Ctrl+O, Ctrl+S).
+
+Le document appartient à un shader. Sélectionner un autre shader charge sa reconstruction, sauf si le
+document contient des modifications : elles sont conservées, et l'onglet HLSL propose de charger le
+nouveau shader à la place.
+
+Un premier lancement ouvre sur une disposition construite plutôt que sur une pile de fenêtres dans
+un coin : à gauche ce à quoi vous êtes connecté et ce parmi quoi choisir, au centre la frame, en
+dessous ses commandes, à droite ce qui est sélectionné. Elle n'est construite qu'une fois, et
+seulement quand le fichier ini n'en contient aucune, donc elle n'écrase jamais une disposition que
+quelqu'un a faite.
+
+## Ligne de commande {#command-line}
+
+Des options pour qu'un lancement scripté ne dépende pas de quelqu'un qui clique dans l'interface.
+Tout ce qu'elles font est aussi accessible depuis l'interface.
+
+| Option | Effet |
+|---|---|
+| `--connect[=<pid>]` | s'attache à une session en cours au démarrage. Sans pid elle prend la seule session présente, et refuse plutôt que de deviner quand il y en a plusieurs. |
+| `--level=<nom>` | règle le niveau de suivi sur cette session : `idle`, `tracking`, `pass-timing`, `capture`, `full-draw-timing`. Appliquée après `--connect`, parce qu'un niveau ne veut rien dire tant qu'il n'y a pas de session sur laquelle le régler. |
+| `--search=<requête>` | remplit la recherche du panneau Shaders, dans le langage ci-dessus ; entre guillemets quand elle a plusieurs mots. |
+| `--select-shader=<id>` | sélectionne ce shader dès que la session l'a envoyé. Avec `--decompile`, lance aussi les décompilateurs dessus ; avec `--time`, le mesure à part (Selected Shader, voir [GPUProfiling.md](doc:ref-gpuprofiling)). |
+| `--show=<vue>[,<vue>]` | met des vues au premier plan : `hlsl`, `ai-analysis` (onglets de Shader code), `hlsl-editor` (la fenêtre de l'éditeur), `assistant` (le panneau Assistant IA). Sert aux captures d'écran de cette documentation. |
+
+## Threads et verrouillage {#threads-and-locking}
+
+Un seul mutex par session (`SessionModel::Mutex()`). Le thread lecteur l'attrape par record, l'UI
+par panneau. Règle importante : **aucune commande du pipe n'est envoyée pendant que le verrou est
+tenu**, parce qu'une commande attend la réponse du thread de rendu du jeu et bloquerait le thread
+lecteur pendant une frame entière.
+
+## Disposition {#layout}
+
+La disposition construite par l'utilisateur est enregistrée dans `CyGPUInspectorApp.ini` à côté de
+l'exécutable. Les viewports ImGui permettent de sortir un panneau de la fenêtre principale, pour
+les configurations multi-écrans.
+
+**Affichage > Réinitialiser la disposition** remet chaque panneau là où il est au premier
+lancement. C'est aussi le moyen de retrouver un panneau sorti sur un écran qui n'est plus là, qui
+reste sinon hors de vue.
+
+## Travail de fond {#background-work}
+
+Rien de coûteux ne tourne sur le thread de l'interface :
+
+* le **thread lecteur** draine le ring et alimente le modèle ;
+* le **thread d'analyse** désassemble et réfléchit les shaders, avec cache mémoire et disque ;
+* le **frame graph** est reconstruit quatre fois par seconde, pas à chaque image, et la case
+  `Follow` permet de geler celui d'une frame pendant qu'on l'inspecte.

@@ -295,12 +295,14 @@ def main():
         copy(os.path.join(BIN, 'CyGPUInspectorRS.addon64'), os.path.join(third_party, 'CyGPUInspectorRS.addon64'))
 
     # Documentation and notices.
-    for doc in ('README.md', 'README.fr.md', 'LICENSE', 'THIRD-PARTY.md'):
+    for doc in ('README.md', 'README.fr.md', 'VERSION.md', 'VERSION.fr.md', 'LICENSE', 'THIRD-PARTY.md'):
         copy(os.path.join(ROOT, doc), os.path.join(stage, doc))
     for readme in ('README.md', 'README.fr.md'):
         installed_readme = os.path.join(stage, readme)
         with open(installed_readme, encoding='utf-8') as file:
             text = file.read()
+        text = text.replace('https://mrmybal.github.io/CyGPUInspector/Documentation.html#/',
+                            'App/Documentation/Documentation.html#/')
         text = text.replace('https://mrmybal.github.io/CyGPUInspector/#/',
                             'App/Documentation/Documentation.html#/')
         # Source links remain repository links; authoring inputs are not part of the ZIP.

@@ -1,239 +1,176 @@
-<p align="center"><img src="Assets/cygpuinspector-logo-256.png" alt="Logo de CyGPUInspector" width="160"></p>
+<table width="100%">
+  <tr>
+    <td width="300" align="left" valign="top">
+      <a href="https://mrmybal.github.io/CyGPUInspector/Documentation.html#/fr/welcome">Documentation</a><br>
+      <a href="https://github.com/MrMybal/CyGPUInspector">Dépôt</a><br>
+      <a href="https://github.com/MrMybal/CyGPUInspector/issues">Suivi des problèmes</a><br><br>
+      <sub>README</sub><br>
+      <a href="README.md">English</a> · <a href="README.fr.md">Français</a>
+    </td>
+    <td width="400" align="center" valign="middle">
+      <img src="Assets/cygpuinspector-logo-256.png" alt="Logo de CyGPUInspector" width="128">
+    </td>
+    <td width="300" align="right" valign="top">
+      <p><sub>Licence de l’application</sub><br><a href="LICENSE"><strong>AGPL-3.0-or-later</strong></a></p>
+      <p><sub>Version</sub><br><a href="VERSION.fr.md"><strong>0.4.1</strong></a><br><strong>ALPHA — EXPÉRIMENTAL</strong></p>
+      <p><a href="https://github.com/MrMybal/CyGPUInspector/releases/download/v0.4.1/CyGPUInspector-0.4.1-win64.zip"><strong>Télécharger</strong></a><br><sub>Windows x64 · portable</sub></p>
+    </td>
+  </tr>
+</table>
 
-# CyGPUInspector
+<h1 align="center">CyGPUInspector</h1>
 
-*Disponible aussi en [anglais](README.md), qui est la langue de référence du projet.*
+Un débogueur de frames GPU et un profileur pour les développeurs et les moddeurs de jeux Direct3D 11/12.
+Inspectez shaders, ressources et temps GPU, reconstruisez du HLSL et comparez des frames enregistrées.
+**ReShade assure la capture dans le jeu** ; l’analyse s’effectue dans une application Windows séparée.
 
-**[Documentation](https://mrmybal.github.io/CyGPUInspector/#/fr/welcome)** — guides, recherche, captures, schémas et références API en français. Le même manuel reste disponible hors ligne avec F1 dans l’application.
+> **ALPHA — EXPÉRIMENTAL · 0.4.1**
+>
+> Disponible pour les essais et les retours ; les fonctionnalités et la compatibilité peuvent
+> être incomplètes. Cette version actualise le manuel anglais/français intégré et l’aide
+> contextuelle. Consultez les [notes de version et limitations connues](VERSION.fr.md).
 
-Inspecteur GPU temps réel et offline : frame debugger, inspecteur de shaders et de ressources,
-profileur, décompilateur et analyse assistée par IA, avec **ReShade comme agent de capture et de
-contrôle** dans le processus du jeu.
+[![CyGPUInspector affichant les passes GPU, les détails du shader et l’image en direct avec le thème Navy](Assets/screenshots/frame-inspection.png)](Assets/screenshots/frame-inspection.png)
 
-L'outil se situe entre ReShade, RenderDoc, ShaderToggler et un décompilateur de shaders. Le
-composant injecté reste léger ; toute la puissance d'analyse est dans l'application standalone.
+Les captures montrent CyGPUInspector 0.4.0 avec la session de démonstration synthétique incluse.
 
-Licence : **GNU Affero General Public License v3 ou ultérieure** (AGPL-3.0-or-later). Voir [LICENSE](LICENSE).
+## À propos de CyGPUInspector
 
-## Captures d’écran
+Connectez-vous à un jeu en cours, sélectionnez une passe dans la timeline, puis retrouvez ses
+événements, shaders et ressources. L’historique des frames aide à repérer les traitements coûteux ;
+les réglages de canal, profondeur, mip et slice facilitent l’inspection d’une image GPU partagée.
+Les noms des passes et leurs dépendances sont reconstruits à partir des événements observés ;
+vous pouvez les renommer et les annoter.
 
-Captures de CyGPUInspector 0.4.0 avec la session de démonstration synthétique incluse.
+[![Timeline continue montrant plusieurs frames, les attentes GPU et les temps des passes](Assets/screenshots/continuous-timeline.png)](Assets/screenshots/continuous-timeline.png)
 
-**Inspection d’une frame** — passes GPU, événements, shaders et image en direct avec le thème Navy.
+L’observation continue et la capture profonde à la demande répondent à des besoins différents.
+La capture profonde enregistre les liaisons des commandes, l’état des pipelines et les barrières ;
+elle peut exporter l’image finale et les buffers capturés en PNG/DDS. Enregistrez des captures
+ordinaires pour les inspecter ou les comparer sans le jeu. Aucun mode ne rejoue une frame ; les
+captures ordinaires enregistrées ne conservent pas les pixels GPU disponibles en direct.
 
-![Inspection d’une frame dans CyGPUInspector : passes GPU, détails du shader et image en direct](Assets/screenshots/frame-inspection.png)
+Consultez le désassemblage et la réflexion DXBC/DXIL, reconstruisez du HLSL avec quatre moteurs
+de décompilation, modifiez-le avec les diagnostics du compilateur, puis testez un remplacement
+compatible dans le jeu. Le HLSL reconstruit n’est pas le code source original.
 
-**Timeline continue** — historique des frames, attentes GPU et temps des passes sur plusieurs frames.
+[![HLSL reconstruit avec coloration syntaxique dans le thème Light Grey](Assets/screenshots/hlsl-editor-light.png)](Assets/screenshots/hlsl-editor-light.png)
 
-![Timeline continue de CyGPUInspector montrant les frames, les attentes GPU et les passes](Assets/screenshots/continuous-timeline.png)
+## Fonctionnalités
 
-**Vue HLSL** — code du shader décompilé avec coloration syntaxique dans le thème Light Grey.
+- **Inspecter et profiler** : sessions connectées, shaders, ressources, événements, graphes de
+  frame, temps par passe ou par draw et historique continu des frames.
+- **Retrouver son travail** : profils par jeu, signatures persistantes des shaders, tags,
+  annotations, shaders désactivés ou remplacés et comparaison de frames hors ligne.
+- **Partager des modifications** : exportez un dossier `.cygimod` et appliquez-le avec
+  `CyGPUInjector.addon64`, sans l’application d’analyse ni IPC.
+- **Capturer dans Unreal** : le plugin capture l’éditeur et les builds Development/DebugGame
+  depuis un bouton, une commande console ou un nœud Blueprint. Consultez le
+  [guide Unreal](https://mrmybal.github.io/CyGPUInspector/Documentation.html#/fr/unreal).
+- **Interroger un assistant IA** : Codex CLI, Claude Code CLI ou une API compatible OpenAI,
+  locale ou distante, peut lire la frame avec les outils de l’application. Choisissez ses
+  permissions ; ses résultats restent des hypothèses. Les agents externes utilisent
+  `CyGPUInspectorMCP.exe` sur stdio ; le standalone applique un niveau MCP distinct,
+  en lecture seule par défaut.
+- **Lire le manuel complet** : [documentation en ligne](https://mrmybal.github.io/CyGPUInspector/Documentation.html#/fr/welcome)
+  avec recherche, captures, schémas et références des API publiques C/C++. **F1** ou
+  **Aide > Guide utilisateur** ouvre le même lecteur CyDoc hors ligne. L’anglais est la langue
+  par défaut, avec une édition française complète ; le choix dans le lecteur ne modifie pas
+  les préférences de l’application.
 
-![Code HLSL d’un shader dans CyGPUInspector avec coloration syntaxique et thème clair](Assets/screenshots/hlsl-editor-light.png)
-
-## Composants
-
-| Composant | Rôle | État |
-|---|---|---|
-| `CyGPUInspectorCore` | protocole IPC, ring buffer partagé, SHA-256, conteneurs DXBC/DXIL, formats, traduction | ✅ |
-| `CyGPUInspectorRS` | add-on ReShade (`.addon64`) : tracking, capture, contrôle, timings | ✅ |
-| `CyGPUInjector` | add-on ReShade (`.addon64`) qui applique un mod exporté, sans le reste de l'outil | ✅ |
-| `CyGPUInspectorApp` | standalone Win32 + D3D11 + Dear ImGui : toute l'analyse | ✅ milestones 2–11 |
-| `CyGPUInspectorDecompiler` | désassemblage, réflexion, compilation, décompilation (4 backends) | ✅ milestones 5–6 |
-| `CyGPUInspectorDatabase` | blobs, tags et annotations par signature, un profil par jeu avec son état persistant, le tout en JSON | ✅ |
-| `CyGPUInspectorMCP` | serveur MCP local (lecture seule par défaut) | ✅ milestone 10 |
-| `CyGPUInspectorUnreal` | plugin Unreal Engine (5.3+) : captures depuis l'éditeur et depuis les builds Development / DebugGame | ✅ première version |
-
-## Ce qui fonctionne aujourd'hui
-
-```
-Jeu (D3D11 / D3D12)
- → ReShade 6.8 (build add-on, API 20)
- → CyGPUInspectorRS.addon64
-     · shaders suivis, bytecode capturé, signature SHA-256 persistante
-     · pipelines, ressources, vues, render targets
-     · draws, dispatches, copies, clears, résolutions, render passes
-     · disable / enable d'un shader (les draws concernés sont supprimés)
-     · remplacement de shader à chaud : pipeline reconstruit et échangé au moment du draw
-     · timestamps GPU par passe ou par draw, lus trois frames plus tard sans jamais attendre
-     · capture profonde à la demande : chaque descripteur de chaque commande, l'état fixe de
-       chaque pipeline, les barrières — quelques frames, puis elle se désarme seule
-     · preview GPU : copie d'une ressource dans une texture partagée, sans readback CPU
-     · les buffers d'une capture profonde : chaque texture dans laquelle la frame capturée a
-       écrit, copiée sur le GPU pour que le standalone l'enregistre
- → ring buffer en mémoire partagée + named pipe de contrôle
- → CyGPUInspectorApp
-     · liste des applications connectées (plusieurs jeux en parallèle)
-     · shaders, ressources, événements de la frame, détails, corrélations
-     · recherche des shaders par ce qu'ils font : stage:cs writes:rgba16f ms>0.2 reads:depth...
-     · un profil par jeu : shaders nouveaux ou déjà connus, shaders désactivés et remplacés conservés
-     · preview d'une render target ou d'une profondeur : canal RGB/R/G/B/A, profondeur
-       linéarisée, reverse-Z, plage réglable, mip et slice au choix
-     · frame graph reconstruit : passes déduites, dépendances entre ressources, renommage
-     · timeline de frame : les passes en barres à l'échelle du temps GPU, plus l'historique des
-       dernières centaines de frames — c'est la capture runtime, on la laisse tourner
-     · panneau de capture profonde : les liaisons par registre, l'état du pipeline, les barrières
-     · chaque capture profonde enregistrée dans son propre dossier : l'image finale, et chaque
-       buffer de la frame en PNG à regarder et en DDS avec les données, listés dans capture.json
-     · désassemblage DXBC et DXIL, réflexion des bindings, cache persistant par signature
-     · décompilation en HLSL par quatre backends, validée par recompilation
-     · éditeur HLSL : coloration syntaxique, erreurs marquées sur leurs lignes, compilation de test
-       pour n'importe quel profil, injection dans le jeu — dans l'onglet HLSL ou une fenêtre à
-       part ; highlight magenta
-     · temps GPU par commande, par passe et par shader
-     · tags, noms et annotations persistants par signature, chacun étiqueté par son origine
-     · captures offline : sauvegarde, réouverture sans le jeu, comparaison de deux frames
-     · assistant IA : CLI Codex, CLI Claude Code, API compatible OpenAI ou locale ; il lit la frame
-       avec les outils, selon le mode d'autorisation choisi — et nettoie, classifie ou explique un
-       shader, chaque résultat étiqueté avec son modèle
-     · snapshot d'analyse IA : tout ce qu'un modèle doit lire, dans un répertoire lisible
-     · export d'un mod : ce qu'on a remplacé ou désactivé, écrit dans un dossier .cygimod
-     · serveur MCP local, lecture seule par défaut, chaque appel journalisé
-     · coût mesuré de l'outil (CPU add-on, débit IPC, pertes)
-```
-
-**Partager une modification** — ce qu'on change dans un jeu avec l'inspecteur s'exporte en un
-dossier `.cygimod` que **CyGPUInjector.addon64** rejoue chez n'importe qui, sans standalone ni
-IPC : un shader remplacé par le vôtre, un autre supprimé. L'appariement se fait par hash du code
-du shader, donc ça survit au redémarrage et ça cesse proprement de s'appliquer quand le jeu change
-le shader. Voir [Docs/fr/ModPackages.md](Docs/fr/ModPackages.md).
-
-**Les deux captures** — une runtime, continue et peu coûteuse, et une profonde, ponctuelle et
-complète — sont décrites dans [Docs/fr/CaptureModes.md](Docs/fr/CaptureModes.md), y compris ce que ni
-l'une ni l'autre ne peut faire : rejouer la frame. C'est ce qui sépare CyGPUInspector d'un
-RenderDoc, et c'est une conséquence directe du choix de passer par l'API add-on officielle de
-ReShade plutôt que par une injection maison.
-
-**Dans Unreal** — le plugin `CyGPUInspectorUnreal/CyGPUInspector` capture l'éditeur, et les builds
-Development ou DebugGame du jeu, depuis un bouton de la barre d'outils, une commande console ou un
-nœud Blueprint. Il charge ReShade (la version avec support complet des add-ons) et l'add-on avant
-que le moteur de rendu démarre, comme le plugin RenderDoc d'Unreal charge RenderDoc, lance le
-standalone si besoin, et les buffers capturés portent les noms qu'Unreal donne à ses render
-targets. Voir [Docs/fr/UnrealPlugin.md](Docs/fr/UnrealPlugin.md).
-
-Ce qui n'y est pas encore : Vulkan et OpenGL.
-
-## L'assistant IA
-
-`Affichage > Assistant IA`. Choisissez un fournisseur dans **Connexion** — Codex ou Claude Code avec
-la connexion que leur CLI a déjà, ou une API compatible OpenAI, locale ou distante — puis posez votre
-question dans **Tchat** : *quelle partie du rendu semble produire le bloom ?* L'assistant lit
-lui-même le frame graph, les ressources, les shaders et les timings avec les outils de
-CyGPUInspector, dans un budget, et demande avant de toucher au jeu si vous choisissez **À la
-demande**. Voir [Docs/fr/AI.md](Docs/fr/AI.md).
-
-## Langue
-
-**F1** ou **Aide > Guide utilisateur** ouvre la documentation intégrée hors ligne :
-manuel anglais/français avec recherche, captures de l’application, schémas,
-navigation par sections et références techniques complètes. L’anglais est la langue
-initiale du guide ; son sélecteur ne modifie pas les préférences de l’application.
-Conservez `App/Documentation/` avec l’exécutable lors d’une copie du paquet.
-
-L'anglais est la langue de référence : le code, les commentaires, la documentation et chaque
-chaîne de l'interface sont écrits en anglais d'abord. Une traduction est un catalogue dans `Lang/`
-qui associe ces chaînes anglaises à une autre langue, et tout ce qu'il ne couvre pas retombe sur
-l'anglais — une traduction à moitié faite ne produit donc jamais d'étiquette vide.
-
-Le français est fourni (`Lang/fr.json`). Ajouter une langue consiste à copier `Lang/template.json`,
-le remplir et le déposer dans `Lang/` ; aucune recompilation. Voir
-[Docs/fr/Translating.md](Docs/fr/Translating.md).
-
-## Brancher un agent IA externe
-
-Pointer un client MCP sur `bin/Release/CyGPUInspectorMCP.exe`. Il parle MCP sur stdio et relaie
-tout vers le standalone. Le niveau de permission se règle **dans le standalone**, jamais dans le
-proxy : `Read Only` par défaut, puis `Debug Control` (désactiver, surligner, capturer) et
-`Shader Modification` (compiler, remplacer). Chaque appel apparaît dans le panneau MCP.
-
-## Construire
-
-Prérequis : Windows 64 bits, Visual Studio 2022 avec les outils C++ (CMake et Ninja
-fournis avec), le SDK Windows et Node.js 22+ pour générer le manuel CyDoc local.
-Les dépendances natives et l’archive CyDoc sont dans `ThirdParty/`. Installez une fois
-les dépendances de génération :
-
-```sh
-npm --prefix .CyDocBuild ci
-```
-
-```bash
-build.cmd Release
-```
-
-Sorties dans `bin/Release/` :
-
-| Fichier | Usage |
-|---|---|
-| `CyGPUInspectorRS.addon64` | à copier à côté de l'exécutable du jeu (ReShade add-on enabled) |
-| `CyGPUInspectorApp.exe` | l'application d'analyse |
-| `CyGPUInspectorCoreTests.exe` | auto-tests (hash, ring, DXBC, annuaire, pipe) |
-| `CyGPUInspectorShaderTests.exe` | chaîne de shaders sur de vrais shaders compilés, et passe d'affichage |
-| `CyGPUInspectorMCP.exe` | serveur MCP à lancer depuis un client MCP |
-| `CyGPUInspectorFakeSession.exe` | add-on synthétique, pour essayer l'app sans jeu |
-| `CyGPUInspectorIpcTests.exe` | test bout en bout de la chaîne RS → App |
+---
 
 ## Installation
 
-Chargez `CyGPUInspectorRS.addon64` à côté du jeu avec ReShade et prise en charge
-complète des add-ons. Le standalone détecte les sessions ; gardez `Lang/` et le
-lecteur `Documentation/` près de son exécutable. `CyGPUInjector.addon64` sert aux mods exportés.
+L’application publiée est destinée à **Windows x64**. La capture en direct nécessite un jeu
+Direct3D 11/12 compatible et ReShade avec **prise en charge complète des add-ons**.
+Vulkan et OpenGL ne sont pas pris en charge.
 
-## Essayer sans jeu
+1. [Téléchargez CyGPUInspector 0.4.1](https://github.com/MrMybal/CyGPUInspector/releases/download/v0.4.1/CyGPUInspector-0.4.1-win64.zip)
+   et extrayez **toute** l’archive dans un dossier accessible en écriture.
+2. Lancez `App/CyGPUInspectorApp.exe`. Gardez `Lang/`, `Documentation/` et les DLL des
+   compilateurs à côté ; conservez les notices du dossier `LICENCES/` du paquet.
+3. Commencez avec `TestWithoutAGame/Demo.cmd` pour explorer la session synthétique sans jeu.
+4. Pour un vrai jeu, installez ReShade avec tous les add-ons, copiez
+   `Addons/CyGPUInspectorRS.addon64` près de l’exécutable du jeu ou dans le dossier `AddonPath`
+   de ReShade, lancez le jeu et connectez-vous depuis **Connexions**.
 
-```bash
-bin/Release/CyGPUInspectorFakeSession.exe
+Consultez le [guide d’installation](https://mrmybal.github.io/CyGPUInspector/Documentation.html#/fr/installation)
+et les [notes de publication / somme de contrôle](https://github.com/MrMybal/CyGPUInspector/releases/tag/v0.4.1).
+Préservez réglages, disposition, base des shaders, profils de jeux et captures lors d’une mise à jour.
+
+L’application utilise l’API officielle des add-ons ReShade. Elle ne contourne ni anti-triche,
+ni protection, ni restriction sur ReShade. Les jeux qui refusent ReShade ne sont pas pris en charge.
+
+## Sources, compilation et bibliothèques nécessaires
+
+<details>
+<summary>Compiler l’application Windows et régénérer son manuel hors ligne</summary>
+
+Prérequis : Windows x64, Visual Studio 2022 avec les outils C++ pour le bureau (C++20, CMake et
+Ninja), le SDK Windows et Node.js 22+ avec npm. Les dépendances natives sont dans `ThirdParty/` ;
+l’archive CyDoc épinglée est dans `.CyDocBuild/vendor/`. La lecture du manuel généré ne nécessite pas Node.js.
+
+```sh
+git clone https://github.com/MrMybal/CyGPUInspector.git
+cd CyGPUInspector
+npm --prefix .CyDocBuild ci
+build.cmd Release
 ```
 
-puis lancer `CyGPUInspectorApp.exe` et cliquer `Connect` sur `FakeGame.exe`. La session synthétique
-produit une frame plausible (depth prepass, GBuffer, lighting, chaîne de bloom, tonemap, UI) et
-**une vraie texture D3D11 partagée** : double-cliquer une ressource affiche son contenu dans le
-panneau `Preview`, par le même chemin GPU que dans un vrai jeu.
+Les sorties se trouvent dans `bin/Release/`. Lancez `CyGPUInspectorApp.exe`, ou exécutez
+`CyGPUInspectorFakeSession.exe` et connectez-vous à `FakeGame.exe` pour essayer la démonstration.
+Les options CMake `CYGI_BUILD_ADDON`, `CYGI_BUILD_INJECTOR`, `CYGI_BUILD_APP`,
+`CYGI_BUILD_MCP` et `CYGI_BUILD_TESTS` sélectionnent les composants correspondants.
 
-## Tests
+Pour régénérer uniquement le manuel : `npm --prefix .CyDocBuild run build`.
+L’export comprend `Documentation/Documentation.html`, `DocData/` et un `DocAI.md` séparé ;
+gardez le répertoire généré complet. Il fonctionne via `file://`, sans serveur.
+Seul le module image de CyDoc est inclus ; les schémas statiques ne nécessitent ni graph ni Three.js.
 
-```bash
-bin/Release/CyGPUInspectorCoreTests.exe
-bin/Release/CyGPUInspectorShaderTests.exe
-bin/Release/CyGPUInspectorIpcTests.exe
-```
+Le standalone utilise certains modules de CyUI 1.2.0 avec sa propre instance Dear ImGui,
+dont le CodeEditor natif. Les outils de shaders combinent 3Dmigoto, dxil-spirv, dxbc-spirv et
+SPIRV-Cross. Microsoft DXC assure compilation et réflexion Shader Model 6 ; les paquets publiés
+comprennent les DLL nécessaires. Le plugin Unreal se compile séparément ; consultez le
+[guide Unreal](https://mrmybal.github.io/CyGPUInspector/Documentation.html#/fr/unreal).
 
-La référence historique documentée ici comptait 4106 + 142 + 141 vérifications, aucune en échec. Les tests compilent de vrais shaders,
-partagent une vraie texture GPU entre deux processus et relisent ses pixels, reconstruisent un
-frame graph complet, et décompilent un shader réel avant de vérifier qu'il se recompile en un
-bytecode aux instructions identiques, sauvegardent une capture et la relisent, et pilotent le
-serveur MCP sur stdio — rien n'est simulé sauf le jeu lui-même.
+</details>
 
-Pour le Shader Model 6, copier `dxcompiler.dll` et `dxil.dll` à côté de `CyGPUInspectorApp.exe`
-si le Windows SDK n'est pas installé ; l'onglet `Tools` du panneau de code dit ce qui a été trouvé.
+---
 
-## Compatibilité
+## Licence
 
-CyGPUInspector ne fonctionne **que** là où ReShade fonctionne normalement. Aucun contournement
-d'anti-triche, de protection ou de blocage d'injection n'est développé. Une application qui refuse
-ReShade est simplement non supportée.
+CyGPUInspector utilise la **[GNU Affero General Public License v3 ou ultérieure](LICENSE)**
+(`AGPL-3.0-or-later`). Les composants tiers conservent leurs propres conditions.
 
-## Documentation
+### Bibliothèques tierces
 
-[Ouvrir la documentation interactive](https://mrmybal.github.io/CyGPUInspector/#/fr/welcome)
-pour retrouver le lecteur CyDoc complet, avec navigation, recherche, captures,
-schémas et choix français/anglais. Le même manuel fonctionne hors ligne avec
-**F1** ou **Aide > Guide utilisateur** dans l’application.
+| Bibliothèque · sources | Licence · texte | Utilisation / périmètre |
+| --- | --- | --- |
+| [ReShade SDK](https://github.com/crosire/reshade) | [BSD-3-Clause](LICENCES/ReShade-SDK/LICENSE.md) | En-têtes de l’API native des add-ons, 6.8.x / API 20. |
+| [ReShade 6.8.0](https://reshade.me/) | [BSD-3-Clause](LICENCES/ReShade/LICENSE-ReShade.txt) · [notices des composants](LICENCES/ReShade/NOTICES-ReShade.txt) | DLL officielle avec tous les add-ons, livrée avec les paquets Unreal ; installation séparée pour les jeux ordinaires. |
+| [CyUI 1.2.0](https://github.com/MrMybal/CyUI) | [MIT](LICENCES/CyUI/LICENSE.txt) · [texte amont](https://github.com/MrMybal/CyUI/blob/ff023e646c6a3038b3dfbfd53f6d2b4a2f5955e3/LICENSE) | Modules natifs sélectionnés ; sources amont privées. Sans moteur CEF ni audio. |
+| [Dear ImGui](https://github.com/ocornut/imgui) | [MIT](LICENCES/DearImGui/LICENSE.txt) · [overlay](LICENCES/DearImGui-ReShade/LICENSE.txt) | Version docking 1.93 WIP dans l’app ; en-têtes 1.92.5 pour l’overlay ReShade. |
+| [ImGuiColorTextEdit](https://github.com/goossens/ImGuiColorTextEdit) | [MIT](LICENCES/ImGuiColorTextEdit/LICENSE) | Moteur d’édition natif épinglé et adapté par CyUI. |
+| [Lexilla](https://github.com/ScintillaOrg/lexilla), [Scintilla](https://github.com/mirror/scintilla), [SciTE](https://github.com/mirror/scite) | [Lexilla](LICENCES/Lexilla/License.txt) · [Scintilla](LICENCES/Scintilla/License.txt) · [SciTE](LICENCES/SciTE/License.txt) | Licences permissives ; moteurs de syntaxe, en-têtes d’interface et profils. Sans interface d’édition Scintilla. |
+| [3Dmigoto](https://github.com/bo3b/3Dmigoto) | [GPL-3.0](LICENCES/3Dmigoto/LICENSE.GPL.txt) | Décompilateur HLSL ; sans son wrapper DirectX ni son code d’injection. |
+| [dxil-spirv](https://github.com/HansKristian-Work/dxil-spirv) | [MIT](LICENCES/dxil-spirv/LICENSE.MIT) | Conversion DXIL → SPIR-V, version 2.73.0. |
+| [dxbc-spirv](https://github.com/doitsujin/dxbc-spirv) | [MIT](LICENCES/dxbc-spirv/LICENSE) | Conversion DXBC → SPIR-V. |
+| [SPIRV-Cross](https://github.com/KhronosGroup/SPIRV-Cross) | [Apache-2.0 OR MIT](LICENCES/SPIRV-Cross/LICENSE) | Conversion SPIR-V → HLSL ; conserver ses notices de composants. |
+| [SPIR-V headers](https://github.com/KhronosGroup/SPIRV-Headers), [glslang](https://github.com/KhronosGroup/glslang), [RenderDoc](https://github.com/baldurk/renderdoc) | [Khronos](LICENCES/SPIRV-Headers/LICENSE) · [BSD-3-Clause](LICENCES/glslang-SPIR-V-builder/LICENSE.txt) · [MIT](LICENCES/RenderDoc-bitcode-reader/LICENSE.txt) | Composants de dxil-spirv : en-têtes, générateur SPIR-V et lecteur de bitcode LLVM. |
+| [DirectX Shader Compiler](https://github.com/microsoft/DirectXShaderCompiler) | [Conditions de distribution](https://github.com/microsoft/DirectXShaderCompiler/blob/main/LICENSE.TXT) | dxcompiler.dll livré : LLVM/NCSA et MIT. dxil.dll : Microsoft Software License Terms distincts. Les textes complets accompagnent les DLL publiées. |
+| Windows `d3dcompiler_47.dll` | Microsoft Windows | Compilateur, désassembleur et réflexion DXBC du système. |
+| [CyDoc 0.1.0](https://github.com/MrMybal/CyDoc) | [MIT](LICENCES/CyDoc/LICENSE.txt) | Lecteur documentaire local ; module image uniquement. |
+| [marked](https://github.com/markedjs/marked), [PrismJS](https://github.com/PrismJS/prism), [esbuild](https://github.com/evanw/esbuild) | [MIT: marked](LICENCES/CyDoc/marked-LICENSE.md) · [PrismJS](LICENCES/CyDoc/prismjs-LICENSE) · [esbuild](LICENCES/CyDoc/esbuild-LICENSE.md) | Compilation Markdown, coloration et assemblage à la génération ; aucun service documentaire installé. |
+| [Playwright](https://github.com/microsoft/playwright) | [Apache-2.0](https://github.com/microsoft/playwright/blob/v1.56.1/LICENSE) | Vérification dans le navigateur pendant le développement ; non livré avec le lecteur. |
 
-Les sources techniques modifiables restent dans [Docs/fr/](Docs/fr/), notamment
-[l’architecture](Docs/fr/CyGPUInspector_Architecture.md) et
-[les limitations](Docs/fr/Limitations.md).
+Ce tableau est un index. Conservez les [notices complètes de distribution](LICENCES/),
+la [provenance des composants](THIRD-PARTY.md) et les notices supplémentaires des versions binaires.
+CyToolsCore et CyUEMCPSDK ne sont pas des dépendances incluses dans cette application.
 
-## Tiers
+## Références et liens
 
-| Bibliothèque | Licence | Usage |
-|---|---|---|
-| ReShade SDK (en-têtes) | BSD-3-Clause | API add-on |
-| Dear ImGui | MIT | interface du standalone et overlay |
-| 3Dmigoto (décompilateur HLSL) | GPL-3.0 | backend de décompilation `hlsldecompiler` |
-| dxil-spirv | MIT | backend `dxil-spirv`, DXIL → SPIR-V |
-| dxbc-spirv | MIT | backend `dxbc-spirv`, DXBC → SPIR-V |
-| SPIRV-Cross | Apache-2.0 / MIT | backend `dxil-spirv`, SPIR-V → HLSL |
-
-Détail complet, obligations de licence et provenance exacte : [THIRD-PARTY.md](THIRD-PARTY.md) et
-les `ORIGIN.md` de chaque composant sous `ThirdParty/`.
+- [Documentation française](https://mrmybal.github.io/CyGPUInspector/Documentation.html#/fr/welcome) · [English documentation](https://mrmybal.github.io/CyGPUInspector/Documentation.html#/en/welcome).
+- [Notes de version et limitations](VERSION.fr.md) · [Publications](https://github.com/MrMybal/CyGPUInspector/releases).
+- [Dépôt des sources](https://github.com/MrMybal/CyGPUInspector) · [Suivi des problèmes](https://github.com/MrMybal/CyGPUInspector/issues).
+- [Modes de capture](https://mrmybal.github.io/CyGPUInspector/Documentation.html#/fr/capture) · [Mods de shaders](https://mrmybal.github.io/CyGPUInspector/Documentation.html#/fr/mods) · [Assistant IA](https://mrmybal.github.io/CyGPUInspector/Documentation.html#/fr/ai) · [Agents MCP externes](https://mrmybal.github.io/CyGPUInspector/Documentation.html#/fr/mcp).

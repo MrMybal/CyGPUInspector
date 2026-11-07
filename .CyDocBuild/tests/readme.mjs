@@ -22,7 +22,7 @@ try {
     try {
       const page = await context.newPage();
       const readme = `https://github.com/MrMybal/CyGPUInspector/blob/main/README${locale === 'fr' ? '.fr' : ''}.md`;
-      const destination = `https://mrmybal.github.io/CyGPUInspector/#/${locale}/welcome`;
+      const destination = `https://mrmybal.github.io/CyGPUInspector/Documentation.html#/${locale}/welcome`;
       await page.goto(readme, { waitUntil: 'domcontentloaded' });
       const link = page.getByRole('link', { name: 'Documentation', exact: true })
         .and(page.locator(`a[href="${destination}"]`)).first();

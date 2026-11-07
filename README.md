@@ -131,6 +131,13 @@ required DLLs. The Unreal plugin is a separate build; follow the
 
 </details>
 
+### Local showcase
+
+The [bilingual showcase source](website/README.md) builds a complete static presentation with
+real screenshots and the bundled CyDoc reader. Run `node website/build.mjs`, then open
+`build/showcase/site/index.html`, or preview it with `node website/preview.mjs`.
+Its local build does not publish or deploy the site.
+
 ---
 
 ## License

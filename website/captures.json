@@ -1,0 +1,10 @@
+{
+  "license": "AGPL-3.0-or-later",
+  "applicationVersion": "0.4.1",
+  "views": [
+    {"id":"overview","source":".CyDocBuild/assets/media/overview-{locale}.png","interfaceVersion":"0.4.0","data":"Included FakeGame synthetic session","view":"Frame timeline, pass correlation, shaders and events","captionKeys":["overviewCaption","overviewAlt"]},
+    {"id":"timeline","source":".CyDocBuild/assets/media/timeline-{locale}.png","interfaceVersion":"0.4.0","data":"Included FakeGame synthetic session","view":"Continuous frame history and GPU waits","captionKeys":["timelineCaption","timelineAlt"]},
+    {"id":"hlsl","source":".CyDocBuild/assets/media/hlsl-{locale}.png","interfaceVersion":"0.4.0","data":"Synthetic shader reconstruction","view":"Native HLSL editor in Light Grey","captionKeys":["hlslCaption","hlslAlt"]},
+    {"id":"reader","source":"website/assets/reader-{locale}.jpg","manualVersion":"0.4.1","data":"Application's actual English/French CyDoc welcome page","view":"Reader navigation, search and illustrated guide","captionKeys":["readerCaption","readerAlt"]}
+  ]
+}

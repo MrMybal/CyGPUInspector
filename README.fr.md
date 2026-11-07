@@ -136,6 +136,13 @@ comprennent les DLL nécessaires. Le plugin Unreal se compile séparément ; con
 
 </details>
 
+### Showcase local
+
+Les [sources du showcase bilingue](website/README.md) génèrent une présentation statique complète
+avec de vraies captures et le lecteur CyDoc embarqué. Lancez `node website/build.mjs`, puis ouvrez
+`build/showcase/site/index.html`, ou prévisualisez avec `node website/preview.mjs`.
+Cette génération locale ne publie ni ne déploie le site.
+
 ---
 
 ## Licence

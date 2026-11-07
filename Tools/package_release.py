@@ -306,7 +306,7 @@ def main():
         text = text.replace('https://mrmybal.github.io/CyGPUInspector/#/',
                             'App/Documentation/Documentation.html#/')
         # Source links remain repository links; authoring inputs are not part of the ZIP.
-        text = re.sub(r'\]\((Docs/[^)]*)\)',
+        text = re.sub(r'\]\(((?:Docs|website)/[^)]*)\)',
                       lambda match: '](https://github.com/MrMybal/CyGPUInspector/tree/main/' + match.group(1) + ')', text)
         with open(installed_readme, 'w', encoding='utf-8', newline='\n') as file:
             file.write(text)

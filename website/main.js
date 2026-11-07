@@ -32,8 +32,14 @@
     document.querySelector('#viewer-caption').textContent=copy[language][button.dataset.caption];
     dialog.showModal();document.body.style.overflow='hidden';dialog.querySelector('button').focus();
   }));
-  dialog.querySelector('button').addEventListener('click',()=>dialog.close());
+  function restoreViewer(){
+    if(!opener)return;const target=opener;opener=null;
+    document.body.style.overflow=oldOverflow;target.focus({preventScroll:true});window.scrollTo({top:savedY,behavior:'instant'});
+  }
+  function closeViewer(){dialog.close();restoreViewer();}
+  dialog.querySelector('button').addEventListener('click',closeViewer);
+  dialog.addEventListener('cancel',e=>{e.preventDefault();closeViewer();});
   dialog.addEventListener('keydown',e=>{if(e.key==='Tab'){e.preventDefault();dialog.querySelector('button').focus();}});
-  dialog.addEventListener('click',e=>{if(e.target!==dialog)return;const r=dialog.getBoundingClientRect();if(e.clientX<r.left||e.clientX>r.right||e.clientY<r.top||e.clientY>r.bottom)dialog.close();});
-  dialog.addEventListener('close',()=>{document.body.style.overflow=oldOverflow;if(opener)opener.focus({preventScroll:true});window.scrollTo({top:savedY,behavior:'instant'});});
+  dialog.addEventListener('click',e=>{if(e.target!==dialog)return;const r=dialog.getBoundingClientRect();if(e.clientX<r.left||e.clientX>r.right||e.clientY<r.top||e.clientY>r.bottom)closeViewer();});
+  dialog.addEventListener('close',()=>{if(!dialog.open)restoreViewer();});
 })();

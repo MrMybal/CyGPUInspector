@@ -53,7 +53,10 @@ try{
   await page.keyboard.press('Tab');assert(await page.locator('dialog').evaluate(e=>e.contains(document.activeElement)));
   await page.screenshot({path:path.join(output,`viewer-${width}.png`)});
   await page.keyboard.press('Escape');assert(await opener.evaluate(e=>document.activeElement===e));assert(Math.abs(before-await page.evaluate(()=>scrollY))<2);assert.equal(await page.evaluate(()=>document.body.style.overflow),'');
-  await opener.click();await page.locator('.viewer-close').click();assert(!(await page.locator('dialog').evaluate(e=>e.open)));pass(`viewer keyboard, close button, focus and scroll restoration ${width}`);
+  await opener.click();await page.locator('.viewer-close').click();assert(!(await page.locator('dialog').evaluate(e=>e.open)));assert.equal(await page.evaluate(()=>document.body.style.overflow),'');
+  // Reopen immediately: a queued native close event must not unlock the new dialog.
+  await opener.click();assert.equal(await page.evaluate(()=>document.body.style.overflow),'hidden');await page.keyboard.press('Escape');assert.equal(await page.evaluate(()=>document.body.style.overflow),'');
+  pass(`viewer keyboard, close button, immediate reopen, focus and scroll restoration ${width}`);
  }
  for(const locale of ['en','fr']){
   // Effective CSS viewport for a 1280x800 window at 200% browser zoom.

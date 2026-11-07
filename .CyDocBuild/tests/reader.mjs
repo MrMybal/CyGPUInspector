@@ -54,7 +54,7 @@ if (process.env.CYGI_DOCS_TEST_TRANSPORT === 'http') {
  });
  await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));
 }
-const base=process.env.CYGI_DOCS_URL||(server?`http://127.0.0.1:${server.address().port}/CyGPUInspector/index.html`:pathToFileURL(path.join(exported,'Documentation.html')).href);
+const base=process.env.CYGI_DOCS_URL||(server?`http://127.0.0.1:${server.address().port}/CyGPUInspector/Documentation.html`:pathToFileURL(path.join(exported,'Documentation.html')).href);
 const offline=base.startsWith('file:');
 const scope=new URL('.',base);
 const requestPolicy=route=>{

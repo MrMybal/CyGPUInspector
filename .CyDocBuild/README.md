@@ -19,13 +19,20 @@ An English body edit requires review of the French counterpart. Set `revision` o
 
 CMake invokes `build.mjs --output bin/<configuration>/Documentation`. The release packager regenerates this output and verifies every delivered file and source hash in both the staged tree and ZIP. It does not package authoring inputs or internal reports.
 
-The existing Pages workflow uses the same compiler and enables the root compatibility redirect only in its hosted artifact:
+The Pages workflow calls `node website/build.mjs` with the same compiler. It publishes the
+complete showcase in `build/showcase/site/` and the full reader under `manual/`.
+The root `Documentation.html` alias and old root manual fragments remain compatible.
+Only the final public site is uploaded; offline application exports keep their existing layout.
+
+The standalone hosted-reader export remains available for development checks:
 
 ```sh
 npm --prefix .CyDocBuild run build:pages
 npm --prefix .CyDocBuild run check:export
 ```
 
-The hosted artifact is `.CyDocBuild/internal/pages/site/`. Only that export is uploaded. Existing README URLs keep their fragments through `index.html`; the real reader is `Documentation.html`. Deployment runs after an authorized push, not as part of a local build.
+Those standalone commands generate `.CyDocBuild/internal/pages/site/`; that directory is not
+the Pages deployment input. For the complete deployed site, use `node website/build.mjs`
+and `node website/verify.mjs`. Deployment runs after an authorized push, not as part of a local build.
 
 `internal/` is ignored by Git and outside content roots. Keep private notes, previous outputs, upstream checkouts, screenshots and test results there. Native entry-point diagnostics: `python .CyDocBuild/tests/native.py --output .CyDocBuild/internal/native-<unique-name>`. Packaging regression checks: `python -m unittest discover -s Tests -p test_package_release.py`.

@@ -2,7 +2,8 @@
 
 Maintained source for the bilingual application presentation. The generated static output is
 `build/showcase/site/`, separate from the offline application's `Documentation/` directory.
-Both remain local until publication is requested. Existing Pages automation is unchanged.
+The Pages workflow publishes only this generated site after an authorized push to `main`.
+Building locally does not publish anything.
 
 ## Build
 
@@ -64,9 +65,23 @@ The complete application license is copied to `LICENSE.txt`; the full CyDoc expo
 own MIT notices and generation-dependency notices. No CyDoc Studio/runtime or media modules
 are added. Only the application's existing image module is distributed.
 
-## Optional publication
+## GitHub Pages
 
-This task prepares a local commit, not a deployment. After explicit publication authorization,
-adapt the existing Pages workflow to upload only this generated site; preserve its root reader
-aliases and the application's offline help. Do not upload authoring inputs, profiles, databases,
-private work records or build services. No such workflow change is part of this local setup.
+The application showcase is hosted at <https://mrmybal.github.io/CyGPUInspector/>;
+`?lang=fr` opens its French edition. The genuine manual is under
+`manual/Documentation.html#/en/welcome` or `#/fr/welcome`. Root `Documentation.html`
+and old root manual fragments redirect into that reader.
+
+`.github/workflows/documentation.yml` builds and validates the site, tests the showcase and
+reader through file URLs and an HTTP subpath, then uploads only `build/showcase/site/`.
+After deployment it compares every served file with the exact artifact and follows both
+published README links through the showcase and into the manual. Authoring inputs, application
+databases, profiles, runtime binaries and QA files are excluded from the Pages artifact.
+
+To compare a local build against its deployed counterpart:
+
+```sh
+node website/verify.mjs build/showcase/site --url https://mrmybal.github.io/CyGPUInspector/
+```
+
+The app's offline `Documentation/` generation and release packaging remain separate.

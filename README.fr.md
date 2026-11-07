@@ -1,7 +1,8 @@
 <table width="100%">
   <tr>
     <td width="300" align="left" valign="top">
-      <a href="https://mrmybal.github.io/CyGPUInspector/Documentation.html#/fr/welcome">Documentation</a><br>
+      <a href="https://mrmybal.github.io/CyGPUInspector/?lang=fr">Présentation</a><br>
+      <a href="https://mrmybal.github.io/CyGPUInspector/manual/Documentation.html#/fr/welcome">Documentation</a><br>
       <a href="https://github.com/MrMybal/CyGPUInspector">Dépôt</a><br>
       <a href="https://github.com/MrMybal/CyGPUInspector/issues">Suivi des problèmes</a><br><br>
       <sub>README</sub><br>
@@ -66,13 +67,13 @@ compatible dans le jeu. Le HLSL reconstruit n’est pas le code source original.
   `CyGPUInjector.addon64`, sans l’application d’analyse ni IPC.
 - **Capturer dans Unreal** : le plugin capture l’éditeur et les builds Development/DebugGame
   depuis un bouton, une commande console ou un nœud Blueprint. Consultez le
-  [guide Unreal](https://mrmybal.github.io/CyGPUInspector/Documentation.html#/fr/unreal).
+  [guide Unreal](https://mrmybal.github.io/CyGPUInspector/manual/Documentation.html#/fr/unreal).
 - **Interroger un assistant IA** : Codex CLI, Claude Code CLI ou une API compatible OpenAI,
   locale ou distante, peut lire la frame avec les outils de l’application. Choisissez ses
   permissions ; ses résultats restent des hypothèses. Les agents externes utilisent
   `CyGPUInspectorMCP.exe` sur stdio ; le standalone applique un niveau MCP distinct,
   en lecture seule par défaut.
-- **Lire le manuel complet** : [documentation en ligne](https://mrmybal.github.io/CyGPUInspector/Documentation.html#/fr/welcome)
+- **Lire le manuel complet** : [documentation en ligne](https://mrmybal.github.io/CyGPUInspector/manual/Documentation.html#/fr/welcome)
   avec recherche, captures, schémas et références des API publiques C/C++. **F1** ou
   **Aide > Guide utilisateur** ouvre le même lecteur CyDoc hors ligne. L’anglais est la langue
   par défaut, avec une édition française complète ; le choix dans le lecteur ne modifie pas
@@ -95,7 +96,7 @@ Vulkan et OpenGL ne sont pas pris en charge.
    `Addons/CyGPUInspectorRS.addon64` près de l’exécutable du jeu ou dans le dossier `AddonPath`
    de ReShade, lancez le jeu et connectez-vous depuis **Connexions**.
 
-Consultez le [guide d’installation](https://mrmybal.github.io/CyGPUInspector/Documentation.html#/fr/installation)
+Consultez le [guide d’installation](https://mrmybal.github.io/CyGPUInspector/manual/Documentation.html#/fr/installation)
 et les [notes de publication / somme de contrôle](https://github.com/MrMybal/CyGPUInspector/releases/tag/v0.4.1).
 Préservez réglages, disposition, base des shaders, profils de jeux et captures lors d’une mise à jour.
 
@@ -132,14 +133,15 @@ Le standalone utilise certains modules de CyUI 1.2.0 avec sa propre instance Dea
 dont le CodeEditor natif. Les outils de shaders combinent 3Dmigoto, dxil-spirv, dxbc-spirv et
 SPIRV-Cross. Microsoft DXC assure compilation et réflexion Shader Model 6 ; les paquets publiés
 comprennent les DLL nécessaires. Le plugin Unreal se compile séparément ; consultez le
-[guide Unreal](https://mrmybal.github.io/CyGPUInspector/Documentation.html#/fr/unreal).
+[guide Unreal](https://mrmybal.github.io/CyGPUInspector/manual/Documentation.html#/fr/unreal).
 
 </details>
 
-### Showcase local
+### Présentation de l’application
 
-Les [sources du showcase bilingue](website/README.md) génèrent une présentation statique complète
-avec de vraies captures et le lecteur CyDoc embarqué. Lancez `node website/build.mjs`, puis ouvrez
+[Découvrir la présentation de l’application](https://mrmybal.github.io/CyGPUInspector/?lang=fr), ou générer les
+[sources du showcase bilingue](website/README.md) localement. La présentation comprend de vraies
+captures et le lecteur CyDoc complet. Lancez `node website/build.mjs`, puis ouvrez
 `build/showcase/site/index.html`, ou prévisualisez avec `node website/preview.mjs`.
 Cette génération locale ne publie ni ne déploie le site.
 
@@ -177,7 +179,7 @@ CyToolsCore et CyUEMCPSDK ne sont pas des dépendances incluses dans cette appli
 
 ## Références et liens
 
-- [Documentation française](https://mrmybal.github.io/CyGPUInspector/Documentation.html#/fr/welcome) · [English documentation](https://mrmybal.github.io/CyGPUInspector/Documentation.html#/en/welcome).
+- [Documentation française](https://mrmybal.github.io/CyGPUInspector/manual/Documentation.html#/fr/welcome) · [English documentation](https://mrmybal.github.io/CyGPUInspector/manual/Documentation.html#/en/welcome).
 - [Notes de version et limitations](VERSION.fr.md) · [Publications](https://github.com/MrMybal/CyGPUInspector/releases).
 - [Dépôt des sources](https://github.com/MrMybal/CyGPUInspector) · [Suivi des problèmes](https://github.com/MrMybal/CyGPUInspector/issues).
-- [Modes de capture](https://mrmybal.github.io/CyGPUInspector/Documentation.html#/fr/capture) · [Mods de shaders](https://mrmybal.github.io/CyGPUInspector/Documentation.html#/fr/mods) · [Assistant IA](https://mrmybal.github.io/CyGPUInspector/Documentation.html#/fr/ai) · [Agents MCP externes](https://mrmybal.github.io/CyGPUInspector/Documentation.html#/fr/mcp).
+- [Modes de capture](https://mrmybal.github.io/CyGPUInspector/manual/Documentation.html#/fr/capture) · [Mods de shaders](https://mrmybal.github.io/CyGPUInspector/manual/Documentation.html#/fr/mods) · [Assistant IA](https://mrmybal.github.io/CyGPUInspector/manual/Documentation.html#/fr/ai) · [Agents MCP externes](https://mrmybal.github.io/CyGPUInspector/manual/Documentation.html#/fr/mcp).

@@ -301,6 +301,8 @@ def main():
         installed_readme = os.path.join(stage, readme)
         with open(installed_readme, encoding='utf-8') as file:
             text = file.read()
+        text = text.replace('https://mrmybal.github.io/CyGPUInspector/manual/Documentation.html#/',
+                            'App/Documentation/Documentation.html#/')
         text = text.replace('https://mrmybal.github.io/CyGPUInspector/Documentation.html#/',
                             'App/Documentation/Documentation.html#/')
         text = text.replace('https://mrmybal.github.io/CyGPUInspector/#/',

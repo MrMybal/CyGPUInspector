@@ -1,4 +1,4 @@
-// Follow the rendered public GitHub READMEs into the deployed CyDoc reader.
+// Follow the public README links into the showcase and genuine CyDoc reader.
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import assert from 'node:assert/strict';
@@ -22,7 +22,23 @@ try {
     try {
       const page = await context.newPage();
       const readme = `https://github.com/MrMybal/CyGPUInspector/blob/main/README${locale === 'fr' ? '.fr' : ''}.md`;
-      const destination = `https://mrmybal.github.io/CyGPUInspector/Documentation.html#/${locale}/welcome`;
+      const showcase = `https://mrmybal.github.io/CyGPUInspector/?lang=${locale}`;
+      const destination = `https://mrmybal.github.io/CyGPUInspector/manual/Documentation.html#/${locale}/welcome`;
+      await page.goto(readme, { waitUntil: 'domcontentloaded' });
+      const siteLink = page.getByRole('link', { name: locale === 'fr' ? 'Présentation' : 'Website', exact: true })
+        .and(page.locator(`a[href="${showcase}"]`)).first();
+      await siteLink.waitFor();
+      await siteLink.click();
+      await page.locator('.hero h1').waitFor();
+      await page.waitForFunction(locale => document.documentElement.lang === locale, locale);
+      await page.waitForFunction(() => {
+        const image = document.querySelector('.hero img[data-media]');
+        return image?.complete && image.naturalWidth > 100;
+      });
+      await page.screenshot({ path: path.join(output, `showcase-${locale}.png`) });
+      await page.locator('.hero [data-doc="welcome"]').click();
+      await page.locator(`.cydoc-viewer article[lang="${locale}"]`).waitFor();
+      assert(page.url().endsWith(`manual/Documentation.html#/${locale}/welcome`));
       await page.goto(readme, { waitUntil: 'domcontentloaded' });
       const link = page.getByRole('link', { name: 'Documentation', exact: true })
         .and(page.locator(`a[href="${destination}"]`)).first();
@@ -30,7 +46,7 @@ try {
       await page.screenshot({ path: path.join(output, `readme-${locale}.png`) });
       // Click GitHub's rendered link, rather than navigating directly to Pages.
       await link.click();
-      await page.waitForURL(`https://mrmybal.github.io/CyGPUInspector/Documentation.html#/${locale}/welcome`);
+      await page.waitForURL(destination);
       await page.locator(`.cydoc-viewer article[lang="${locale}"]`).waitFor();
       await page.waitForFunction(locale => document.documentElement.lang === locale, locale);
       assert((await page.title()).startsWith(locale === 'fr' ? 'Commencer ici' : 'Start here'));
@@ -49,8 +65,8 @@ try {
       await search.fill('shader');
       await page.locator('.search-result').first().waitFor();
       await page.keyboard.press('Escape');
-      results.push({ locale, readme, destination: page.url(), passed: true });
-      console.log(`PASS: published ${locale} README -> CyDoc reader, navigation, image, diagram and search`);
+      results.push({ locale, readme, showcase, destination: page.url(), passed: true });
+      console.log(`PASS: published ${locale} README -> showcase -> CyDoc, plus direct manual link, images and search`);
     } finally {
       await context.close();
     }

@@ -6,7 +6,10 @@ import {execFileSync} from 'node:child_process';
 import assert from 'node:assert/strict';
 import {copy,media} from './content.mjs';
 const root=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..');
-const site=path.resolve(root,process.argv[2]||'build/showcase/site');
+const args=process.argv.slice(2),urlIndex=args.indexOf('--url');
+const remote=urlIndex<0?null:new URL(args[urlIndex+1]);
+if(remote)assert(['https:','http:'].includes(remote.protocol));
+const site=path.resolve(root,args[0]&&!args[0].startsWith('--')?args[0]:'build/showcase/site');
 const inventory=JSON.parse(await fs.readFile(path.join(site,'site-manifest.json'),'utf8'));
 const hash=b=>createHash('sha256').update(b).digest('hex');
 assert.deepEqual(Object.keys(copy.en).sort(),Object.keys(copy.fr).sort());
@@ -32,4 +35,15 @@ const runtime=await fs.readFile(path.resolve(site,/script src="([^"]+)"/.exec(ht
 assert(!/\bfetch\s*\(|requestFullscreen|<script[^>]+type=["']module/.test(runtime));
 assert(html.includes('lang="en"')&&html.includes('data-language="fr"'));
 execFileSync(process.execPath,[path.join(root,'.CyDocBuild/check.mjs'),path.join(site,'manual')],{cwd:root,stdio:'inherit'});
-console.log(`Verified showcase: ${Object.keys(inventory.files).length+1} files, local references, EN/FR routes, full manual, hashed assets.`);
+if(remote){
+  const entries=[...Object.entries(inventory.files),['site-manifest.json',hash(await fs.readFile(path.join(site,'site-manifest.json')))]];
+  for(let start=0;start<entries.length;start+=8){
+    const outcomes=await Promise.allSettled(entries.slice(start,start+8).map(async([name,digest])=>{
+      const response=await fetch(new URL(name,remote),{headers:{'Cache-Control':'no-cache'},signal:AbortSignal.timeout(30000)});
+      assert(response.ok,`HTTP ${response.status}: ${name}`);
+      assert.equal(hash(Buffer.from(await response.arrayBuffer())),digest,`Published bytes differ: ${name}`);
+    }));
+    for(const result of outcomes)if(result.status==='rejected')throw result.reason;
+  }
+}
+console.log(`Verified showcase: ${Object.keys(inventory.files).length+1} files, local references, EN/FR routes, full manual, hashed assets${remote?' and published bytes on '+remote:''}.`);

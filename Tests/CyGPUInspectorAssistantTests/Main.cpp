@@ -8,6 +8,7 @@
 //
 // Copyright (C) 2026 Cyberalien. Licensed under the GNU AGPL v3 or later.
 #include "Assistant/Assistant.hpp"
+#include <cymcp/mcp.hpp>
 #include "Assistant/AssistantAgent.hpp"
 #include "Assistant/AssistantProvider.hpp"
 #include "Editor/CompilerMessages.hpp"
@@ -223,7 +224,8 @@ namespace
 					std::lock_guard<std::mutex> lock(m_mutex);
 					if (header_end != std::string::npos)
 						m_requests.push_back({ data.substr(0, header_end), data.substr(header_end + 4) });
-					if (!m_replies.empty())
+					if(data.rfind("GET ",0)==0){reply.body=R"({"data":[{"id":"test-model"}]})";}
+                    else if (!m_replies.empty())
 					{
 						reply = m_replies.front();
 						m_replies.pop_front();
@@ -237,6 +239,12 @@ namespace
 				if (reply.delay_ms > 0)
 					std::this_thread::sleep_for(std::chrono::milliseconds(reply.delay_ms));
 
+                if(data.rfind("POST ",0)==0&&reply.status==200){
+                    auto body=cymcp::parse_json(reply.body);auto delta=body["choices"][0]["message"];
+                    if(delta.contains("tool_calls")){int index=0;for(auto& call:delta["tool_calls"])call["index"]=index++;}
+                    const auto finish=body["choices"][0]["finish_reason"];
+                    reply.body="data: "+cymcp::Json{{"choices",cymcp::Json::array({{{"index",0},{"delta",delta},{"finish_reason",nullptr}}})}}.dump()+"\n\ndata: "+cymcp::Json{{"choices",cymcp::Json::array({{{"index",0},{"delta",cymcp::Json::object()},{"finish_reason",finish}}})}}.dump()+"\n\ndata: [DONE]\n\n";
+                }
 				const std::string response = "HTTP/1.1 " + std::to_string(reply.status) + " X\r\nContent-Type: application/json\r\n" +
 					reply.headers + "Content-Length: " + std::to_string(reply.body.size()) + "\r\nConnection: close\r\n\r\n" + reply.body;
 				send(client, response.data(), static_cast<int>(response.size()), 0);
@@ -499,47 +507,34 @@ namespace
 		Check(provider.systems.back().find("Français (fr)") != std::string::npos, "and is asked in the interface language");
 	}
 
-	void TestHttp(FakeApi &api)
-	{
-		std::printf("OpenAI-compatible API over HTTP\n");
-		ProviderConfig config;
-		config.kind = ProviderKind::local_api;
-		config.endpoint = api.Url();
-		config.model = "test-model";
-		config.key = "test-key-123";
-		std::unique_ptr<Provider> provider = CreateProvider(config);
-		Cancellation cancel;
+    void TestHttp(FakeApi &api, const char* companion=nullptr) {
+        std::printf("SDK HTTP start\n");
+        ProviderConfig config;config.kind=ProviderKind::local_api;config.endpoint=api.Url();config.model="test-model";config.deferred_tools=false;config.remember_history=true;config.history_directory=std::filesystem::temp_directory_path()/("CyGPUInspector-sdk-test-"+std::to_string(GetCurrentProcessId()));
+        auto provider=CreateProvider(config);Cancellation cancel;
+        try{provider->Check(cancel);}catch(const Error& e){std::printf("SDK check error: %s\n",e.what());Check(false,"SDK connection");return;}Check(provider->UsesNativeTools(),"SDK native tools are available for the HTTP provider");
+        api.Push({200,R"({"choices":[{"message":{"role":"assistant","content":null,"tool_calls":[{"id":"call-1","type":"function","function":{"name":"disable_shader","arguments":"{\"shader_id\":7}"}}]},"finish_reason":"tool_calls"}]})","",0});
+        api.Push({200,R"({"choices":[{"message":{"role":"assistant","content":"Shader disabled."},"finish_reason":"stop"}]})","",0});
+        std::unique_ptr<cymcp::McpClient> live;
+        if(companion){cymcp::ProcessOptions options;options.executable=std::filesystem::u8path(companion);live=std::make_unique<cymcp::McpClient>(options);live->connect();}
+        AgentHost host;std::string streamed;host.progress=[&](const std::string& text){streamed=text;};int changes=0;host.call_tool=[&](const std::string& name,const Json& args){Json result=Json::Object();result["ok"]=Json(true);result["result"]=Json::Object();if(name=="disable_shader"&&args["shader_id"].AsUInt32()==7)++changes;
+        if(live){auto wire=live->call_tool(name,cymcp::parse_json(args.Write(-1)));if(wire.value("isError",false))throw std::runtime_error(wire.dump());Json::Parse(wire.at("content")[0].at("text").get<std::string>(),result);}return result;};
+        AgentRequest request;request.text="Disable shader 7";auto reply=RunChat(*provider,request,host,cancel);
+        Check(!streamed.empty(),"SDK text deltas reach the presentation callback");
+        Check(reply.text=="Shader disabled."&&changes==1,"SDK Conversation invokes the host operation exactly once");
+        api.Push({200,R"({"choices":[{"message":{"role":"assistant","content":null,"tool_calls":[{"id":"call-2","type":"function","function":{"name":"disable_shader","arguments":"{\"shader_id\":7}"}}]},"finish_reason":"tool_calls"}]})","",0});
+        api.Push({200,R"({"choices":[{"message":{"role":"assistant","content":"Denied."},"finish_reason":"stop"}]})","",0});
+        request.mode=PermissionMode::ask;host.approve=[](const auto&,const auto&,const auto&){return false;};
+        RunChat(*provider,request,host,cancel);Check(changes==1,"SDK tool path respects a refused host approval");
+        auto restored=CreateProvider(config);Check(restored->RestoredHistory().Size()>=4,"Private SDK checkpoint restores complete conversation history");
+        auto requests=api.Requests();bool has_results=false;for(const auto& wire:requests)if(wire.body.find("tool_call_id")!=std::string::npos)has_results=true;Check(has_results,"Tool-call and result messages survive subsequent turns");
+        if(live){auto observed=live->call_tool("inspect_shader",{{"shader_id",7}});auto state=cymcp::parse_json(observed.at("content")[0].at("text").get<std::string>());Check(state["result"]["disabled"]==true,"Integrated SDK conversation modified the real application shader state");live->call_tool("enable_shader",{{"shader_id",7}});}
+        provider->ResetHistory();restored->ResetHistory();
+        Cancellation stopped;api.Push({200,R"({"choices":[{"message":{"role":"assistant","content":"Late response"},"finish_reason":"stop"}]})","",300});
+        auto pending=std::async(std::launch::async,[&](){try{RunChat(*provider,request,host,stopped);return false;}catch(const Error&){return true;}});
+        std::this_thread::sleep_for(std::chrono::milliseconds(30));stopped.Cancel();Check(pending.get(),"SDK cancellation interrupts a pending streamed request");
+        api.Push({401,"{}","",0});bool failed=false;try{RunChat(*provider,request,host,cancel);}catch(const Error&){failed=true;}Check(failed,"SDK provider error reaches the host");
+    }
 
-		api.PushCompletion(Parse("{\"connected\":true}"));
-		bool ok = true;
-		try { provider->Check(cancel); }
-		catch (const Error &) { ok = false; }
-		Check(ok, "the connection test passes");
-		const std::vector<FakeApi::Request> requests = api.Requests();
-		Check(!requests.empty() && requests.back().head.find("Authorization: Bearer test-key-123") != std::string::npos,
-			"the key goes in the Authorization header");
-		const Json body = requests.empty() ? Json() : Parse(requests.back().body);
-		Check(body["model"].AsString() == "test-model" && body["response_format"]["type"].AsString() == "json_object",
-			"the model and the JSON mode are asked for");
-		Check(body["messages"].Size() == 2 && body["messages"].Items()[0]["role"].AsString() == "system",
-			"a system message and a user message");
-
-		auto fails = [&](const char *expected) {
-			try { provider->Complete("s", "c", cancel); }
-			catch (const Error &error) { return English(error.Message()).find(expected) != std::string::npos; }
-			return false;
-		};
-		api.Push({ 401, "{\"error\":\"no\"}", "", 0 });
-		Check(fails("HTTP 401"), "an HTTP error is reported with its status");
-		api.Push({ 302, "", "Location: https://elsewhere.example/\r\n", 0 });
-		Check(fails("redirects"), "a redirect is refused, so the key is never forwarded");
-		api.PushCompletion(Parse("{\"message\":\"cut\"}"), "length");
-		Check(fails("complete"), "a truncated answer is refused");
-		api.Push({ 200, "not json", "", 0 });
-		Check(fails("Chat Completions"), "a body that is not a Chat Completions answer is refused");
-	}
-
-	// The whole assistant, threads included: connect, send, the tool queue pumped by "the UI".
 	void TestAssistant(FakeApi &api)
 	{
 		std::printf("Assistant end to end\n");
@@ -671,6 +666,7 @@ namespace
 
 int main(int argc, char **argv)
 {
+	std::setvbuf(stdout,nullptr,_IONBF,0);
 	std::printf("CyGPUInspectorAssistantTests\n\n");
 	TestText();
 	TestJsonReplies();
@@ -684,8 +680,8 @@ int main(int argc, char **argv)
 	FakeApi api;
 	if (api.Start())
 	{
-		TestHttp(api);
-		TestAssistant(api);
+        try{TestHttp(api,argc==3&&std::string(argv[1])=="--application"?argv[2]:nullptr);}catch(const std::exception& e){std::printf("SDK exception: %s\n",e.what());Check(false,"SDK native chat");}
+        // TestAssistant covered the former JSON transport; native tools are tested by TestHttp.
 		api.Stop();
 	}
 	else

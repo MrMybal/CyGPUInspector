@@ -101,7 +101,7 @@ target_include_directories(CyGPUInspectorApp PRIVATE ${CYGI_THIRDPARTY}/CyDoc)
 
 target_compile_definitions(CyGPUInspectorApp PRIVATE WIN32_LEAN_AND_MEAN UNICODE _UNICODE)
 
-target_link_libraries(CyGPUInspectorApp PRIVATE CyGPUInspectorCore CyGPUInspectorDecompiler CyGPUInspectorDatabase
+target_link_libraries(CyGPUInspectorApp PRIVATE CyGPUInspectorOperations CyMCP::AI CyGPUInspectorCore CyGPUInspectorDecompiler CyGPUInspectorDatabase
     CyUI::Core CyUI::CodeEditor CyUI::Timeline CyUI::Plots CyUI::Images
     CyUI::Inspector CyUI::Diagnostics CyUI::DocumentViews d3d11 dxgi dxguid user32 gdi32 shell32 shlwapi advapi32 ole32 windowscodecs winhttp comdlg32)
 

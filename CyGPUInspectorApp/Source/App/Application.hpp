@@ -2,6 +2,7 @@
 //
 // Copyright (C) 2026 Cyberalien. Licensed under the GNU AGPL v3 or later.
 #pragma once
+#include "Operations.hpp"
 
 #include "Analysis/FrameGraph.hpp"
 #include "App/TimingNavigation.hpp"
@@ -51,7 +52,9 @@ namespace cygi
 		// One UI frame.
 		void Draw(double delta_seconds);
 
-		bool WantsExit() const { return m_wants_exit; }
+		void SetMcpPermission(McpPermission p) { m_mcp.SetPermission(p); }
+
+        bool WantsExit() const { return m_wants_exit; }
 
 		// Attaches to a running session without waiting for a click. `process_id` of 0 means "the
 		// only one there is", and it refuses rather than guessing when several are running. It
@@ -188,6 +191,8 @@ namespace cygi
 		void CreateAnalysisSnapshot();
 		// Answers one MCP tool call, on the UI thread, with the model lock held inside.
 		Json HandleMcpRequest(const Json &request);
+        Json ExecuteOperation(const Json &request);
+        std::shared_ptr<cymcp::Registry> m_operations;
 
 		// The AI assistant: its panel, and the AI Analysis tab. Defined in AssistantPanel.cpp.
 		void DrawAssistantPanel();

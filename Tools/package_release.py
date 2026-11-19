@@ -38,6 +38,12 @@ PLUGIN_ROOT = os.path.join(ROOT, 'CyGPUInspectorUnreal', 'CyGPUInspector')
 # The complete, unchanged notices of the components actually used by this product.
 # CyToolsCore and CyUEMCPSDK are not dependencies of its native assistant/MCP server.
 LICENCE_FILES = {
+    'CyMCPSDK/LICENSE.txt': 'ThirdParty/CyMCPSDK/LICENSE',
+    'CyMCPSDK/UPSTREAM.json': 'ThirdParty/CyMCPSDK/UPSTREAM.json',
+    'CyMCPSDK/THIRD_PARTY_NOTICES.md': 'ThirdParty/CyMCPSDK/THIRD_PARTY_NOTICES.md',
+    'CyMCPSDK/nlohmann-MIT.txt': 'ThirdParty/CyMCPSDK/third_party/nlohmann/LICENSE.MIT',
+    'CyMCPSDK/httplib-MIT.txt': 'ThirdParty/CyMCPSDK/third_party/httplib/LICENSE',
+    'CyMCPSDK/picosha2-MIT.txt': 'ThirdParty/CyMCPSDK/third_party/picosha2/LICENSE',
     'CyDoc/LICENSE.txt': 'ThirdParty/CyDoc/LICENSE',
     'CyDoc/ORIGIN.json': 'ThirdParty/CyDoc/ORIGIN.json',
     'CyDoc/marked-LICENSE.md': 'ThirdParty/CyDoc/licenses/marked-LICENSE.md',

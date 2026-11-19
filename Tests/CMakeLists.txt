@@ -60,7 +60,7 @@ add_executable(CyGPUInspectorAssistantTests
     ${CMAKE_SOURCE_DIR}/CyGPUInspectorApp/Source/Mcp/McpBridge.cpp)
 target_include_directories(CyGPUInspectorAssistantTests PRIVATE ${CMAKE_SOURCE_DIR}/CyGPUInspectorApp/Source)
 target_link_libraries(CyGPUInspectorAssistantTests PRIVATE
-    CyGPUInspectorCore CyGPUInspectorDatabase winhttp ws2_32 shell32)
+    CyGPUInspectorOperations CyMCP::AI CyMCP::MCP CyGPUInspectorCore CyGPUInspectorDatabase winhttp ws2_32 shell32)
 set_target_properties(CyGPUInspectorAssistantTests PROPERTIES
     RUNTIME_OUTPUT_DIRECTORY "${CYGI_OUTPUT_DIR}")
 
@@ -83,3 +83,8 @@ if(TARGET CyUI::CodeEditor)
     set_target_properties(CyGPUInspectorInterfaceTests PROPERTIES RUNTIME_OUTPUT_DIRECTORY "${CYGI_OUTPUT_DIR}")
     add_test(NAME InterfaceTests COMMAND CyGPUInspectorInterfaceTests)
 endif()
+
+add_executable(CyGPUInspectorSdkTests CyMCPSDKIntegration.cpp)
+target_link_libraries(CyGPUInspectorSdkTests PRIVATE CyGPUInspectorOperations)
+set_target_properties(CyGPUInspectorSdkTests PROPERTIES RUNTIME_OUTPUT_DIRECTORY "${CYGI_OUTPUT_DIR}")
+add_test(NAME SdkIntegrationTests COMMAND CyGPUInspectorSdkTests)

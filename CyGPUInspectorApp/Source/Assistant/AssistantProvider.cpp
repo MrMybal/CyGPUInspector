@@ -7,6 +7,7 @@
 #define WIN32_LEAN_AND_MEAN
 #endif
 #include <Windows.h>
+#include <ShlObj.h>
 #include <winhttp.h>
 
 #include <algorithm>
@@ -278,173 +279,6 @@ namespace cygi::assistant
 
 		// ---- providers ---------------------------------------------------------------------------
 
-		class CliProvider final : public Provider
-		{
-		public:
-			explicit CliProvider(const ProviderConfig &config)
-				: m_codex(config.kind == ProviderKind::codex_cli),
-				  m_name(m_codex ? "codex" : "claude"),
-				  m_model(config.model),
-				  m_executable(FindCli(m_name))
-			{
-			}
-
-			Text Check(Cancellation &cancel) override
-			{
-				TempFolder folder;
-				const std::vector<std::wstring> arguments = m_codex
-					? std::vector<std::wstring>{ L"login", L"status" }
-					: std::vector<std::wstring>{ L"auth", L"status", L"--json" };
-				const ProcessResult result = RunProcess(m_executable, arguments, folder.Path(), "", 20000, m_name, cancel);
-
-				bool valid = result.exit_code == 0;
-				if (!m_codex && valid)
-				{
-					Json status;
-					valid = Json::Parse(result.output, status) && status["loggedIn"].AsBool();
-				}
-				if (!valid)
-					throw Error(Text::Format("%s session missing or expired. Run %s, then reconnect here.",
-						{ Text::Literal(m_name), Text::Literal(std::string(m_name) + (m_codex ? " login" : " auth login")) }));
-				return Text::Format("%s: CLI session recognized. Model access is checked on the first message.",
-					{ Text::Literal(m_name) });
-			}
-
-			Json Complete(const std::string &system, const std::string &content, Cancellation &cancel) override
-			{
-				TempFolder folder;
-				std::string raw;
-				ProcessResult result;
-
-				if (m_codex)
-				{
-					const std::filesystem::path output = folder.Path() / L"reply.json";
-					std::vector<std::wstring> arguments = {
-						L"exec", L"--skip-git-repo-check", L"--sandbox", L"read-only",
-						L"--ephemeral", L"--ignore-user-config", L"-c", L"features.shell_tool=false",
-						L"--color", L"never", L"-o", output.wstring() };
-					if (!m_model.empty())
-					{
-						arguments.push_back(L"--model");
-						arguments.push_back(Widen(m_model));
-					}
-					arguments.push_back(L"-");
-					result = RunProcess(m_executable, arguments, folder.Path(), system + "\n\n" + content, 180000, m_name, cancel);
-
-					std::ifstream file(output, std::ios::binary);
-					if (file)
-						raw.assign(std::istreambuf_iterator<char>(file), std::istreambuf_iterator<char>());
-				}
-				else
-				{
-					std::vector<std::wstring> arguments = {
-						L"-p", L"--tools", L"", L"--strict-mcp-config", L"--mcp-config", L"{\"mcpServers\":{}}",
-						L"--settings", L"{\"disableAllHooks\":true}", L"--setting-sources", L"user",
-						L"--no-session-persistence", L"--output-format", L"json", L"--system-prompt", Widen(system) };
-					if (!m_model.empty())
-					{
-						arguments.push_back(L"--model");
-						arguments.push_back(Widen(m_model));
-					}
-					result = RunProcess(m_executable, arguments, folder.Path(), content, 180000, m_name, cancel);
-
-					Json envelope;
-					if (result.exit_code == 0)
-						Json::Parse(result.output, envelope);
-					if (envelope["is_error"].AsBool())
-						throw Error("Claude refused the request. Check the CLI session, model and quota.");
-					raw = envelope["result"].AsString();
-				}
-
-				// The CLI's error output can hold account details: only its exit code is reported.
-				if (result.exit_code != 0)
-					throw Error(Text::Format("%s failed (code %s). Check the CLI connection and quota.",
-						{ Text::Literal(m_name), Text::Literal(std::to_string(result.exit_code)) }));
-
-				Json reply;
-				if (!ParseJsonReply(raw, reply))
-					throw Error("The provider response is not a JSON object. You can try again.");
-				return reply;
-			}
-
-			std::string Describe() const override
-			{
-				return std::string(m_codex ? "Codex CLI" : "Claude Code CLI") + " (" +
-					(m_model.empty() ? std::string("default model") : m_model) + ")";
-			}
-
-		private:
-			bool m_codex;
-			const char *m_name;
-			std::string m_model;
-			std::wstring m_executable;
-		};
-
-		class ApiProvider final : public Provider
-		{
-		public:
-			explicit ApiProvider(const ProviderConfig &config) : m_config(config)
-			{
-				if (m_config.endpoint.empty() || m_config.model.empty())
-					throw Error("Set the full /chat/completions URL and the model.");
-				ValidateEndpoint(m_config.endpoint);
-			}
-
-			Text Check(Cancellation &cancel) override
-			{
-				const Json probe = Complete("Return only {\"connected\":true}.", "Connection test", cancel);
-				if (!probe["connected"].AsBool())
-					throw Error("The model did not return the expected JSON response.");
-				return Text::Format("API connected: model %s responded to the test.", { Text::Literal(m_config.model) });
-			}
-
-			Json Complete(const std::string &system, const std::string &content, Cancellation &cancel) override
-			{
-				Json messages = Json::Array();
-				Json system_message = Json::Object();
-				system_message["role"] = Json("system");
-				system_message["content"] = Json(system);
-				messages.Push(system_message);
-				Json user_message = Json::Object();
-				user_message["role"] = Json("user");
-				user_message["content"] = Json(content);
-				messages.Push(user_message);
-
-				Json format = Json::Object();
-				format["type"] = Json("json_object");
-
-				Json payload = Json::Object();
-				payload["model"] = Json(m_config.model);
-				payload["messages"] = messages;
-				payload["response_format"] = format;
-
-				const HttpResponse response = HttpPostJson(m_config.endpoint, payload.Write(-1), m_config.key, 90000, cancel);
-				if (cancel.IsCancelled())
-					throw Error(Cancelled());
-				if (response.status >= 300 && response.status < 400)
-					throw Error("API redirects are disabled to avoid forwarding credentials.");
-				if (response.status != 200)
-					throw Error(Text::Format("Provider HTTP %s; check model, credentials and endpoint.",
-						{ Text::Literal(std::to_string(response.status)) }));
-
-				Json envelope;
-				if (!Json::Parse(response.body, envelope) || envelope["choices"].Items().empty())
-					throw Error("The provider did not return a Chat Completions response.");
-				const Json &choice = envelope["choices"].Items().front();
-				if (choice["finish_reason"].AsString() != "stop")
-					throw Error("Provider did not finish a complete JSON response.");
-
-				Json reply;
-				if (!ParseJsonReply(choice["message"]["content"].AsString(), reply))
-					throw Error("The provider response is not a JSON object. You can try again.");
-				return reply;
-			}
-
-			std::string Describe() const override { return m_config.model; }
-
-		private:
-			ProviderConfig m_config;
-		};
 	}
 
 	const char *ProviderName(ProviderKind kind)
@@ -463,6 +297,7 @@ namespace cygi::assistant
 
 	void Cancellation::Cancel()
 	{
+        sdk.cancel();
 		std::lock_guard<std::mutex> lock(m_mutex);
 		m_cancelled.store(true);
 		if (m_job != nullptr)
@@ -483,12 +318,74 @@ namespace cygi::assistant
 		m_job = nullptr;
 	}
 
-	std::unique_ptr<Provider> CreateProvider(const ProviderConfig &config)
-	{
-		if (IsCli(config.kind))
-			return std::make_unique<CliProvider>(config);
-		return std::make_unique<ApiProvider>(config);
-	}
+    // The host retains its CyUI 1.2 panel and approval queue. SDK transports run only on workers.
+    class SdkProvider final : public Provider {
+        ProviderConfig config;
+        cymcp::Json checkpoint;
+        std::mutex chat_mutex;
+        std::filesystem::path HistoryDirectory() const {
+            if(!config.history_directory.empty())return config.history_directory;
+            PWSTR folder=nullptr;if(FAILED(SHGetKnownFolderPath(FOLDERID_LocalAppData,0,nullptr,&folder)))throw Error("Cannot locate private application storage.");
+            auto result=std::filesystem::path(folder)/L"CyGPUInspector"/L"AssistantHistory";CoTaskMemFree(folder);return result;
+        }
+        std::string HistoryId() const {return cymcp::sha256(std::to_string(static_cast<int>(config.kind))+config.model+config.endpoint);}
+        std::shared_ptr<cymcp::Provider> Make(std::shared_ptr<const cymcp::Registry> tools={}) {
+            cymcp::ProviderConfig c;c.tools=std::move(tools);c.api_key=config.key;
+            std::string id;
+            if(IsCli(config.kind)) {
+                id=config.kind==ProviderKind::codex_cli?"codex":"claude-code";
+                c.process.executable=FindCli(config.kind==ProviderKind::codex_cli?"codex":"claude");
+                if(config.kind==ProviderKind::codex_cli)c.process.arguments={"-c","features.shell_tool=false","-c","mcp_servers={}","-c","web_search=\"disabled\""};
+                c.settings={{"deferred_tools",config.deferred_tools},{"sandbox","read-only"},{"approval_policy","never"},{"allowed_tools",cymcp::Json::array()},{"setting_sources",""}};
+                // Claude's CLI cannot use dynamic SDK tools. It keeps the host JSON tool loop.
+            } else {
+                ValidateEndpoint(config.endpoint);id="openai-compatible";
+                std::string base=config.endpoint;const std::string suffix="/chat/completions";
+                if(base.size()>=suffix.size()&&base.compare(base.size()-suffix.size(),suffix.size(),suffix)==0)base.resize(base.size()-suffix.size());
+                c.settings={{"base_url",base},{"deferred_tools",config.deferred_tools},{"max_tool_rounds",16}};
+            }
+            return cymcp::ProviderRegistry().create(id,c);
+        }
+    public:
+        explicit SdkProvider(ProviderConfig c):config(std::move(c)){
+            if(config.remember_history){cymcp::ConversationStore store(HistoryDirectory());const auto file=HistoryDirectory()/(HistoryId()+".json");if(std::filesystem::exists(file))checkpoint=store.load(HistoryId());}
+        }
+        void ResetHistory() override {std::lock_guard<std::mutex> guard(chat_mutex);checkpoint=nullptr;if(config.remember_history)cymcp::ConversationStore(HistoryDirectory()).erase(HistoryId());}
+        Json RestoredHistory() const override {
+            Json out=Json::Array();if(!checkpoint.is_object())return out;
+            for(const auto& msg:checkpoint.value("messages",cymcp::Json::array())){
+                const auto role=msg.value("role","");if((role!="user"&&role!="assistant")||!msg.value("content",cymcp::Json()).is_string())continue;
+                auto text=msg["content"].get<std::string>();
+                if(role=="user"){auto parsed=cymcp::Json::parse(text,nullptr,false);if(parsed.is_object()&&parsed.contains("request"))text=parsed["request"].get<std::string>();}
+                Json row=Json::Object();row["role"]=Json(role);row["content"]=Json(text);out.Push(row);
+            }return out;
+        }
+        Text Check(Cancellation& cancel) override {
+            try {auto p=Make();cymcp::CallContext ctx;ctx.cancellation=cancel.sdk;p->connect(ctx);p->disconnect();return "Connected.";}
+            catch(const std::exception&){throw Error("Provider connection failed. Check the executable, endpoint and authentication.");}
+        }
+        std::string Describe() const override {return std::string(ProviderName(config.kind))+" (CyMCPSDK; "+(config.model.empty()?"default model":config.model)+")";}
+        bool UsesNativeTools() const override {return config.kind!=ProviderKind::claude_cli;}
+        std::string NativeChat(std::shared_ptr<const cymcp::Registry> tools,const std::string& system,const std::string& input,Cancellation& cancel,const std::function<void(const std::string&)>& progress) override {
+            const bool chat=static_cast<bool>(tools);std::unique_lock<std::mutex> guard(chat_mutex,std::defer_lock);if(chat)guard.lock();
+            try {
+                auto p=Make(std::move(tools));cymcp::Conversation conversation(p,config.model,system);
+                if(p->uses_host_history()&&!p->uses_native_turn_context()){
+                    cymcp::ContextOptions window;window.max_bytes=static_cast<size_t>(std::max(0,config.context_bytes));conversation.configure_context(window);
+                }
+                cymcp::CallContext ctx;ctx.cancellation=cancel.sdk;std::string partial;
+                ctx.events=[&](const cymcp::Event& e){if(e.type=="TextDelta"){partial+=e.data.value("text","");if(progress)progress(partial);}else if(e.type=="ToolStarted"&&progress)progress(e.data.value("name",""));};
+                if(chat&&checkpoint.is_object())conversation.restore(checkpoint,ctx);else conversation.connect({},ctx);
+                auto save=[&](){if(!chat)return;checkpoint=conversation.checkpoint();if(config.remember_history)cymcp::ConversationStore(HistoryDirectory()).save(HistoryId(),conversation);};
+                try{auto result=conversation.send(input,ctx);save();conversation.disconnect();return result.text;}
+                catch(...){try{save();}catch(...){}throw;}
+            }catch(const std::exception& e){if(cancel.IsCancelled())throw Error("Request cancelled.");throw Error(Text::Literal(cymcp::redact_error_message(e.what(),{config.key})));}
+        }
+        Json Complete(const std::string& system,const std::string& input,Cancellation& cancel) override {
+            Json result;if(!ParseJsonReply(NativeChat({},system,input,cancel,{}),result))throw Error("The provider response is invalid. You can try again.");return result;
+        }
+    };
+    std::unique_ptr<Provider> CreateProvider(const ProviderConfig &config) {return std::make_unique<SdkProvider>(config);}
 
 	bool ParseJsonReply(const std::string &raw, Json &out)
 	{

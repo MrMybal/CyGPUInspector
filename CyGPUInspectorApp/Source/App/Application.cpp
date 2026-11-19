@@ -2098,7 +2098,18 @@ namespace cygi
 	}
 
 	Json Application::HandleMcpRequest(const Json &request)
-	{
+    {
+        try {
+            if(!m_operations)m_operations=CreateOperations([this](const std::string& name,const cymcp::Json& args,const cymcp::CallContext&){
+                Json req=Json::Object();req["tool"]=Json(name);Json::Parse(args.dump(),req["arguments"]);
+                return cymcp::parse_json(ExecuteOperation(req).Write(-1),32*1024*1024);
+            });
+            const auto result=m_operations->invoke(request["tool"].AsString(),cymcp::parse_json(request["arguments"].Write(-1)));
+            Json answer;Json::Parse(result.dump(),answer);return answer;
+        } catch(const std::exception& e){return Failure(cymcp::redact_error_message(e.what()));}
+    }
+    Json Application::ExecuteOperation(const Json &request)
+    {
 		const std::string tool = request["tool"].AsString();
 		const Json &arguments = request["arguments"];
 

@@ -2,7 +2,7 @@
 
 add_executable(CyGPUInspectorMCP Source/Main.cpp Source/CyGPUInspectorMCP.rc)
 
-target_link_libraries(CyGPUInspectorMCP PRIVATE CyGPUInspectorCore)
+target_link_libraries(CyGPUInspectorMCP PRIVATE CyGPUInspectorOperations CyMCP::MCP CyGPUInspectorCore)
 target_compile_definitions(CyGPUInspectorMCP PRIVATE WIN32_LEAN_AND_MEAN)
 
 set_target_properties(CyGPUInspectorMCP PROPERTIES

@@ -19,7 +19,6 @@ namespace cygi::assistant
 {
 	namespace
 	{
-		constexpr size_t kMaxConversation = 32;   // messages kept, as in CyRSAssistant
 		constexpr auto kApprovalTimeout = std::chrono::minutes(10);
 		constexpr auto kAnalysisPatience = std::chrono::seconds(20);
 
@@ -97,8 +96,7 @@ namespace cygi::assistant
 		{
 			entry.id = ++next_message;
 			conversation.push_back(std::move(entry));
-			while (conversation.size() > kMaxConversation)
-				conversation.erase(conversation.begin());
+
 			++version;
 		}
 
@@ -276,7 +274,10 @@ namespace cygi::assistant
 			if (shared->epoch != epoch || !shared->wanted)
 				return;
 			shared->provider = phase == Phase::ready ? provider : nullptr;
-			shared->phase = phase;
+			if(phase==Phase::ready&&shared->conversation.empty()&&provider){
+                const auto restored=provider->RestoredHistory();for(const auto& row:restored.Items()){ChatMessage message;message.role=row["role"].AsString();message.content=row["content"].AsString();shared->Add(std::move(message));}
+            }
+            shared->phase = phase;
 			shared->message = message;
 			shared->connect_cancel.reset();
 		});
@@ -475,6 +476,7 @@ namespace cygi::assistant
 		if (m_shared->pending)
 			return;
 		m_shared->conversation.clear();
+        if(m_shared->provider){try{m_shared->provider->ResetHistory();}catch(const std::exception&){ChatMessage note;note.role="information";note.notice="Could not reset saved conversation history.";m_shared->Add(std::move(note));}}
 		++m_shared->version;
 	}
 

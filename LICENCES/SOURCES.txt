@@ -66,3 +66,8 @@ Repository links supplement, and never replace, the complete license texts.
   https://github.com/MrMybal/CyDoc
   MIT; full original text and generation dependency notices: CyDoc/.
   Reproducible local package provenance: .CyDocBuild/vendor/ORIGIN.json.
+
+CyMCPSDK 0.7.0, revision 791d4d7d7680213b282ec8529d248a10f8494d77:
+https://github.com/MrMybal/CyMCPSDK
+MIT; full SDK and dependency notices: CyMCPSDK/.
+Compiled from source: Core, Platform, Http, MCP and AI; no Local or ChatUI module.

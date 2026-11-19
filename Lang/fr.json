@@ -645,6 +645,9 @@
     "CPU %.2f ms, peak %.2f ms": "CPU %.2f ms, pic %.2f ms",
     "Syntax highlighting is limited to 32 MiB; the full document remains editable.": "La coloration syntaxique est limitée à 32 Mio ; le document complet reste modifiable.",
     "User guide": "Guide utilisateur",
-    "Help for this view": "Aide pour cette vue"
+    "Help for this view": "Aide pour cette vue",
+    "On-demand tool discovery": "Découverte des outils à la demande",
+    "API context budget (bytes, 0 = unlimited)": "Budget du contexte API (octets, 0 = illimité)",
+    "Remember conversations on this computer": "Conserver les conversations sur cet ordinateur"
   }
 }

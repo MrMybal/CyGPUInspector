@@ -4,6 +4,8 @@
 
 **État : implémenté et testé** (milestone 10).
 
+Voir [l’intégration CyMCPSDK et les commandes CLI](../CyMCPSDK.md) pour le transport actuel et ses commandes.
+
 ## Forme
 
 `CyGPUInspectorMCP.exe` est un **proxy stdio** : un agent externe le lance, il parle JSON-RPC (MCP)

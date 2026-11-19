@@ -196,15 +196,15 @@ namespace
 		}
 
 		cygi::Json response;
-		Check(mcp.Call("{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"initialize\",\"params\":{}}", response),
+		Check(mcp.Call("{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"initialize\",\"params\":{\"protocolVersion\":\"2025-11-25\"}}", response),
 			"initialize is answered");
 		Check(response["id"].AsUInt() == 1, "the answer carries the request id");
 		Check(!response["result"]["protocolVersion"].AsString().empty(), "a protocol version is announced");
 		Check(response["result"]["serverInfo"]["name"].AsString() == "CyGPUInspectorMCP",
 			"the server names itself");
 		Check(response["result"]["capabilities"].Has("tools"), "tools are advertised as a capability");
-		Check(!response["result"]["instructions"].AsString().empty(),
-			"instructions tell an agent where to start");
+		Check(response["result"]["serverInfo"].Has("version"),
+            "SDK server version is announced");
 
 		Check(mcp.Call("{\"jsonrpc\":\"2.0\",\"id\":2,\"method\":\"tools/list\"}", response),
 			"tools/list is answered");

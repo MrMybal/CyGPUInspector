@@ -30,3 +30,6 @@ __pycache__/
 /.CyDocBuild/node_modules/
 /.CyDocBuild/internal/
 /Documentation/
+
+# Optional private assistant checkpoints (messages and tool results).
+AssistantHistory/

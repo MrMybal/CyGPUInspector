@@ -4,6 +4,8 @@
 
 **State: implemented and tested** (milestone 10).
 
+See [CyMCPSDK integration and CLI commands](CyMCPSDK.md) for the current SDK transport, protocol versions and terminal commands. The inventory below remains the domain reference.
+
 ## Shape
 
 `CyGPUInspectorMCP.exe` is a **stdio proxy**: an external agent launches it, it speaks JSON-RPC

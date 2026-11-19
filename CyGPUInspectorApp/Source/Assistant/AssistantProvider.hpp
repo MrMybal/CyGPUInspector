@@ -1,19 +1,13 @@
 // CyGPUInspectorApp — the model the assistant talks to.
 //
-// The same four providers as CyRSAssistant, driven the same way:
-//
-//   Codex (CLI session)        `codex exec`, read-only sandbox, no shell, no user config
-//   Claude Code (CLI session)  `claude -p`, no tools, no MCP server, no hooks, no saved session
-//   OpenAI-compatible API      a /chat/completions URL, a model and a key if the server wants one
-//   Local model (API)          the same, on localhost
-//
-// Every provider is used the same way: one system prompt and one JSON document in, one JSON object
-// out. The tools are not the CLI's: the assistant runs its own bounded loop over CyGPUInspector's
-// tools and gives the CLI nothing it could act with. A CLI uses the login it already has; an API
-// key stays in memory for the session and is never written to disk.
+// The existing four provider choices are implemented by CyMCPSDK Conversation.
+// Codex and HTTP use native tool calls; Claude retains the bounded host JSON loop.
+// CLI authentication belongs to the installed agent. API keys remain in memory.
+// Optional private checkpoints retain full tool exchanges separately from model context projection.
 //
 // Copyright (C) 2026 Cyberalien. Licensed under the GNU AGPL v3 or later.
 #pragma once
+#include <cymcp/ai.hpp>
 
 #include "AssistantText.hpp"
 
@@ -43,6 +37,10 @@ namespace cygi::assistant
 	struct ProviderConfig
 	{
 		ProviderKind kind = ProviderKind::codex_cli;
+        bool deferred_tools = true;
+        bool remember_history = false;
+        std::filesystem::path history_directory; // optional host override, never sent to providers
+        int context_bytes = 0;
 		std::string model;       // empty: the CLI's default model
 		std::string endpoint;    // full /chat/completions URL, API providers only
 		std::string key;         // API key, in memory only
@@ -68,6 +66,7 @@ namespace cygi::assistant
 		~Cancellation();
 		void Cancel();
 		bool IsCancelled() const { return m_cancelled.load(); }
+        cymcp::Cancellation sdk;
 		// The job object of a running CLI, terminated by Cancel. Ownership stays with the caller.
 		void Attach(void *job);
 		void Detach();
@@ -82,6 +81,11 @@ namespace cygi::assistant
 	{
 	public:
 		virtual ~Provider() = default;
+        virtual void ResetHistory() {}
+        virtual Json RestoredHistory() const { return Json::Array(); }
+        virtual bool UsesNativeTools() const { return false; }
+        virtual std::string NativeChat(std::shared_ptr<const cymcp::Registry>, const std::string&, const std::string&, Cancellation&, const std::function<void(const std::string&)>&) { throw Error("Native tools unavailable."); }
+
 
 		// What Connect checks. A CLI: its own login status, without calling the model. An API: a
 		// small request the model has to answer with the expected JSON.

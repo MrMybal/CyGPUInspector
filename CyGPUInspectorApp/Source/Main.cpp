@@ -419,6 +419,9 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, LPWSTR, int)
 			for (int i = 1; i < count; ++i)
 			{
 				const std::wstring argument = arguments[i];
+                if(argument==L"--mcp-permission=read-only")application.SetMcpPermission(cygi::McpPermission::read_only);
+                else if(argument==L"--mcp-permission=debug-control")application.SetMcpPermission(cygi::McpPermission::debug_control);
+                else if(argument==L"--mcp-permission=shader-modification")application.SetMcpPermission(cygi::McpPermission::shader_modification);
 				if (argument.rfind(L"--help-topic=", 0) == 0)
 				{
 					help_topic = std::filesystem::path(argument.substr(13)).string(); help_requested = true;

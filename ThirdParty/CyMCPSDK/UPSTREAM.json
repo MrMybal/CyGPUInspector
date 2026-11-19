@@ -1,0 +1,17 @@
+{
+  "version": "0.7.0",
+  "revision": "791d4d7d7680213b282ec8529d248a10f8494d77",
+  "repository": "https://github.com/MrMybal/CyMCPSDK",
+  "modules": [
+    "Core",
+    "Platform",
+    "Http",
+    "MCP",
+    "AI"
+  ],
+  "excluded": [
+    "Local",
+    "ChatUI"
+  ],
+  "note": "ChatUI requires newer CyUI TranscriptSource/messageComposer APIs absent from the host; the existing panel uses Conversation."
+}

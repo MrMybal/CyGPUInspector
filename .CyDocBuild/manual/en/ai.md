@@ -4,7 +4,7 @@ title: Use the built-in AI assistant
 description: Connect a provider, ask focused questions and choose assistant permissions.
 section: User guide
 order: 12
-revision: 557287e63b46
+revision: e1fde0beb1c2
 ---
 
 # Use the built-in AI assistant {#use-the-built-in-ai-assistant}
@@ -31,6 +31,16 @@ Shader code > AI Analysis offers clean-up, classification and explanation. Outpu
 
 See [the full AI reference](doc:ref-ai), including exact budgets, context limits and analysis snapshots.
 
+
+## SDK conversation settings {#sdk-settings}
+Codex and compatible HTTP providers use native SDK tool calls and streamed responses. Claude
+keeps the host JSON tool loop over the SDK provider. Cancellation stops generation without
+undoing completed operations. Connection settings independently control on-demand discovery,
+API context bytes (0 = unlimited) and optional private conversation checkpoints. History retention
+on disk is off by default; when enabled, checkpoints live in `CyGPUInspector/AssistantHistory/` under the current user’s Local AppData, without keys. API context projection preserves full history and tool-call/result
+groups. Native session restoration requests the exact session; it never silently starts a new
+one or replays a failed action. New conversation resets that checkpoint. No model or inference
+engine is bundled; existing local HTTP services remain supported.
 
 ## Illustrations {#illustrations}
 

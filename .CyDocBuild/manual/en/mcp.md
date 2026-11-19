@@ -5,7 +5,7 @@ description: Connect an external agent and choose the tool access allowed by the
 section: User guide
 order: 13
 parent: ai
-revision: dbc7bdaa2f41
+revision: 22ae847e939c
 ---
 
 # Connect an external agent with MCP {#connect-an-external-agent-with-mcp}
@@ -33,6 +33,30 @@ Ask for the frame graph, follow passes/resources to candidate shaders, then insp
 
 Only one proxy can use the pipe at a time. If connection fails, verify the application is open and another client is not holding it. External conversations are stored by that client, not by the built-in assistant. See [the complete tool inventory and transport reference](doc:ref-mcp).
 
+
+## Terminal commands and SDK transport {#terminal-sdk}
+CyMCPSDK 0.7.0 now supplies the native registry and stdio transport. No argument still starts
+MCP. Use `mcp-compact` for on-demand discovery and private chunked results; keep `mcp` for full
+discovery. Legacy initialization supports 2025-11-25 and 2025-06-18, not 2024-11-05.
+
+```powershell
+.\CyGPUInspectorMCP.exe list
+.\CyGPUInspectorMCP.exe describe inspect_shader
+.\CyGPUInspectorMCP.exe invoke get_session '{}'
+.\CyGPUInspectorMCP.exe invoke list_shaders '{"limit":3}'
+.\CyGPUInspectorMCP.exe invoke-file inspect_shader args.json
+```
+
+The arguments file contains an object such as `{"shader_id":2}`. Discovery works without a GUI;
+invocation addresses the running standalone. JSON goes to stdout, diagnostics to stderr.
+Exit codes: 0 success, 1 business refusal, 2 invalid input or connection failure. CLI and MCP
+apply the same host permission level. Scripts may explicitly launch the host with
+`--mcp-permission=debug-control` or `--mcp-permission=shader-modification`; the default remains
+read-only. Existing `--connect=<pid>`, tracking and view options are preserved.
+
+In compact mode, read every returned chunk URI before treating a result as complete. Result
+retention is five minutes in memory (64 MiB / 128 results). An expired reference is an error;
+never repeat a mutation to recover its output. No filesystem search root is exposed.
 
 ## Illustrations {#illustrations}
 

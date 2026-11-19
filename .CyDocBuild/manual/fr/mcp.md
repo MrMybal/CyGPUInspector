@@ -5,7 +5,7 @@ description: Connecter un agent externe et choisir les accès autorisés par le 
 section: Guide utilisateur
 order: 13
 parent: ai
-sourceRevision: dbc7bdaa2f41
+sourceRevision: 22ae847e939c
 ---
 
 # Connecter un agent externe avec MCP {#connect-an-external-agent-with-mcp}
@@ -33,6 +33,32 @@ Demandez le graphe, suivez passes/ressources vers les shaders candidats, puis li
 
 Un seul proxy utilise le pipe à la fois. Si la connexion échoue, vérifiez l’ouverture de l’application et l’absence d’un autre client qui garde la liaison. Les conversations externes appartiennent au client, pas à l’assistant intégré. Voir [l’inventaire des outils et le transport](doc:ref-mcp).
 
+
+## Commandes terminal et transport SDK {#terminal-sdk}
+CyMCPSDK 0.7.0 fournit désormais le registre natif et le transport stdio. Sans argument,
+l’exécutable démarre toujours MCP. `mcp-compact` propose la découverte à la demande et des
+résultats privés par morceaux ; `mcp` conserve la découverte complète. L’initialisation accepte
+2025-11-25 et 2025-06-18, pas 2024-11-05.
+
+```powershell
+.\CyGPUInspectorMCP.exe list
+.\CyGPUInspectorMCP.exe describe inspect_shader
+.\CyGPUInspectorMCP.exe invoke get_session '{}'
+.\CyGPUInspectorMCP.exe invoke list_shaders '{"limit":3}'
+.\CyGPUInspectorMCP.exe invoke-file inspect_shader args.json
+```
+
+Le fichier d’arguments contient un objet comme `{"shader_id":2}`. La découverte fonctionne sans
+interface ; l’exécution s’adresse au standalone ouvert. JSON sur stdout, diagnostics sur stderr.
+Codes de sortie : 0 réussite, 1 refus métier, 2 saisie invalide ou connexion impossible.
+CLI et MCP appliquent les mêmes droits hôtes. Un script peut démarrer explicitement l’hôte avec
+`--mcp-permission=debug-control` ou `--mcp-permission=shader-modification` ; le mode par défaut
+reste la lecture seule. `--connect=<pid>` et les options de suivi et d’affichage sont conservés.
+
+En mode compact, lisez toutes les URI de morceaux pour récupérer un résultat complet.
+Rétention : cinq minutes en mémoire, 64 Mio / 128 résultats. Une référence expirée produit une
+erreur ; ne rejouez jamais une modification pour récupérer sa sortie. Aucun dossier de recherche
+dans les fichiers n’est exposé.
 
 ## Illustrations {#illustrations}
 

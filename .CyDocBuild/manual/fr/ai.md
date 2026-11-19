@@ -4,7 +4,7 @@ title: Utiliser l’assistant IA intégré
 description: Connecter un fournisseur, poser une question précise et choisir les permissions.
 section: Guide utilisateur
 order: 12
-sourceRevision: 557287e63b46
+sourceRevision: e1fde0beb1c2
 ---
 
 # Utiliser l’assistant IA intégré {#use-the-built-in-ai-assistant}
@@ -31,6 +31,18 @@ Code du shader > Analyse IA propose nettoyage, classification et explication. Le
 
 Voir [la référence IA complète](doc:ref-ai), ses budgets, limites de contexte et snapshots.
 
+
+## Réglages des conversations SDK {#sdk-settings}
+Codex et les API HTTP compatibles utilisent les appels d’outils natifs du SDK et des réponses
+progressives. Claude conserve la boucle JSON hôte avec le fournisseur SDK. L’annulation arrête
+la génération sans annuler les opérations déjà réalisées. Les réglages de connexion séparent
+la découverte à la demande, le budget du contexte API (0 = illimité) et les checkpoints privés
+facultatifs. La conservation sur disque est désactivée par défaut ; une fois activée, les fichiers
+sont dans `CyGPUInspector/AssistantHistory/` sous les données Local AppData de l’utilisateur,
+sans clé. La projection du contexte API conserve l’historique complet et les groupes appel/résultat.
+La restauration native exige la session exacte, sans en créer une autre ni rejouer une action
+échouée. Nouvelle conversation réinitialise ce checkpoint. Aucun modèle ni moteur n’est livré ;
+les services HTTP locaux restent utilisables.
 
 ## Illustrations {#illustrations}
 

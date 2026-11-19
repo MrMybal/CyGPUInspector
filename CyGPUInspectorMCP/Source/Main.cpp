@@ -19,6 +19,11 @@
 #endif
 #include <Windows.h>
 
+#include "Operations.hpp"
+#include <cymcp/mcp.hpp>
+#include <cymcp/performance.hpp>
+#include <fstream>
+#include <mutex>
 #include <cstdio>
 #include <iostream>
 #include <string>
@@ -26,56 +31,6 @@
 
 namespace
 {
-	using ToolDefinition = cygi::McpToolDefinition;
-	constexpr const auto &kTools = cygi::kMcpTools;
-
-	void WriteMessage(const cygi::Json &message)
-	{
-		// MCP stdio framing: one JSON object per line, nothing else on stdout ever.
-		const std::string text = message.Write(-1);
-		std::fwrite(text.data(), 1, text.size(), stdout);
-		std::fputc('\n', stdout);
-		std::fflush(stdout);
-	}
-
-	void WriteError(const cygi::Json &id, int code, const std::string &message)
-	{
-		cygi::Json error = cygi::Json::Object();
-		error["code"] = cygi::Json(code);
-		error["message"] = cygi::Json(message);
-
-		cygi::Json response = cygi::Json::Object();
-		response["jsonrpc"] = cygi::Json("2.0");
-		response["id"] = id;
-		response["error"] = error;
-		WriteMessage(response);
-	}
-
-	void WriteResult(const cygi::Json &id, cygi::Json result)
-	{
-		cygi::Json response = cygi::Json::Object();
-		response["jsonrpc"] = cygi::Json("2.0");
-		response["id"] = id;
-		response["result"] = std::move(result);
-		WriteMessage(response);
-	}
-
-	// Wraps a payload as MCP tool content: a single text block holding the JSON answer.
-	cygi::Json TextContent(const std::string &text, bool is_error)
-	{
-		cygi::Json block = cygi::Json::Object();
-		block["type"] = cygi::Json("text");
-		block["text"] = cygi::Json(text);
-
-		cygi::Json content = cygi::Json::Array();
-		content.Push(block);
-
-		cygi::Json result = cygi::Json::Object();
-		result["content"] = content;
-		result["isError"] = cygi::Json(is_error);
-		return result;
-	}
-
 	class AppLink
 	{
 	public:
@@ -133,113 +88,46 @@ namespace
 	};
 }
 
-int main()
+int main(int argc, char** argv)
 {
-	AppLink link;
-
-	std::string line;
-	while (std::getline(std::cin, line))
-	{
-		if (line.empty())
-			continue;
-
-		cygi::Json message;
-		std::string parse_error;
-		if (!cygi::Json::Parse(line, message, &parse_error) || !message.IsObject())
-		{
-			WriteError(cygi::Json(), -32700, "parse error: " + parse_error);
-			continue;
-		}
-
-		const std::string method = message["method"].AsString();
-		const cygi::Json &id = message["id"];
-		const bool is_notification = !message.Has("id");
-
-		if (method == "initialize")
-		{
-			cygi::Json capabilities = cygi::Json::Object();
-			capabilities["tools"] = cygi::Json::Object();
-
-			cygi::Json info = cygi::Json::Object();
-			info["name"] = cygi::Json("CyGPUInspectorMCP");
-			info["version"] = cygi::Json(cygi::kVersionString);
-
-			cygi::Json result = cygi::Json::Object();
-			result["protocolVersion"] = cygi::Json("2024-11-05");
-			result["capabilities"] = capabilities;
-			result["serverInfo"] = info;
-			result["instructions"] = cygi::Json(
-				"CyGPUInspector inspects the GPU frame of a game running ReShade. Start with "
-				"get_session and get_frame_graph, then follow resources and shaders. Pass names are "
-				"derived from resource dependencies, not read from the game, so each carries a "
-				"confidence. Decompiled HLSL is a reconstruction: the original source does not exist "
-				"in a compiled shader. Actions that change what the game renders require a higher "
-				"permission level, granted by the person in front of the tool.");
-
-			WriteResult(id, std::move(result));
-			continue;
-		}
-
-		if (method == "notifications/initialized" || method == "notifications/cancelled")
-			continue;
-
-		if (method == "ping")
-		{
-			WriteResult(id, cygi::Json::Object());
-			continue;
-		}
-
-		if (method == "tools/list")
-		{
-			cygi::Json tools = cygi::Json::Array();
-			for (const ToolDefinition &definition : kTools)
-			{
-				cygi::Json schema;
-				const std::string text = std::string("{\"type\":\"object\",\"properties\":{") +
-					definition.arguments + "}}";
-				cygi::Json::Parse(text, schema);
-
-				cygi::Json entry = cygi::Json::Object();
-				entry["name"] = cygi::Json(definition.name);
-				entry["description"] = cygi::Json(definition.description);
-				entry["inputSchema"] = schema;
-				tools.Push(entry);
-			}
-
-			cygi::Json result = cygi::Json::Object();
-			result["tools"] = tools;
-			WriteResult(id, std::move(result));
-			continue;
-		}
-
-		if (method == "tools/call")
-		{
-			const std::string tool = message["params"]["name"].AsString();
-			const cygi::Json &arguments = message["params"]["arguments"];
-
-			std::string answer;
-			if (!link.Call(tool, arguments, answer))
-			{
-				WriteResult(id, TextContent(answer, true));
-				continue;
-			}
-
-			cygi::Json parsed;
-			if (!cygi::Json::Parse(answer, parsed) || !parsed.IsObject())
-			{
-				WriteResult(id, TextContent("CyGPUInspectorApp returned something unreadable", true));
-				continue;
-			}
-
-			const bool ok = parsed["ok"].AsBool();
-			const cygi::Json &payload = ok ? parsed["result"] : parsed["error"];
-			WriteResult(id, TextContent(ok ? payload.Write(2) : payload.AsString(), !ok));
-			continue;
-		}
-
-		if (!is_notification)
-			WriteError(id, -32601, "unknown method \"" + method + "\"");
-	}
-
-	return 0;
+ using namespace cymcp;
+ AppLink link; std::mutex link_mutex;
+ auto operations=cygi::CreateOperations([&](const std::string& name,const Json& args,const CallContext& ctx){
+  ctx.cancellation.check();std::lock_guard<std::mutex> guard(link_mutex);
+  cygi::Json old_args; cygi::Json::Parse(args.dump(),old_args);std::string answer;
+  if(!link.Call(name,old_args,answer))throw Error("ConnectionError",answer);
+  auto result=parse_json(answer,32*1024*1024);
+  if(!result.value("ok",false))throw Error("OperationFailed",result.value("error","Operation failed"));
+  return result;
+ });
+ try {
+  const char* metrics=std::getenv("CYGI_MCP_METRICS_FILE");
+  if(metrics&&*metrics){cymcp::PerformanceOptions o;o.jsonl_file=std::filesystem::u8path(metrics);operations->set_performance_monitor(std::make_shared<cymcp::PerformanceMonitor>(o));}
+  auto setting=[](const char* key,size_t fallback,size_t min,size_t max){const char* value=std::getenv(key);if(!value||!*value)return fallback;std::string text=value;size_t used=0;auto result=std::stoull(text,&used);if(used!=text.size()||result<min||result>max)throw Error("InvalidOptions",std::string("Invalid host setting: ")+key);return static_cast<size_t>(result);};
+  McpServerOptions server_options;server_options.cache_ttl=std::chrono::milliseconds(setting("CYGI_MCP_CACHE_TTL_MS",30000,0,86400000));
+  const std::string command=argc>1?argv[1]:"mcp";
+  if(command=="--help"||command=="help") {
+   std::cout<<"CyGPUInspectorMCP [mcp | mcp-compact | list | describe NAME | invoke NAME JSON | invoke-file NAME FILE]\n"
+    <<"No arguments preserves MCP stdio mode. Calls address the running standalone's fixed local pipe.\n"
+    <<"JSON stdout; diagnostics stderr. Exit: 0 success, 1 application failure, 2 usage/schema/connection error.\n";return 0;
+  }
+  if(command=="list"&&argc==2){std::cout<<operations->describe().dump()<<'\n';return 0;}
+  if(command=="describe"&&argc==3){std::cout<<operations->describe(argv[2]).dump()<<'\n';return 0;}
+  if((command=="invoke"||command=="invoke-file")&&argc==4){
+   std::string input=argv[3];if(command=="invoke-file"){std::ifstream f(std::filesystem::u8path(input));if(!f)throw Error("FileError","Cannot read arguments file");input.assign(std::istreambuf_iterator<char>(f),{});}
+   const auto result=operations->invoke(argv[2],parse_json(input));std::cout<<result.dump()<<'\n';
+   if(!result.value("ok",false)){std::cerr<<result.value("error","Operation failed")<<'\n';return 1;}return 0;
+  }
+  if(command=="mcp-compact") {
+   ToolGatewayOptions gateway_options;
+   gateway_options.resources.chunk_bytes=setting("CYGI_MCP_CHUNK_BYTES",32768,256,1048576);
+   gateway_options.resources.max_stored_bytes=setting("CYGI_MCP_RESULT_BYTES",64*1024*1024,1024,256*1024*1024);
+   gateway_options.resources.result_ttl=std::chrono::milliseconds(setting("CYGI_MCP_RESULT_TTL_MS",300000,1,86400000));
+   ToolGateway gateway(operations,gateway_options);McpServerOptions options=server_options;options.resources=gateway.resources();
+   McpServer server(*gateway.tools(),"CyGPUInspectorMCP",options);server.serve_stdio(std::cin,std::cout);return 0;
+  }
+  if(command!="mcp"||argc>2)throw Error("UsageError","Use --help for command syntax");
+  McpServer server(*operations,"CyGPUInspectorMCP",server_options);server.serve_stdio(std::cin,std::cout);return 0;
+ } catch(const cymcp::Error& e){const auto message=cymcp::redact_error_message(e.what());if(argc>1&&std::string(argv[1]).rfind("invoke",0)==0)std::cout<<cymcp::Json{{"ok",false},{"error",message},{"code",e.code}}.dump()<<'\n';std::cerr<<message<<'\n';return e.code=="OperationFailed"?1:2;
+ } catch(const std::exception& e){std::cerr<<cymcp::redact_error_message(e.what())<<'\n';return 2;}
 }

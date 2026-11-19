@@ -132,6 +132,9 @@ namespace cygi
 		config.kind = static_cast<assistant::ProviderKind>(std::clamp(provider, 0, static_cast<int>(assistant::ProviderKind::count) - 1));
 		config.model = saved["model"].AsString();
 		config.endpoint = saved["endpoint"].AsString();
+        config.deferred_tools = saved.Has("deferred_tools") ? saved["deferred_tools"].AsBool() : true;
+        config.remember_history=saved["remember_history"].AsBool();
+        config.context_bytes=static_cast<int>(saved["context_bytes"].AsNumber(0));
 
 		m_assistant_provider = static_cast<int>(config.kind);
 		std::snprintf(m_assistant_model, sizeof(m_assistant_model), "%s", config.model.c_str());
@@ -147,7 +150,10 @@ namespace cygi
 		saved["provider"] = Json(m_assistant_provider);
 		saved["model"] = Json(std::string(m_assistant_model));
 		saved["endpoint"] = Json(std::string(m_assistant_endpoint));
-		saved["permission_mode"] = Json(static_cast<int>(m_assistant.Mode()));
+		saved["remember_history"] = Json(m_assistant.Config().remember_history);
+        saved["deferred_tools"] = Json(m_assistant.Config().deferred_tools);
+        saved["context_bytes"] = Json(std::max(0,m_assistant.Config().context_bytes));
+        saved["permission_mode"] = Json(static_cast<int>(m_assistant.Mode()));
 
 		Json root = LoadPreferences();
 		root["assistant"] = saved;
@@ -469,9 +475,12 @@ namespace cygi
 					}
 					cyui::endProperties();
 				}
-				ImGui::EndDisabled();
+                ImGui::Checkbox(Tr("Remember conversations on this computer"), &m_assistant.Config().remember_history);
+                ImGui::Checkbox(Tr("On-demand tool discovery"), &m_assistant.Config().deferred_tools);
+                ImGui::InputInt(Tr("API context budget (bytes, 0 = unlimited)"), &m_assistant.Config().context_bytes);
+                ImGui::EndDisabled();
 
-				if (!wanted)
+                if (!wanted)
 				{
 					if (cyui::primaryButton(TrId("Connect")))
 						ConnectAssistant();

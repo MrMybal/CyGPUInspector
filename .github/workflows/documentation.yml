@@ -1,53 +1,7 @@
 name: Showcase and documentation
 
+# Deployment is explicitly manual to avoid GitHub Actions usage on pushes.
 on:
-  push:
-    branches: [main]
-    paths:
-      - '.github/workflows/documentation.yml'
-      - 'README*.md'
-      - 'VERSION*.md'
-      - 'website/**'
-      - 'Docs/**'
-      - '.CyDocBuild/**'
-      - 'Assets/**'
-      - 'LICENCES/**'
-      - 'LICENSE'
-      - 'THIRD-PARTY.md'
-      - '.CyDocBuild/package*.json'
-      - 'ThirdParty/CyDoc/**'
-      - '.CyDocBuild/build.mjs'
-      - '.CyDocBuild/check.mjs'
-      - '.CyDocBuild/tests/reader.mjs'
-      - '.CyDocBuild/tests/readme.mjs'
-      - 'CyGPUInspectorCore/Include/CyGPUInspectorCore/Localization.hpp'
-      - 'CyGPUInspectorCore/Include/CyGPUInspectorCore/ModPackage.hpp'
-      - 'CyGPUInspectorCore/Include/CyGPUInspectorCore/Version.hpp'
-      - 'CyGPUInspectorCore/Include/CyGPUInspectorCore/InProcessApi.h'
-      - 'CyGPUInspectorApp/Source/Help/HelpLauncher.hpp'
-  pull_request:
-    paths:
-      - '.github/workflows/documentation.yml'
-      - 'README*.md'
-      - 'VERSION*.md'
-      - 'website/**'
-      - 'Docs/**'
-      - '.CyDocBuild/**'
-      - 'Assets/**'
-      - 'LICENCES/**'
-      - 'LICENSE'
-      - 'THIRD-PARTY.md'
-      - '.CyDocBuild/package*.json'
-      - 'ThirdParty/CyDoc/**'
-      - '.CyDocBuild/build.mjs'
-      - '.CyDocBuild/check.mjs'
-      - '.CyDocBuild/tests/reader.mjs'
-      - '.CyDocBuild/tests/readme.mjs'
-      - 'CyGPUInspectorCore/Include/CyGPUInspectorCore/Localization.hpp'
-      - 'CyGPUInspectorCore/Include/CyGPUInspectorCore/ModPackage.hpp'
-      - 'CyGPUInspectorCore/Include/CyGPUInspectorCore/Version.hpp'
-      - 'CyGPUInspectorCore/Include/CyGPUInspectorCore/InProcessApi.h'
-      - 'CyGPUInspectorApp/Source/Help/HelpLauncher.hpp'
   workflow_dispatch:
 
 permissions:

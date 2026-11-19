@@ -1,91 +1,80 @@
 # IA
 
-*Disponible aussi en [anglais](../AI.md), qui fait foi.*
-
-**État : implémenté** (milestone 9) : l'assistant IA intégré au standalone, ses tâches sur les
-shaders, l'étiquetage des sources, les tags, les annotations persistantes et le snapshot d'analyse.
-Le chemin externe, un agent connecté par MCP, est implémenté lui aussi.
-
 ## Position dans l'outil
 
-Le standalone **n'embarque aucun modèle**. Un modèle atteint CyGPUInspector par l'un de deux
-chemins, qui utilisent les mêmes outils, traités par le même code :
-
-1. **Le panneau Assistant IA**, intégré au standalone. Vous choisissez un fournisseur, vous vous
-   connectez, et vous posez vos questions dans le tchat. L'assistant travaille sur la frame avec les
-   outils de CyGPUInspector, dans une boucle bornée, selon le mode d'autorisation que vous choisissez.
-2. **Un agent externe via MCP** : l'agent tourne dans sa propre application et appelle les outils
-   décrits dans [MCP.md](MCP.md). Sa conversation reste dans cette application.
-
-L'assistant est conçu comme celui de CyRSAssistant, l'assistant ReShade du même auteur : mêmes
-fournisseurs, même connexion, même boucle, mêmes limites, mêmes modes d'autorisation. Ici, le
-standalone est déjà un processus à part, hors du jeu : ce que CyRSAssistant fait dans un service
-compagnon tourne dans des threads du standalone. Les appels au fournisseur ne bloquent jamais
-l'interface, et le jeu n'y est jamais mêlé.
+L'application n'embarque aucun modèle. L'assistant intégré et les agents MCP externes utilisent les
+mêmes 111 opérations : 34 outils GPU et 77 opérations applicatives. Ils peuvent inspecter une frame,
+sélectionner panneaux et filtres, éditer le HLSL, gérer notes et mods et piloter les captures dans
+les limites accordées par l'hôte. Consultez le [guide d'automatisation](../Automation.md).
+Les conversations MCP externes restent dans leur client ; voir le [transport MCP](MCP.md).
+Les appels au fournisseur tournent sur des workers ; les opérations passent par le standalone.
 
 ## Le panneau Assistant IA
 
-`Affichage > Assistant IA`. Trois onglets : **Tchat**, **Options**, **Connexion**. La ligne d'état
-indique `PRÊT`, `CONNEXION EN COURS`, `ERREUR DE CONNEXION` ou `DÉCONNECTÉ`, avec la raison.
+Ouvrez **Affichage > Assistant IA**. Les onglets Tchat, Options et Connexion présentent le fournisseur,
+les requêtes, les approbations et la conversation. CyMCPSDK 0.7.0 fournit les connexions, le streaming
+et l'état des conversations.
 
 ### Connexion
 
-| Fournisseur | Ce qu'il utilise | Ce que Connecter vérifie |
+| Fournisseur | Intégration | Vérification de connexion |
 |---|---|---|
-| Codex (session CLI) | la CLI `codex` et sa connexion existante | `codex login status`, sans appeler le modèle |
-| Claude Code (session CLI) | la CLI `claude` et sa connexion existante | `claude auth status`, sans appeler le modèle |
-| API compatible OpenAI | une URL `/chat/completions` complète, un modèle, et une clé si le serveur en demande une | une petite requête à laquelle le modèle doit répondre `{"connected":true}` |
-| Modèle local (API) | la même chose, sur `localhost` (Ollama, LM Studio, serveur llama.cpp) | la même chose |
+| Codex CLI | Session app-server native, outils applicatifs enregistrés et connexion CLI existante | Démarrage et dialogue app-server |
+| Claude Code CLI | Fournisseur SDK avec boucle JSON bornée de l'hôte, connexion CLI existante | Exécutable et version CLI |
+| API compatible OpenAI | Appels de fonctions natifs et réponses en streaming | Découverte HTTP des modèles, sans réponse de tchat générée |
+| API locale | Même intégration HTTP avec un service local existant | Même découverte des modèles |
 
-* Le modèle peut rester vide pour une CLI : c'est alors le modèle par défaut de la CLI.
-* Une CLI tourne dans un dossier temporaire à elle, sans projet autour. Codex tourne en lecture
-  seule, sans shell et sans votre `config.toml`. Claude Code tourne sans outils, sans serveur MCP,
-  sans hooks et sans session enregistrée. La CLI ne sert qu'à répondre : elle ne peut agir sur rien.
-* Une API demande HTTPS, sauf sur `localhost`. Les identifiants dans l'URL et les redirections sont
-  refusés : la clé ne part jamais ailleurs que vers le serveur indiqué. L'API doit accepter
-  `response_format: {"type":"json_object"}`.
-* Le fournisseur, le modèle et l'URL sont enregistrés dans `CyGPUInspectorApp.settings.json`. **La
-  clé ne l'est pas** : elle reste en mémoire le temps de la session.
-* La sortie d'erreur d'une CLI n'est jamais affichée, car elle peut contenir des informations de
-  compte. Seul son code de sortie l'est.
+Le modèle CLI peut rester vide pour utiliser celui du fournisseur. La connexion ne lance pas de
+génération ; sa réussite ne garantit pas que le compte puisse terminer une conversation.
+Codex utilise son sandbox en lecture seule et les outils applicatifs. Les outils intégrés et les
+sources de réglages de Claude sont désactivés pour cette intégration. Le catalogue applicatif
+n'expose ni commande shell arbitraire ni lecture libre de fichiers.
+
+Pour HTTP, indiquez l'URL complète chat/completions et un modèle. HTTPS est requis sauf en loopback.
+Les identifiants dans l'URL et les redirections sont refusés. La clé API reste en mémoire ; les
+préférences fournisseur, modèle et URL peuvent être conservées dans `CyGPUInspectorApp.settings.json`.
+Changer le type de fournisseur ou l'URL efface la clé saisie. Le SDK masque les informations sensibles
+dans les erreurs.
 
 ### Tchat
 
-Écrivez une question et cliquez sur **Envoyer** (Ctrl+Entrée). L'assistant répond par un objet JSON à
-la fois : soit sa réponse, soit un outil à appeler. CyGPUInspector exécute l'outil, lui renvoie le
-résultat, et ainsi de suite, dans un budget :
+Envoyez une demande précise avec **Envoyer** ou Ctrl+Entrée. Codex et HTTP utilisent les outils
+natifs ; Claude renvoie une réponse ou une demande d'outil JSON par étape. Chaque mutation consomme
+le budget d'opérations.
 
-| Mode d'autorisation | Appels d'outils par message | Opérations par message | Autorisations |
+| Mode de permission | Outils par message | Opérations par message | Approbation |
 |---|---|---|---|
-| Automatique (par défaut) | 8 | 1 | aucune au-delà de votre demande |
-| À la demande | 8 | 1 | chaque opération, et chaque code de shader envoyé au fournisseur |
-| Accès complet | 16 | 8 | aucune |
+| Automatique | 8 | 1 | Dans le cadre de la demande |
+| Demander à chaque fois | 8 | 1 | Chaque mutation et divulgation de code shader |
+| Accès complet | 16 | 8 | Sans invite par opération |
 
-Les *opérations* sont les outils qui modifient le jeu en cours ou écrivent des fichiers : désactiver,
-réactiver, mettre en évidence, restaurer, capturer, capture profonde, compiler, remplacer. Lire la
-frame, les passes, les ressources et les timings n'est jamais une opération. En mode **À la
-demande**, la requête affiche **Autoriser cette action** / **Refuser cette action** avec les
-arguments exacts (le HLSL d'un remplacement, par exemple). Aucun mode ne donne accès à un terminal ni
-à vos fichiers. Changer de mode annule la demande en cours.
+Les opérations incluent les changements d'état applicatif, les fichiers gérés et les actions GPU.
+L'inspection seule ne consomme pas le budget de mutations. Changer de mode annule la génération.
+Annuler arrête la génération sans revenir sur les opérations terminées. Une nouvelle conversation
+réinitialise le tchat et son checkpoint SDK lorsque le fournisseur est inactif, sans annuler les
+changements du jeu ou de l'espace de travail.
 
-Le contexte fourni à chaque étape : votre demande, les derniers échanges (16 messages,
-24 000 caractères), la session et la frame en mémoire, ce qui est sélectionné dans l'interface
-(shader, ressource, commande), les outils avec leur description, les résultats obtenus et le budget
-restant. La réponse arrive dans la langue de l'interface. Les 32 derniers messages restent en
-mémoire ; **Nouvelle conversation** les efface sans rien annuler dans le jeu. **Annuler la demande**
-l'arrête aussitôt : une CLI est terminée avec tous les processus qu'elle a lancés, une réponse HTTP
-tardive est ignorée.
+Le tchat visible est conservé sans l'ancienne éviction à 32 messages. Pour les conversations SDK
+natives, la projection du contexte API possède une limite d'octets indépendante (0 = illimité) et
+préserve les groupes appel/résultat sans effacer l'historique complet. Les fournisseurs natifs gèrent
+leur contexte. La boucle Claude transmet un contexte récent borné à 16 messages et 24 000 caractères.
 
-Les exemples sous le tchat reprennent les questions du cahier des charges (§84) : *quelle partie du
-rendu semble produire le bloom*, *expliquer le pipeline*, *que fait le shader sélectionné*.
+La conservation des checkpoints privés est désactivée par défaut. Activée pour les conversations SDK
+natives, elle utilise `CyGPUInspector/AssistantHistory/` dans le Local AppData de l'utilisateur,
+sans clé API. La boucle JSON Claude n'utilise pas ces checkpoints natifs. La restauration demande
+la session exacte ; une mutation échouée n'est jamais rejouée automatiquement. La découverte à la
+demande peut réduire le catalogue initial ; la découverte compacte dépend du seuil configuré.
 
 ### Ce qui est envoyé
 
-Vos messages et ce que l'assistant lit avec ses outils : la structure de la frame, les noms, les
-timings et, quand il les demande, le désassemblage et le HLSL décompilé des shaders. Jamais vos
-fichiers. Avec une CLI ou une API distante, ces données partent chez ce fournisseur ; avec un modèle
-local, elles restent sur la machine. Le mode **À la demande** fait autoriser chaque code de shader
-avant son envoi.
+Le fournisseur reçoit vos messages, le contexte applicatif et les résultats d'outils demandés :
+métadonnées de frame, noms, timings, notes, désassemblage, HLSL reconstruit ou édité et exports gérés.
+Un fournisseur distant reçoit ces données ; un modèle HTTP local utilise son service local.
+En mode Demander à chaque fois, la divulgation du code shader exige une approbation. Ne placez pas
+d'identifiants dans le tchat. Les fichiers accessibles sont limités aux données gérées par l'app
+et aux dossiers d'import/export Automation documentés. Ce n'est pas un explorateur général.
+Les opérations avec sauvegarde conservent des fichiers de récupération ; consultez le
+[guide d'automatisation](../Automation.md) avant une restauration de notes, disposition ou profils.
 
 ## Tâches sur les shaders : l'onglet Analyse IA
 

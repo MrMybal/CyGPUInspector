@@ -1,74 +1,66 @@
 # CyGPUInspectorMCP
 
-*Disponible aussi en [anglais](../MCP.md), qui fait foi.*
-
-**État : implémenté et testé** (milestone 10).
-
-Voir [l’intégration CyMCPSDK et les commandes CLI](../CyMCPSDK.md) pour le transport actuel et ses commandes.
-
 ## Forme
 
-`CyGPUInspectorMCP.exe` est un **proxy stdio** : un agent externe le lance, il parle JSON-RPC (MCP)
-sur stdin/stdout et relaie vers le standalone par le named pipe `\\.\pipe\CyGPUInspector\app`.
+`CyGPUInspectorMCP.exe` utilise CyMCPSDK 0.7.0 pour MCP sur stdio et transmet les opérations au
+standalone ouvert par son pipe nommé local. Le standalone possède l'état et les permissions ; les
+requêtes s'exécutent sur son thread d'interface. Le proxy peut conserver des snapshots bornés de gros
+résultats. Il ne s'accorde pas de permissions et n'expose pas de serveur HTTP.
 
-Ce découpage est volontaire. Le proxy **ne détient aucune donnée et ne décide rien** : il tourne
-dans le processus où un agent l'a lancé, donc il ne peut pas être chargé de se surveiller
-lui-même. Le standalone possède la session et le niveau de permission.
+Sans argument, ou avec `mcp`, il expose les 111 outils. `mcp-compact` expose cinq passerelles de
+découverte et d'exécution, avec ressources pour les gros résultats. Le catalogue est paginé : suivez
+`nextCursor` plutôt que de considérer le premier `tools/list` comme complet. Suivez `firstUri` et
+`nextUri` pour lire les fragments de résultats. L'entrée JSON-RPC comporte un objet par ligne ;
+stdout reste réservé au protocole. Le SDK traite initialisation, notifications, découverte, appels
+d'outils et ressources compactes. Les protocoles incluent 2025-06-18, 2025-11-25 et le chemin de
+découverte SDK 2026-07-28 ; les clients 2024 ne sont pas pris en charge par cette intégration.
 
-Les requêtes sont traitées **sur le thread d'interface** du standalone, pas sur le thread du pipe :
-elles lisent le modèle, le frame graph et le cache d'analyse, et y répondre depuis un autre thread
-reviendrait à verrouiller tout cela de l'extérieur. Une frame de latence est sans importance pour
-un appel d'outil.
-
-Le transport est du JSON-RPC, **un objet par ligne**. Méthodes supportées : `initialize`,
-`tools/list`, `tools/call`, `ping`, plus les notifications, ignorées. `initialize` renvoie des
-`instructions` qui disent à l'agent par où commencer et le préviennent que les noms de passe sont
-déduits et que le HLSL est une reconstruction.
+Pour les scripts : `--help`, `list`, `describe NOM`, `invoke NOM JSON` ou
+`invoke-file NOM FICHIER`. Le standalone doit être ouvert pour les appels applicatifs.
+Voir les commandes et procédures de récupération du [guide d'automatisation](../Automation.md).
 
 ## Niveaux de permission
 
-Trois niveaux, `Read Only` par défaut, modifiables **uniquement dans l'interface du standalone** :
+L'hôte démarre en lecture seule. Changez son niveau MCP externe dans l'interface ou lancez-le
+explicitement avec `--mcp-permission=read-only|debug-control|shader-modification`. Le proxy ne peut
+pas augmenter ce niveau. Ce réglage est indépendant des modes Auto/Demander/Complet de l'assistant.
 
-| Niveau | Outils ajoutés |
+| Niveau | Périmètre |
 |---|---|
-| `Read Only` | `get_current_frame`, `get_game_profile`, `find_shaders`, `list_captures`, `compare_captures`, `list_shaders`, `inspect_shader`, `get_shader_disassembly`, `get_shader_decompiled_hlsl`, `decompile_shader`, `get_shader_draw_calls`, `get_shader_resources`, `get_shader_timing`, `list_resources`, `inspect_resource`, `get_resource_readers`, `get_resource_writers`, `get_frame_graph`, `get_passes`, `inspect_draw`, `inspect_dispatch`, `search_shaders`, `search_resources` |
-| `Debug Control` | `disable_shader`, `enable_shader`, `highlight_shader`, `capture_frame` |
-| `Shader Modification` | `compile_shader`, `replace_shader`, `restore_shader` |
+| Read Only | Frame, shaders, ressources, état applicatif, sélections et requêtes classées en lecture |
+| Debug Control | Capture, débogage et mutations applicatives autorisés à ce niveau |
+| Shader Modification | Compilation, remplacement, restauration et opérations exigeant le niveau maximal |
 
-Chaque appel d'un niveau supérieur à `Read Only` est journalisé et visible dans le standalone.
+Chaque outil déclare sa permission précise. Utilisez `describe` ou la découverte, sans déduire
+le niveau du nom. Les mutations sont journalisées dans le standalone. Les 34 définitions GPU sont
+dans `McpTools.hpp` ; les 77 définitions applicatives dans `AutomationTools.hpp`.
+Les clés et l'attribution de permissions ne sont pas des outils appelables.
 
 ## Pourquoi ces outils
 
-Le but n'est pas de donner à une IA un gros document à deviner, mais de lui laisser **parcourir les
-données elle-même**. Un workflow typique pour « trouve la passe Bloom » :
-
-```
-get_frame_graph()
- → repérer les ressources demi-résolution
- → find shaders reading the HDR SceneColor
- → suivre la chaîne de downsample
- → identifier les passes de flou et de composition
- → répondre avec passe, shaders, ressources, timings et raisonnement
-```
-
-Puis, avec la permission `Debug Control`, `disable_shader(...)` confirme ou infirme la conclusion en
-regardant le jeu.
+Partez des preuves : graphe de frame, lecteurs d'une ressource HDR, shaders de réduction et de flou,
+puis identifiants, timings et confiance. Avec la permission requise, désactivez un shader et observez
+le jeu pour vérifier l'hypothèse. Les outils applicatifs peuvent sélectionner ce shader, ouvrir
+l'éditeur et préserver un brouillon avant édition ; ils partagent les handlers de l'interface.
 
 ## Réponses
 
-Chaque outil renvoie des données structurées et **sourcées** : identifiants d'événements, de
-shaders et de ressources qui permettent de revenir à la commande exacte. Une réponse ne contient
-jamais une classification sans sa confiance et sans les faits sur lesquels elle repose.
-
-Certaines réponses portent un champ `caveat` explicite, par exemple :
-
-* `get_frame_graph` : « aucun jeu ne nomme ses passes, ces noms sont déduits » ;
-* `get_shader_decompiled_hlsl` : « ce sont des reconstructions, pas le source original » ;
-* `get_shader_timing` : « le temps d'une commande est l'intervalle jusqu'à la suivante ».
+Les résultats identifient shaders, ressources et commandes. Noms de passes dérivés, HLSL reconstruit
+et intervalles de timing conservent leurs réserves : ni source originale ni preuve du rendu visuel.
+Les réponses applicatives utilisent `{ok,result}` ou un échec structuré. MCP signale les échecs par
+`isError`. Le CLI retourne 0 en cas de réussite, 1 pour un échec métier, 2 pour une entrée invalide
+ou une erreur de transport. Les gros résultats sont des snapshots immuables lus par fragments
+(32 Kio par défaut). Ils expirent après cinq minutes par défaut ; le stockage est borné à 64 Mio et
+128 résultats. Suivez les liens avant expiration ; les identifiants ne survivent pas au redémarrage.
 
 ## Limites
 
-* Un outil qui demande un travail long (désassemblage, décompilation) le **démarre** et répond
-  « redemande dans un instant » plutôt que de bloquer l'interface.
-* Le pipe n'accepte qu'un proxy à la fois.
-* `get_shader_timing` exige un niveau de tracking qui profile ; il le dit au lieu de renvoyer zéro.
+* Désassemblage et décompilation peuvent lancer un travail asynchrone : interrogez à nouveau ensuite.
+* Un seul proxy local peut occuper le pipe à la fois.
+* Les timings exigent le profiling ; l'état de commande exige une capture profonde. Les prérequis
+  manquants sont signalés.
+* Les mutations ne sont ni mises en cache ni rejouées automatiquement. Annuler ne les défait pas.
+* Réglages optionnels : `CYGI_MCP_CACHE_TTL_MS` (30000), `CYGI_MCP_RESULT_TTL_MS` (300000),
+  `CYGI_MCP_RESULT_BYTES` (67108864), `CYGI_MCP_CHUNK_BYTES` (32768).
+  `CYGI_MCP_METRICS_FILE` active un journal privé de performances limité aux métadonnées, désactivé par défaut.
+* Catalogues statiques et snapshots immuables n'exigent pas d'abonnement aux changements.

@@ -4,13 +4,13 @@ title: Use the built-in AI assistant
 description: Connect a provider, ask focused questions and choose assistant permissions.
 section: User guide
 order: 12
-revision: e1fde0beb1c2
+revision: 905721df754f
 ---
 
 # Use the built-in AI assistant {#use-the-built-in-ai-assistant}
 
 ## Connect a provider {#connect-a-provider}
-Open AI assistant > Connection. Choose Codex CLI, Claude Code CLI, an OpenAI-compatible API or a local API. CLI providers use their existing login; the application embeds no model. For an API, supply the full chat/completions endpoint, model and key if required. HTTPS is required except for a local endpoint. Connection can make a small provider request; model usage depends on that provider.
+Open AI assistant > Connection. Choose Codex CLI, Claude Code CLI, an OpenAI-compatible API or a local API. CLI providers use their existing login; the application embeds no model. For an API, supply the full chat/completions endpoint, model and key if required. HTTPS is required except for a local endpoint. Connection checks the CLI handshake/version or HTTP model discovery without generating a chat reply. Sending messages and shader jobs uses the selected provider.
 
 The key remains in memory for the session. Provider/model/URL preferences can be retained. A remote provider receives the conversation and tool data it requests, potentially shader code. Use a local model when that is the intended data boundary. Do not paste credentials into the chat.
 

@@ -4,13 +4,13 @@ title: Utiliser l’assistant IA intégré
 description: Connecter un fournisseur, poser une question précise et choisir les permissions.
 section: Guide utilisateur
 order: 12
-sourceRevision: e1fde0beb1c2
+sourceRevision: 905721df754f
 ---
 
 # Utiliser l’assistant IA intégré {#use-the-built-in-ai-assistant}
 
 ## Connecter un fournisseur {#connect-a-provider}
-Ouvrez Assistant IA > Connexion. Choisissez Codex CLI, Claude Code CLI, une API compatible OpenAI ou une API locale. Les CLI utilisent leur connexion existante ; aucun modèle n’est embarqué. Pour une API, indiquez l’URL complète chat/completions, le modèle et la clé si nécessaire. HTTPS est requis hors endpoint local. La connexion peut émettre une petite requête ; l’usage dépend du fournisseur.
+Ouvrez Assistant IA > Connexion. Choisissez Codex CLI, Claude Code CLI, une API compatible OpenAI ou une API locale. Les CLI utilisent leur connexion existante ; aucun modèle n’est embarqué. Pour une API, indiquez l’URL complète chat/completions, le modèle et la clé si nécessaire. HTTPS est requis hors endpoint local. La connexion vérifie le dialogue ou la version CLI, ou découvre les modèles HTTP, sans générer de réponse. Les messages et tâches shader utilisent ensuite le fournisseur choisi.
 
 La clé reste en mémoire pour la session. Fournisseur/modèle/URL peuvent être conservés comme préférences. Un fournisseur distant reçoit les échanges et données d’outils demandées, éventuellement le code des shaders. Un modèle local garde ce parcours sur la machine si c’est votre objectif. Ne collez pas de clé dans le chat.
 

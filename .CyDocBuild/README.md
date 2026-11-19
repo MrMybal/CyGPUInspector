@@ -33,6 +33,8 @@ npm --prefix .CyDocBuild run check:export
 
 Those standalone commands generate `.CyDocBuild/internal/pages/site/`; that directory is not
 the Pages deployment input. For the complete deployed site, use `node website/build.mjs`
-and `node website/verify.mjs`. Deployment runs after an authorized push, not as part of a local build.
+and `node website/verify.mjs`. Deployment requires an explicit manual `workflow_dispatch`; pushes and local builds do not deploy.
+Do not dispatch it when GitHub Actions execution is not authorized. The current release bundles
+the updated offline manual even when Pages remains on its previous deployment.
 
 `internal/` is ignored by Git and outside content roots. Keep private notes, previous outputs, upstream checkouts, screenshots and test results there. Native entry-point diagnostics: `python .CyDocBuild/tests/native.py --output .CyDocBuild/internal/native-<unique-name>`. Packaging regression checks: `python -m unittest discover -s Tests -p test_package_release.py`.

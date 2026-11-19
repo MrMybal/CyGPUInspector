@@ -2,7 +2,8 @@
 
 Maintained source for the bilingual application presentation. The generated static output is
 `build/showcase/site/`, separate from the offline application's `Documentation/` directory.
-The Pages workflow publishes only this generated site after an authorized push to `main`.
+The Pages workflow publishes only this generated site when explicitly dispatched manually.
+Pushes, pull requests and tags do not run the workflow.
 Building locally does not publish anything.
 
 ## Build
@@ -72,7 +73,8 @@ The application showcase is hosted at <https://mrmybal.github.io/CyGPUInspector/
 `manual/Documentation.html#/en/welcome` or `#/fr/welcome`. Root `Documentation.html`
 and old root manual fragments redirect into that reader.
 
-`.github/workflows/documentation.yml` builds and validates the site, tests the showcase and
+`.github/workflows/documentation.yml` is manual-only (`workflow_dispatch`). When explicitly run,
+it builds and validates the site, tests the showcase and
 reader through file URLs and an HTTP subpath, then uploads only `build/showcase/site/`.
 After deployment it compares every served file with the exact artifact and follows both
 published README links through the showcase and into the manual. Authoring inputs, application

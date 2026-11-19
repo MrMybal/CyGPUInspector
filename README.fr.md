@@ -13,8 +13,8 @@
     </td>
     <td width="300" align="right" valign="top">
       <p><sub>Licence de l’application</sub><br><a href="LICENSE"><strong>AGPL-3.0-or-later</strong></a></p>
-      <p><sub>Version</sub><br><a href="VERSION.fr.md"><strong>0.4.1</strong></a><br><strong>ALPHA — EXPÉRIMENTAL</strong></p>
-      <p><a href="https://github.com/MrMybal/CyGPUInspector/releases/download/v0.4.1/CyGPUInspector-0.4.1-win64.zip"><strong>Télécharger</strong></a><br><sub>Windows x64 · portable</sub></p>
+      <p><sub>Version</sub><br><a href="VERSION.fr.md"><strong>0.5.0</strong></a><br><strong>ALPHA — EXPÉRIMENTAL</strong></p>
+      <p><a href="https://github.com/MrMybal/CyGPUInspector/releases/download/v0.5.0/CyGPUInspector-0.5.0-win64.zip"><strong>Télécharger</strong></a><br><sub>Windows x64 · portable</sub></p>
     </td>
   </tr>
 </table>
@@ -25,11 +25,11 @@ Un débogueur de frames GPU et un profileur pour les développeurs et les moddeu
 Inspectez shaders, ressources et temps GPU, reconstruisez du HLSL et comparez des frames enregistrées.
 **ReShade assure la capture dans le jeu** ; l’analyse s’effectue dans une application Windows séparée.
 
-> **ALPHA — EXPÉRIMENTAL · 0.4.1**
+> **ALPHA — EXPÉRIMENTAL · 0.5.0**
 >
 > Disponible pour les essais et les retours ; les fonctionnalités et la compatibilité peuvent
-> être incomplètes. Cette version actualise le manuel anglais/français intégré et l’aide
-> contextuelle. Consultez les [notes de version et limitations connues](VERSION.fr.md).
+> être incomplètes. Cette version ajoute CyMCPSDK et 111 opérations partagées pour le pilotage
+> par IA, CLI et MCP. Consultez les [notes de version et limitations connues](VERSION.fr.md).
 
 [![CyGPUInspector affichant les passes GPU, les détails du shader et l’image en direct avec le thème Navy](Assets/screenshots/frame-inspection.png)](Assets/screenshots/frame-inspection.png)
 
@@ -79,17 +79,19 @@ compatible dans le jeu. Le HLSL reconstruit n’est pas le code source original.
   par défaut, avec une édition française complète ; le choix dans le lecteur ne modifie pas
   les préférences de l’application.
 
----
-
-- **Pilotage applicatif :** 111 commandes couvrent connexions, disposition, apparence, apercus, annotations, HLSL, mods et assistant depuis le chat, le CLI et MCP. Voir le [guide des commandes](Docs/Automation.md) et le manuel bilingue.
+- **Pilotage applicatif :** 111 commandes couvrent connexions, disposition, apparence, aperçus, annotations, HLSL, mods et assistant depuis le chat, le CLI et MCP. Voir le [guide des commandes](Docs/Automation.md) et le manuel bilingue.
 
 ## Installation
+
+Le manuel 0.5.0 est livré avec l’application et disponible en
+[téléchargement HTML complet hors ligne](https://github.com/MrMybal/CyGPUInspector/releases/download/v0.5.0/CyGPUInspector-Documentation-0.5.0.zip).
+Le lien GitHub Pages ci-dessus sert encore le déploiement précédent, le déploiement étant manuel.
 
 L’application publiée est destinée à **Windows x64**. La capture en direct nécessite un jeu
 Direct3D 11/12 compatible et ReShade avec **prise en charge complète des add-ons**.
 Vulkan et OpenGL ne sont pas pris en charge.
 
-1. [Téléchargez CyGPUInspector 0.4.1](https://github.com/MrMybal/CyGPUInspector/releases/download/v0.4.1/CyGPUInspector-0.4.1-win64.zip)
+1. [Téléchargez CyGPUInspector 0.5.0](https://github.com/MrMybal/CyGPUInspector/releases/download/v0.5.0/CyGPUInspector-0.5.0-win64.zip)
    et extrayez **toute** l’archive dans un dossier accessible en écriture.
 2. Lancez `App/CyGPUInspectorApp.exe`. Gardez `Lang/`, `Documentation/` et les DLL des
    compilateurs à côté ; conservez les notices du dossier `LICENCES/` du paquet.
@@ -99,7 +101,7 @@ Vulkan et OpenGL ne sont pas pris en charge.
    de ReShade, lancez le jeu et connectez-vous depuis **Connexions**.
 
 Consultez le [guide d’installation](https://mrmybal.github.io/CyGPUInspector/manual/Documentation.html#/fr/installation)
-et les [notes de publication / somme de contrôle](https://github.com/MrMybal/CyGPUInspector/releases/tag/v0.4.1).
+et les [notes de publication / somme de contrôle](https://github.com/MrMybal/CyGPUInspector/releases/tag/v0.5.0).
 Préservez réglages, disposition, base des shaders, profils de jeux et captures lors d’une mise à jour.
 
 L’application utilise l’API officielle des add-ons ReShade. Elle ne contourne ni anti-triche,

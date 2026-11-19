@@ -5,77 +5,71 @@ description: Technical detail: Connect an external agent and choose the tool acc
 section: Technical reference
 order: 28
 parent: mcp
-revision: dc8d884e6df3
+revision: c9257dd6c040
 ---
 
 # CyGPUInspectorMCP {#cygpuinspectormcp}
 
-
-
 ## Shape {#shape}
 
-`CyGPUInspectorMCP.exe` is a **stdio proxy**: an external agent launches it, it speaks JSON-RPC
-(MCP) on stdin/stdout and forwards to the standalone over the named pipe
-`\.\pipe\CyGPUInspector\app`.
+`CyGPUInspectorMCP.exe` uses CyMCPSDK 0.7.0 for MCP over stdio and forwards operations to the
+running standalone over its local named pipe. The standalone owns live state and permissions;
+requests execute on its interface thread. The proxy may retain bounded snapshots of large results.
+It does not grant itself host permissions or expose an HTTP listener.
 
-That split is deliberate. The proxy **holds no data and decides nothing**: it runs in whatever
-process an agent started it from, so it cannot be trusted to police itself. The standalone owns the
-session and the permission level.
+No argument, or `mcp`, starts the full 111-tool catalog. `mcp-compact` exposes five discovery and
+execution gateways with resource-backed large results. Discovery is paginated: follow `nextCursor`
+instead of assuming the first `tools/list` response is complete. Follow returned `firstUri` and
+`nextUri` when reading result chunks. JSON-RPC input is one object per line; stdout is protocol only.
+The SDK handles initialization, notifications, discovery, tool calls and compact resources.
+Supported protocols include 2025-06-18, 2025-11-25 and the SDK's 2026-07-28 discovery path;
+2024 clients are not supported by this integration.
 
-Requests are handled **on the standalone's interface thread**, not on the pipe thread: they read
-the model, the frame graph and the analysis cache, and answering from another thread would mean
-locking all of that from outside. One frame of latency is irrelevant for a tool call.
-
-The transport is JSON-RPC, **one object per line**. Supported methods: `initialize`, `tools/list`,
-`tools/call`, `ping`, plus notifications, which are ignored. `initialize` returns `instructions`
-telling the agent where to start and warning it that pass names are derived and that the HLSL is a
-reconstruction.
+For scripts, use `--help`, `list`, `describe NAME`, `invoke NAME JSON` or
+`invoke-file NAME FILE`. A running standalone is required for application invocations.
+See [the automation guide](doc:automation) for exact commands and recovery workflows.
 
 ## Permission levels {#permission-levels}
 
-Three levels, `Read Only` by default, changeable **only in the standalone's interface**:
+The host starts Read Only. Change its external MCP level in the UI or explicitly start it with
+`--mcp-permission=read-only|debug-control|shader-modification`. A proxy cannot raise this level.
+This setting is independent of the built-in assistant's Auto/Ask/Full modes.
 
-| Level | Tools it adds |
+| Level | Scope |
 |---|---|
-| `Read Only` | `get_current_frame`, `get_game_profile`, `find_shaders`, `list_captures`, `compare_captures`, `list_shaders`, `inspect_shader`, `get_shader_disassembly`, `get_shader_decompiled_hlsl`, `decompile_shader`, `get_shader_draw_calls`, `get_shader_resources`, `get_shader_timing`, `list_resources`, `inspect_resource`, `get_resource_readers`, `get_resource_writers`, `get_frame_graph`, `get_passes`, `get_frame_timeline`, `get_capture_state`, `get_command_state`, `inspect_draw`, `inspect_dispatch`, `search_shaders`, `search_resources` |
-| `Debug Control` | `disable_shader`, `enable_shader`, `highlight_shader`, `capture_frame`, `start_deep_capture` |
-| `Shader Modification` | `compile_shader`, `replace_shader`, `restore_shader` |
+| Read Only | Frame, shader, resource, application state, selections and workspace queries classified as reads |
+| Debug Control | Permitted capture/debug actions and application mutations classified at this level |
+| Shader Modification | Shader compile, replacement, restoration and operations requiring the highest level |
 
-Every call above `Read Only` is logged and visible in the standalone.
+The precise permission of every one of the 111 tools is part of its definition. Use `describe`
+or discovery rather than inferring it from its name. Mutation calls are logged in the standalone.
+The 34 GPU definitions are in `McpTools.hpp`; 77 application definitions are in `AutomationTools.hpp`.
+Keys and permission grants are not exposed as callable tools.
 
 ## Why these tools {#why-these-tools}
 
-The goal is not to hand an AI a large document to guess from, but to let it **walk the data
-itself**. A typical workflow for "find the Bloom pass":
-
-```
-get_frame_graph()
- → spot the half resolution resources
- → find shaders reading the HDR SceneColor
- → follow the downsample chain
- → identify the blur and composite passes
- → answer with pass, shaders, resources, timings and reasoning
-```
-
-Then, with `Debug Control`, `disable_shader(...)` confirms or refutes the conclusion by looking at
-the game.
+Walk concrete evidence: get the frame graph, find readers of the HDR resource, inspect downsample
+and blur shaders, then report IDs, timings and confidence. With the required permission, disable
+a shader and observe the game to test a hypothesis. Application tools can select that shader,
+open its editor and preserve a draft before editing; they reuse the same handlers as the UI.
 
 ## Answers {#answers}
 
-Every tool returns structured, **sourced** data: event, shader and resource identifiers that lead
-back to the exact command. An answer never contains a classification without its confidence and
-without the facts it rests on.
-
-Some answers carry an explicit `caveat` field, for example:
-
-* `get_frame_graph`: "no game names its passes, these names are derived";
-* `get_shader_decompiled_hlsl`: "these are reconstructions, not the original source";
-* `get_shader_timing`: "the time for a command is the interval to the next one".
+Results identify their shaders, resources and commands. Derived pass names, reconstructed HLSL
+and timing intervals retain their caveats; they are not original source or proof of visual output.
+Application replies use `{ok,result}` or a structured failure. MCP failures set `isError`.
+The script CLI returns 0 on success, 1 for business failures and 2 for invalid input or transport errors.
+Large results are immutable snapshots, read in chunks (32 KiB by default). They expire after five
+minutes by default and the store is bounded to 64 MiB and 128 results. Follow the returned resource
+links before expiry; do not assume handles survive a proxy restart.
 
 ## Limits {#limits}
 
-* A tool that needs long work (disassembly, decompilation) **starts** it and answers "ask again in
-  a moment" rather than blocking the interface.
-* The pipe accepts one proxy at a time.
-* `get_shader_timing` needs a tracking level that profiles; it says so instead of returning zero.
-* `get_command_state` needs a deep capture to have run; it says which tool to call first.
+* Disassembly and decompilation may start background work: inspect again when it completes.
+* One local proxy can occupy the named pipe at a time.
+* Timings require profiling; command state requires a deep capture. Tools report missing prerequisites.
+* Mutations are never cached or automatically replayed. Cancellation does not undo completed actions.
+* Optional tuning: `CYGI_MCP_CACHE_TTL_MS` (30000), `CYGI_MCP_RESULT_TTL_MS` (300000),
+  `CYGI_MCP_RESULT_BYTES` (67108864), `CYGI_MCP_CHUNK_BYTES` (32768).
+  `CYGI_MCP_METRICS_FILE` enables a private metadata-only performance log; it is off by default.
+* Static catalogs and immutable result snapshots do not require change subscriptions.

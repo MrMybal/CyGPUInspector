@@ -81,6 +81,8 @@ compatible dans le jeu. Le HLSL reconstruit n’est pas le code source original.
 
 ---
 
+- **Pilotage applicatif :** 111 commandes couvrent connexions, disposition, apparence, apercus, annotations, HLSL, mods et assistant depuis le chat, le CLI et MCP. Voir le [guide des commandes](Docs/Automation.md) et le manuel bilingue.
+
 ## Installation
 
 L’application publiée est destinée à **Windows x64**. La capture en direct nécessite un jeu

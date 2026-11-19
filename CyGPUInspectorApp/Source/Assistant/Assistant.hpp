@@ -85,7 +85,7 @@ namespace cygi::assistant
 		bool Send(const std::string &text, const Json &selection, const std::string &language_name,
 		          const std::string &language_code);
 		void CancelRequest();
-		void NewConversation();
+		bool NewConversation();
 
 		bool PendingApproval(Approval &out) const;
 		void Decide(uint64_t approval_id, bool allow);

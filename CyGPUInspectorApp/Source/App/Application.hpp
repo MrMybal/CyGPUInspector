@@ -192,6 +192,7 @@ namespace cygi
 		// Answers one MCP tool call, on the UI thread, with the model lock held inside.
 		Json HandleMcpRequest(const Json &request);
         Json ExecuteOperation(const Json &request);
+        bool HandleAutomation(const Json& request, Json& response);
         std::shared_ptr<cymcp::Registry> m_operations;
 
 		// The AI assistant: its panel, and the AI Analysis tab. Defined in AssistantPanel.cpp.

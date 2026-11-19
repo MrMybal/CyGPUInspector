@@ -12,7 +12,7 @@ The Unreal capture plugin continues to use the existing capture add-on ABI, not 
 
 ## Operations and permissions
 
-`Integration/Operations.cpp` builds the same 34-operation registry for the application,
+`Integration/Operations.cpp` builds the same 111-operation registry for the application,
 conversation tool path and companion. Descriptions and input properties come from the existing
 `McpTools.hpp` inventory; required IDs and HLSL are validated before dispatch. Outputs use
 `{ok,result}` or `{ok:false,error}`; each result retains the existing domain structure.
@@ -20,8 +20,10 @@ The UI thread executes all application handlers. Existing shader job annotations
 captures and settings remain compatible. Expensive analysis can still return a pending result.
 
 All existing shader, resource, frame, timeline, capture and comparison operations are exposed.
-UI layout, connection selection, provider credentials, permission grants and preference editing
-are intentionally excluded from remote tools. They belong to the host/user, not the agent.
+Application/workspace automation now covers connections, captures, layout, appearance, previews,
+notes, the HLSL editor, mods, profiles and assistant controls. See the complete
+[automation inventory and recovery rules](Automation.md). Provider credentials and permission
+grants remain exclusively user-controlled.
 The assistant retains Automatic/Ask/Full budgets and explicit approval callbacks. CLI and MCP
 both use the application's external Read Only/Debug Control/Shader Modification level.
 An MCP/CLI caller cannot raise that level through an operation.

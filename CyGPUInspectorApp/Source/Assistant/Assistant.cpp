@@ -470,15 +470,17 @@ namespace cygi::assistant
 		m_shared->StopRequest("Request cancelled. Operations already done stay done.");
 	}
 
-	void Assistant::NewConversation()
-	{
-		std::lock_guard<std::mutex> lock(m_shared->mutex);
-		if (m_shared->pending)
-			return;
-		m_shared->conversation.clear();
-        if(m_shared->provider){try{m_shared->provider->ResetHistory();}catch(const std::exception&){ChatMessage note;note.role="information";note.notice="Could not reset saved conversation history.";m_shared->Add(std::move(note));}}
-		++m_shared->version;
-	}
+    bool Assistant::NewConversation()
+    {
+        std::shared_ptr<Provider> provider;
+        {std::lock_guard<std::mutex> lock(m_shared->mutex);if(m_shared->pending)return false;provider=m_shared->provider;}
+        // A cancelled provider can still be winding down. Never wait for it while holding
+        // the UI/shared-state mutex that its event callbacks need.
+        try{if(provider)provider->ResetHistory();}catch(const std::exception&){return false;}
+        std::lock_guard<std::mutex> lock(m_shared->mutex);
+        if(m_shared->pending)return false;
+        m_shared->conversation.clear();++m_shared->version;return true;
+    }
 
 	bool Assistant::PendingApproval(Approval &out) const
 	{

@@ -31,6 +31,8 @@ namespace cygi
 
 		// Replaces the document, its undo history and its marks.
 		void SetText(const std::string &text);
+        // Programmatic edit that retains the native undo history.
+        void ReplaceText(const std::string &text);
 		std::string GetText() const;
 		bool IsEmpty() const;
 

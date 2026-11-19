@@ -77,6 +77,8 @@ Reconstructed HLSL is not the original source.
 
 ---
 
+- **Application automation:** 111 shared operations cover connections, layout, settings, previews, annotations, HLSL, mods and assistant controls through chat, CLI and MCP. See the [automation guide](Docs/Automation.md).
+
 ## Installation
 
 The published application is **Windows x64**. Live capture requires a supported Direct3D 11/12

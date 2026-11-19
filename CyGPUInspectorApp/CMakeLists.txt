@@ -19,6 +19,7 @@ set(CYGI_APP_SOURCES
     Source/CyGPUInspectorApp.rc
     Source/App/Application.hpp
     Source/App/Application.cpp
+    Source/App/Automation.cpp
     Source/App/Appearance.cpp
     Source/App/SharedViews.cpp
     Source/Help/HelpLauncher.cpp

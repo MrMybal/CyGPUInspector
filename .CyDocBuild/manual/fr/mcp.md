@@ -5,7 +5,7 @@ description: Connecter un agent externe et choisir les accès autorisés par le 
 section: Guide utilisateur
 order: 13
 parent: ai
-sourceRevision: 22ae847e939c
+sourceRevision: 114f48cbff38
 ---
 
 # Connecter un agent externe avec MCP {#connect-an-external-agent-with-mcp}
@@ -35,6 +35,9 @@ Un seul proxy utilise le pipe à la fois. Si la connexion échoue, vérifiez l�
 
 
 ## Commandes terminal et transport SDK {#terminal-sdk}
+Le [guide de pilotage applicatif](doc:automation) décrit les 111 opérations partagées :
+connexions, disposition, réglages, aperçus, notes, HLSL, mods et commandes de l’assistant.
+
 CyMCPSDK 0.7.0 fournit désormais le registre natif et le transport stdio. Sans argument,
 l’exécutable démarre toujours MCP. `mcp-compact` propose la découverte à la demande et des
 résultats privés par morceaux ; `mcp` conserve la découverte complète. L’initialisation accepte

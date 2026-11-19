@@ -209,7 +209,13 @@ namespace
 		Check(mcp.Call("{\"jsonrpc\":\"2.0\",\"id\":2,\"method\":\"tools/list\"}", response),
 			"tools/list is answered");
 
-		const std::vector<cygi::Json> &tools = response["result"]["tools"].Items();
+		cygi::Json all_tools=response["result"]["tools"];
+        while(response["result"].Has("nextCursor")){
+            cygi::Json page=cygi::Json::Object();page["jsonrpc"]=cygi::Json("2.0");page["id"]=cygi::Json(102);page["method"]=cygi::Json("tools/list");page["params"]["cursor"]=response["result"]["nextCursor"];
+            Check(mcp.Call(page.Write(-1),response),"remaining tool catalogue page is answered");
+            for(const auto& entry:response["result"]["tools"].Items())all_tools.Push(entry);
+        }
+        const std::vector<cygi::Json> &tools = all_tools.Items();
 		Check(tools.size() >= 24, "every tool of the brief is exposed");
 
 		bool has_graph = false;

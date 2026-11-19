@@ -350,7 +350,7 @@ namespace cygi::assistant
         explicit SdkProvider(ProviderConfig c):config(std::move(c)){
             if(config.remember_history){cymcp::ConversationStore store(HistoryDirectory());const auto file=HistoryDirectory()/(HistoryId()+".json");if(std::filesystem::exists(file))checkpoint=store.load(HistoryId());}
         }
-        void ResetHistory() override {std::lock_guard<std::mutex> guard(chat_mutex);checkpoint=nullptr;if(config.remember_history)cymcp::ConversationStore(HistoryDirectory()).erase(HistoryId());}
+        void ResetHistory() override {std::unique_lock<std::mutex> guard(chat_mutex,std::try_to_lock);if(!guard.owns_lock())throw Error("Previous conversation turn is still stopping.");if(config.remember_history)cymcp::ConversationStore(HistoryDirectory()).erase(HistoryId());checkpoint=nullptr;}
         Json RestoredHistory() const override {
             Json out=Json::Array();if(!checkpoint.is_object())return out;
             for(const auto& msg:checkpoint.value("messages",cymcp::Json::array())){

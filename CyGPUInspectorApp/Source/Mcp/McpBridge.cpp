@@ -2,6 +2,7 @@
 //
 // Copyright (C) 2026 Cyberalien. Licensed under the GNU AGPL v3 or later.
 #include "McpBridge.hpp"
+#include <CyGPUInspectorCore/AutomationTools.hpp>
 
 #ifndef WIN32_LEAN_AND_MEAN
 #define WIN32_LEAN_AND_MEAN
@@ -64,6 +65,7 @@ namespace cygi
 
 	McpPermission McpBridge::RequiredPermission(const std::string &tool)
 	{
+        if(const auto* definition=FindAutomationTool(tool))return static_cast<McpPermission>(definition->access);
 		for (const char *name : kModificationTools)
 			if (tool == name)
 				return McpPermission::shader_modification;

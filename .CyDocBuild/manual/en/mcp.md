@@ -5,7 +5,7 @@ description: Connect an external agent and choose the tool access allowed by the
 section: User guide
 order: 13
 parent: ai
-revision: 22ae847e939c
+revision: 114f48cbff38
 ---
 
 # Connect an external agent with MCP {#connect-an-external-agent-with-mcp}
@@ -35,6 +35,9 @@ Only one proxy can use the pipe at a time. If connection fails, verify the appli
 
 
 ## Terminal commands and SDK transport {#terminal-sdk}
+The [application automation guide](doc:automation) covers the 111 shared operations, including
+connections, layout, settings, previews, notes, HLSL, mods and assistant controls.
+
 CyMCPSDK 0.7.0 now supplies the native registry and stdio transport. No argument still starts
 MCP. Use `mcp-compact` for on-demand discovery and private chunked results; keep `mcp` for full
 discovery. Legacy initialization supports 2025-11-25 and 2025-06-18, not 2024-11-05.

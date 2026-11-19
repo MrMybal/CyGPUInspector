@@ -648,6 +648,7 @@
     "Help for this view": "Aide pour cette vue",
     "On-demand tool discovery": "Découverte des outils à la demande",
     "API context budget (bytes, 0 = unlimited)": "Budget du contexte API (octets, 0 = illimité)",
-    "Remember conversations on this computer": "Conserver les conversations sur cet ordinateur"
+    "Remember conversations on this computer": "Conserver les conversations sur cet ordinateur",
+    "These modes cover registered GPU and application commands, including navigation, editing and managed exports. They do not grant a terminal, arbitrary file access, credentials or permission escalation. External MCP and CLI clients use the permission level in the MCP panel.": "Ces modes couvrent les commandes GPU et applicatives, dont la navigation, les modifications et les exports gérés. Ils ne donnent ni terminal, ni accès arbitraire aux fichiers, ni identifiants, ni augmentation des permissions. Les clients MCP et CLI externes utilisent le niveau du panneau MCP."
   }
 }

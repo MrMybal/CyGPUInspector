@@ -161,6 +161,7 @@ namespace cygi
 
 	void Application::ConnectTo(const SessionEntry &entry)
 	{
+        m_hlsl_shader=0; // Preserve text but invalidate the previous producer binding.
 		m_client = std::make_unique<SessionClient>();
 		if (!m_client->Connect(entry))
 		{
@@ -2110,6 +2111,7 @@ namespace cygi
     }
     Json Application::ExecuteOperation(const Json &request)
     {
+        Json automation;if(HandleAutomation(request,automation))return automation;
 		const std::string tool = request["tool"].AsString();
 		const Json &arguments = request["arguments"];
 
@@ -3019,7 +3021,7 @@ namespace cygi
 
 	void Application::LoadNotesFor(uint32_t shader_id)
 	{
-		if (shader_id == m_notes_shader || shader_id == 0)
+		if (shader_id == 0)
 			return;
 
 		Sha256Digest signature;
@@ -3034,7 +3036,8 @@ namespace cygi
 			signature = shader->signature;
 		}
 
-		m_notes = ShaderNotes();
+		if(shader_id==m_notes_shader&&signature==m_notes_signature)return;
+        m_notes = ShaderNotes();
 		LoadShaderNotes(m_analysis.Store(), signature, m_notes);   // absent is not an error
 		m_notes_shader = shader_id;
 		m_notes_signature = signature;

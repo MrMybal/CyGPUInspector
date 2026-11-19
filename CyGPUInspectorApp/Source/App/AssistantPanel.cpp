@@ -434,10 +434,7 @@ namespace cygi
 				                      "it is sent to the provider."));
 				ImGui::TextWrapped(Tr("Full access: the assistant can use the read tools and several operations in a "
 				                      "row to complete your request, without intermediate approvals."));
-				ImGui::TextWrapped(Tr("These modes cover CyGPUInspector's tools: reading the frame, disabling, "
-				                      "highlighting, capturing and replacing shaders. They never give a terminal or "
-				                      "access to your files. Changing the mode cancels a pending request. External "
-				                      "agents connected through MCP use the permission level of the MCP panel instead."));
+				ImGui::TextWrapped(Tr("These modes cover registered GPU and application commands, including navigation, editing and managed exports. They do not grant a terminal, arbitrary file access, credentials or permission escalation. External MCP and CLI clients use the permission level in the MCP panel."));
 				cyui::sectionTitle(Tr("Language"));
 				ImGui::TextWrapped(Tr("The assistant answers in the interface language: View > Language. A request "
 				                      "already in progress finishes in its original language."));

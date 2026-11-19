@@ -33,7 +33,13 @@ namespace cygi
 		m_loaded_undo = m_editor->native().GetUndoIndex();
 	}
 
-	bool HlslEditor::IsModified() const
+    void HlslEditor::ReplaceText(const std::string& text)
+    {
+        m_editor->native().SelectAll();
+        m_editor->native().ReplaceTextInAllCursors(text);
+    }
+
+    bool HlslEditor::IsModified() const
 	{
 		return m_editor->native().GetUndoIndex() != m_loaded_undo;
 	}

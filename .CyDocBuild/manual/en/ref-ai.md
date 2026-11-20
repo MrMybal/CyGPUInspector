@@ -5,7 +5,7 @@ description: Technical detail: Connect a provider, ask focused questions and cho
 section: Technical reference
 order: 19
 parent: ai
-revision: 5f87fa7fa33b
+revision: c5ee71b34b31
 ---
 
 # AI {#ai}
@@ -22,7 +22,7 @@ Provider work runs on workers; application operations execute through the standa
 ## The AI assistant panel {#the-ai-assistant-panel}
 
 Open **View > AI assistant**. The Chat, Options and Connection tabs show provider state, requests,
-approvals and the conversation. CyMCPSDK 0.7.0 supplies providers, streaming and conversation state.
+approvals and the conversation. CyMCPSDK 0.7.2 supplies providers, streaming and conversation state.
 
 ### Connection {#connection}
 

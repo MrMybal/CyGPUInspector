@@ -5,28 +5,51 @@ description: Connecter un agent externe et choisir les accès autorisés par le 
 section: Guide utilisateur
 order: 13
 parent: ai
-sourceRevision: 114f48cbff38
+sourceRevision: 98491ad2ba6b
 ---
 
 # Connecter un agent externe avec MCP {#connect-an-external-agent-with-mcp}
 
 ## Configurer le client {#configure-the-client}
-Lancez d’abord le standalone. Configurez le client MCP pour exécuter App/CyGPUInspectorMCP.exe en transport stdio avec son vrai chemin d’installation. Le proxy transmet le JSON-RPC ligne par ligne au pipe local de l’application ; celle-ci possède session, données et autorisations. Le proxy ne capture pas un jeu et ne s’accorde pas de droits.
+
+Lancez le standalone et ouvrez son panneau **MCP**. Le MCP HTTP local est activé par défaut
+à `http://127.0.0.1:41823/mcp` (le panneau affiche et copie l'adresse effective). Avec le profil
+**Free** par défaut, indiquez cette seule adresse dans un client MCP HTTP : aucun jeton ni
+confirmation n'est demandé pour appeler les 111 opérations enregistrées. Les arguments et
+prérequis métier restent validés. L'écoute reste en loopback. La case permet de désactiver HTTP.
+
+Les clients stdio peuvent toujours lancer `App/CyGPUInspectorMCP.exe` avec son chemin installé :
 
 ```json
 {"mcpServers":{"CyGPUInspector":{"command":"C:/Tools/CyGPUInspector/App/CyGPUInspectorMCP.exe"}}}
 ```
 
-Le chemin est un exemple à remplacer. La syntaxe exacte dépend du client. Connectez un producteur ou ouvrez une sauvegarde, puis demandez à l’agent d’inspecter session/frame avant une analyse coûteuse.
+Remplacez le chemin d'exemple par votre installation. Le compagnon transmet les appels à la
+même application ouverte ; il ne capture pas le jeu lui-même. Connectez un producteur ou ouvrez
+une frame enregistrée pour les opérations qui exigent des données de capture.
 
 ## Choisir le niveau d’outils externe {#select-the-external-tool-level}
-| Niveau | Capacités |
-| --- | --- |
-| Lecture seule (défaut) | Inspecter, rechercher, analyser et lire |
-| Contrôle de débogage | Aussi désactiver/activer/surligner et capturer |
-| Modification des shaders | Aussi compiler, remplacer et restaurer |
 
-Changez le niveau dans le panneau MCP du standalone. Le client ne peut pas l’élever par appel d’outil. Consultez le journal d’activité, les refus et arguments pour comprendre une opération. Ces niveaux ne remplacent pas les modes de validation distincts de l’assistant intégré.
+Le panneau MCP propose quatre profils :
+
+| Profil | Jeton HTTP | Opérations |
+| --- | --- | --- |
+| Free (défaut) | Aucun | Toutes les opérations, sans confirmation |
+| Local contrôlé | Aucun | Niveau de permission de l'hôte |
+| Jeton seul | Requis | Toutes les opérations, sans confirmation |
+| Protégé | Requis | Niveau de permission de l'hôte |
+
+Les profils contrôlés proposent Read Only, Debug Control et Shader Modification. Le client
+ne peut pas augmenter ses droits. Copiez le jeton de session dans le panneau pour les profils
+avec jeton : généré en mémoire, il change au redémarrage et n'est jamais conservé dans les
+préférences. Nouveau jeton révoque le précédent. Les jetons concernent HTTP ; le pipe stdio/CLI
+conserve son transport local et respecte les niveaux des profils contrôlés. Le tchat intégré
+garde ses modes Auto/Demander/Complet séparés.
+
+Sans choix explicite, les préférences migrent vers Free. Profil choisi, HTTP désactivé, port et
+réglages sans rapport sont conservés. Un niveau de permission explicitement enregistré dans
+l'ancien format migre vers Local contrôlé. Un profil explicite inconnu est conservé et désactive
+HTTP jusqu'à correction.
 
 ## Parcours type {#typical-workflow}
 Demandez le graphe, suivez passes/ressources vers les shaders candidats, puis lisez liaisons et temps. La décompilation peut répondre en attente : réessayez après un délai plutôt que de supposer un résultat vide. L’état d’une commande nécessite une capture profonde terminée ; les temps nécessitent le bon niveau de suivi. Lisez les réserves, sources et confiances.
@@ -38,7 +61,7 @@ Un seul proxy utilise le pipe à la fois. Si la connexion échoue, vérifiez l�
 Le [guide de pilotage applicatif](doc:automation) décrit les 111 opérations partagées :
 connexions, disposition, réglages, aperçus, notes, HLSL, mods et commandes de l’assistant.
 
-CyMCPSDK 0.7.0 fournit désormais le registre natif et le transport stdio. Sans argument,
+CyMCPSDK 0.7.2 fournit désormais le registre natif et le transport stdio. Sans argument,
 l’exécutable démarre toujours MCP. `mcp-compact` propose la découverte à la demande et des
 résultats privés par morceaux ; `mcp` conserve la découverte complète. L’initialisation accepte
 2025-11-25 et 2025-06-18, pas 2024-11-05.
@@ -54,9 +77,11 @@ résultats privés par morceaux ; `mcp` conserve la découverte complète. L’i
 Le fichier d’arguments contient un objet comme `{"shader_id":2}`. La découverte fonctionne sans
 interface ; l’exécution s’adresse au standalone ouvert. JSON sur stdout, diagnostics sur stderr.
 Codes de sortie : 0 réussite, 1 refus métier, 2 saisie invalide ou connexion impossible.
-CLI et MCP appliquent les mêmes droits hôtes. Un script peut démarrer explicitement l’hôte avec
-`--mcp-permission=debug-control` ou `--mcp-permission=shader-modification` ; le mode par défaut
-reste la lecture seule. `--connect=<pid>` et les options de suivi et d’affichage sont conservés.
+CLI et MCP appliquent le même profil d'accès. Sans profil choisi explicitement, les options
+`--mcp-permission=read-only`, `--mcp-permission=debug-control` ou
+`--mcp-permission=shader-modification` sélectionnent un accès contrôlé pour ce processus.
+Free est le défaut ; un profil explicitement choisi reste prioritaire.
+`--connect=<pid>` et les options de suivi et d’affichage sont conservés.
 
 En mode compact, lisez toutes les URI de morceaux pour récupérer un résultat complet.
 Rétention : cinq minutes en mémoire, 64 Mio / 128 résultats. Une référence expirée produit une
@@ -70,7 +95,7 @@ dans les fichiers n’est exposé.
 Les modes de l’assistant intégré et les niveaux d’outils MCP externes sont des réglages distincts. Le standalone contrôle les deux parcours.
 
 ```diagram
-{"type":"flow","title":"Deux contrôles d’autorisation indépendants","nodes":[{"id":"assistant","label":"Assistant : Auto / Demander / Tout","x":0,"y":0,"width":280},{"id":"host","label":"Contrôles dans le standalone","x":320,"y":0,"width":280},{"id":"mcp","label":"MCP : Lire / Déboguer / Modifier","x":640,"y":0,"width":280},{"id":"provider","label":"Fournisseur CLI / API","x":0,"y":160,"width":280},{"id":"actions","label":"Actions jeu / fichiers autorisées","x":320,"y":160,"width":280}],"edges":[{"from":"assistant","to":"host"},{"from":"mcp","to":"host"},{"from":"assistant","to":"provider"},{"from":"host","to":"actions"}]}
+{"type":"flow","title":"Deux contrôles d’autorisation indépendants","nodes":[{"id":"assistant","label":"Assistant : Auto / Demander / Tout","x":0,"y":0,"width":280},{"id":"host","label":"Contrôles dans le standalone","x":320,"y":0,"width":280},{"id":"mcp","label":"Profils d'accès MCP","x":640,"y":0,"width":280},{"id":"provider","label":"Fournisseur CLI / API","x":0,"y":160,"width":280},{"id":"actions","label":"Actions jeu / fichiers autorisées","x":320,"y":160,"width":280}],"edges":[{"from":"assistant","to":"host"},{"from":"mcp","to":"host"},{"from":"assistant","to":"provider"},{"from":"host","to":"actions"}]}
 ```
 
 ### Circulation des données {#figure-1}

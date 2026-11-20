@@ -649,6 +649,21 @@
     "On-demand tool discovery": "Découverte des outils à la demande",
     "API context budget (bytes, 0 = unlimited)": "Budget du contexte API (octets, 0 = illimité)",
     "Remember conversations on this computer": "Conserver les conversations sur cet ordinateur",
-    "These modes cover registered GPU and application commands, including navigation, editing and managed exports. They do not grant a terminal, arbitrary file access, credentials or permission escalation. External MCP and CLI clients use the permission level in the MCP panel.": "Ces modes couvrent les commandes GPU et applicatives, dont la navigation, les modifications et les exports gérés. Ils ne donnent ni terminal, ni accès arbitraire aux fichiers, ni identifiants, ni augmentation des permissions. Les clients MCP et CLI externes utilisent le niveau du panneau MCP."
+    "Local HTTP MCP": "MCP HTTP local",
+    "Enable local HTTP MCP": "Activer le MCP HTTP local",
+    "Copy address": "Copier l’adresse",
+    "Access profile": "Profil d’accès",
+    "Free": "Free",
+    "Local controlled": "Local contrôlé",
+    "Token only": "Jeton seul",
+    "Protected": "Protégé",
+    "Copy session token": "Copier le jeton de session",
+    "New token": "Nouveau jeton",
+    "Stdio and CLI": "Stdio et CLI",
+    "A token is required. It is generated for this application session and is not saved.": "Un jeton est requis. Il est généré pour cette session et n’est pas enregistré.",
+    "Connect using the address alone. No token is required.": "Connectez-vous avec l’adresse seule. Aucun jeton n’est requis.",
+    "All registered operations are allowed without confirmation. Arguments are still validated.": "Toutes les opérations enregistrées sont autorisées sans confirmation. Les arguments restent validés.",
+    "CyGPUInspectorMCP.exe remains available for stdio clients and CLI scripts. Controlled profiles use the permission level above. HTTP tokens apply to HTTP connections.": "CyGPUInspectorMCP.exe reste disponible pour les clients stdio et les scripts CLI. Les profils contrôlés utilisent le niveau ci-dessus. Les jetons HTTP concernent les connexions HTTP.",
+    "These modes cover registered GPU and application commands, including navigation, editing and managed exports. They do not grant a terminal, arbitrary file access, credentials or permission escalation. External MCP and CLI clients use the access profile in the MCP panel.": "Ces modes couvrent les commandes GPU et applicatives, dont la navigation, les modifications et les exports gérés. Ils ne donnent ni terminal, ni accès arbitraire aux fichiers, ni identifiants, ni augmentation des permissions. Les clients MCP et CLI externes utilisent le profil d’accès du panneau MCP."
   }
 }

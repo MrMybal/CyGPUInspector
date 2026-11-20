@@ -1,7 +1,7 @@
 // CyGPUInspectorMCP — the MCP server an agent launches.
 //
 // It speaks MCP (JSON-RPC over stdio, one message per line) and forwards every tool call to
-// CyGPUInspectorApp over a named pipe. It holds no data and takes no decision: the standalone owns
+// CyGPUInspectorApp over a named pipe. It can retain bounded result snapshots; the standalone owns
 // the session and the permission level, because this process runs wherever an agent started it.
 //
 // Usage: point an MCP client at this executable. Nothing to configure; it finds the standalone by

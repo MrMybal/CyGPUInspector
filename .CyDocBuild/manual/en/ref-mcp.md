@@ -5,17 +5,19 @@ description: Technical detail: Connect an external agent and choose the tool acc
 section: Technical reference
 order: 28
 parent: mcp
-revision: c9257dd6c040
+revision: 1d6abb628ecb
 ---
 
 # CyGPUInspectorMCP {#cygpuinspectormcp}
 
 ## Shape {#shape}
 
-`CyGPUInspectorMCP.exe` uses CyMCPSDK 0.7.0 for MCP over stdio and forwards operations to the
+`CyGPUInspectorMCP.exe` uses CyMCPSDK 0.7.2 for MCP over stdio and forwards operations to the
 running standalone over its local named pipe. The standalone owns live state and permissions;
 requests execute on its interface thread. The proxy may retain bounded snapshots of large results.
-It does not grant itself host permissions or expose an HTTP listener.
+It does not grant itself host permissions. The standalone also serves the same operations through
+local HTTP at `http://127.0.0.1:41823/mcp`. Free uses the SDK unauthenticated loopback constructor
+and `Policy::allow_all()`; schema validation remains enabled.
 
 No argument, or `mcp`, starts the full 111-tool catalog. `mcp-compact` exposes five discovery and
 execution gateways with resource-backed large results. Discovery is paginated: follow `nextCursor`
@@ -31,9 +33,25 @@ See [the automation guide](doc:automation) for exact commands and recovery workf
 
 ## Permission levels {#permission-levels}
 
-The host starts Read Only. Change its external MCP level in the UI or explicitly start it with
-`--mcp-permission=read-only|debug-control|shader-modification`. A proxy cannot raise this level.
-This setting is independent of the built-in assistant's Auto/Ask/Full modes.
+The MCP panel offers four profiles:
+
+| Profile | HTTP token | Operations |
+| --- | --- | --- |
+| Free (default) | None | All registered operations, without confirmation |
+| Local controlled | None | Host permission level |
+| Token only | Required | All registered operations, without confirmation |
+| Protected | Required | Host permission level |
+
+Controlled profiles offer Read Only, Debug Control and Shader Modification. The client cannot
+raise its own level. Copy the session token from the panel for token profiles; it is generated
+in memory, rotates when the application restarts and is never stored in preferences. New token
+revokes the previous token. HTTP tokens apply to HTTP; the existing stdio/CLI pipe retains its
+local-process transport and obeys controlled permission levels. The built-in chat keeps its
+separate Auto/Ask/Full modes.
+
+Preferences without an explicit selection migrate to Free. Existing profile choices, disabled
+HTTP, port and unrelated settings are retained. Legacy explicitly saved permission levels migrate
+to Local controlled. Invalid explicit profiles remain preserved and disable HTTP until corrected.
 
 | Level | Scope |
 |---|---|

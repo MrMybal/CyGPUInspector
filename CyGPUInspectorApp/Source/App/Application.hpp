@@ -12,6 +12,7 @@
 #include "Analysis/FrameTimeline.hpp"
 #include "Analysis/FrameTrack.hpp"
 #include "Mcp/McpBridge.hpp"
+#include "Mcp/McpHttpHost.hpp"
 #include "Analysis/ShaderAnalysisService.hpp"
 #include "Analysis/ShaderQuery.hpp"
 #include "Render/CaptureBufferWriter.hpp"
@@ -52,7 +53,8 @@ namespace cygi
 		// One UI frame.
 		void Draw(double delta_seconds);
 
-		void SetMcpPermission(McpPermission p) { m_mcp.SetPermission(p); }
+        void SetMcpPermission(McpPermission p);
+        void StartMcp();
 
         bool WantsExit() const { return m_wants_exit; }
 
@@ -158,6 +160,9 @@ namespace cygi
 		static void SavePreferences(const Json &root);
 		void WriteTranslationTemplate();
 		void DrawMcpPanel();
+        void LoadMcpPreferences();
+        void SaveMcpPreferences();
+        void ApplyMcpAccess();
 		void DrawDetailsPanel();
 		void DrawStatusBar();
 
@@ -264,6 +269,10 @@ namespace cygi
 		std::string m_capture_message;
 
 		McpBridge m_mcp;
+        McpHttpHost m_mcp_http;
+        McpAccessConfig m_mcp_access;
+        bool m_mcp_started = false;
+        std::string m_mcp_token, m_mcp_config_error;
 
 		ShaderNotes m_notes;
 		uint32_t m_notes_shader = 0;

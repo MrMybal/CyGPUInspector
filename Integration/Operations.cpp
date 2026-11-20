@@ -2,8 +2,8 @@
 #include <CyGPUInspectorCore/AutomationTools.hpp>
 #include <CyGPUInspectorCore/McpTools.hpp>
 namespace cygi {
-std::shared_ptr<cymcp::Registry> CreateOperations(OperationHandler handler) {
-  auto registry = std::make_shared<cymcp::Registry>(cymcp::Policy::allow_all());
+std::shared_ptr<cymcp::Registry> CreateOperations(OperationHandler handler, cymcp::Policy policy) {
+  auto registry = std::make_shared<cymcp::Registry>(std::move(policy));
   for (const auto &tool : kMcpTools) {
     cymcp::Operation op;
     op.name = tool.name;

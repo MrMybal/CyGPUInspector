@@ -656,6 +656,22 @@
   "| frame %llu | %u of %u frames | %u commands, %u bindings, %u barriers": "",
   "| modified": "",
   "| shader #%u: %zu events": "",
-  "| then %.3f ms waiting": ""
+  "| then %.3f ms waiting": "",
+  "Local HTTP MCP": "",
+  "Enable local HTTP MCP": "",
+  "Copy address": "",
+  "Access profile": "",
+  "Free": "",
+  "Local controlled": "",
+  "Token only": "",
+  "Protected": "",
+  "Copy session token": "",
+  "New token": "",
+  "Stdio and CLI": "",
+  "A token is required. It is generated for this application session and is not saved.": "",
+  "Connect using the address alone. No token is required.": "",
+  "All registered operations are allowed without confirmation. Arguments are still validated.": "",
+  "CyGPUInspectorMCP.exe remains available for stdio clients and CLI scripts. Controlled profiles use the permission level above. HTTP tokens apply to HTTP connections.": "",
+  "These modes cover registered GPU and application commands, including navigation, editing and managed exports. They do not grant a terminal, arbitrary file access, credentials or permission escalation. External MCP and CLI clients use the access profile in the MCP panel.": ""
  }
 }

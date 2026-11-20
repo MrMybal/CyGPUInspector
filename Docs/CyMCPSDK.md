@@ -1,8 +1,8 @@
 # CyMCPSDK integration
 
-CyGPUInspector builds CyMCPSDK **0.7.0**, source revision
-`791d4d7d7680213b282ec8529d248a10f8494d77`, from the pinned snapshot in
-`ThirdParty/CyMCPSDK`. The snapshot came from the local SDK checkout, with no source changes.
+CyGPUInspector builds CyMCPSDK **0.7.2**, source revision
+`e562c731a146d599e3404718ea8414bb5b96b66d`, from source. `CYGI_CYMCPSDK_SOURCE_DIR` can select a local checkout; the default is the identical
+pinned snapshot in `ThirdParty/CyMCPSDK`. No prebuilt SDK library is used.
 Targets: Core, Platform, Http, MCP, AI. Local is unnecessary: existing local model services use
 HTTP; no engine, model downloader or GPU runtime is bundled. ChatUI requires CyUI's newer
 `TranscriptSource`/`messageComposer` API, absent from this application's CyUI 1.2.0. The host
@@ -25,7 +25,7 @@ notes, the HLSL editor, mods, profiles and assistant controls. See the complete
 [automation inventory and recovery rules](Automation.md). Provider credentials and permission
 grants remain exclusively user-controlled.
 The assistant retains Automatic/Ask/Full budgets and explicit approval callbacks. CLI and MCP
-both use the application's external Read Only/Debug Control/Shader Modification level.
+both use the access profile; only controlled profiles restrict operations to a host permission level.
 An MCP/CLI caller cannot raise that level through an operation.
 
 ## CLI and instance selection
@@ -50,9 +50,9 @@ capture loader in this integration. Existing startup flags remain available unch
 
 Stdout is JSON for discovery/invocation, stderr carries diagnostics. Exit 0 = success,
 1 = business refusal/failure, 2 = usage, schema, transport or connection failure. No automatic
-retries of mutations. The application defaults to Read Only. For deliberate scripted control,
+retries of mutations. The application defaults to Free. For controlled scripted access without an explicit profile,
 launch the host with `--mcp-permission=debug-control` or `--mcp-permission=shader-modification`;
-`--mcp-permission=read-only` explicitly selects the default. This grant lasts for that process
+`--mcp-permission=read-only` selects controlled read access. An explicitly saved profile takes priority. This grant lasts for that process
 and can be changed in its MCP panel. A proxy argument cannot grant host permissions.
 
 ## MCP transport and results
@@ -63,8 +63,8 @@ and can be changed in its MCP panel. A proxy argument cannot grant host permissi
 
 Full discovery is the default. SDK legacy initialization supports `2025-11-25` and
 `2025-06-18`; modern discovery is `2026-07-28`. Clients using only `2024-11-05` must update.
-No HTTP listener or remote network authentication is added. The existing Windows pipe security
-and host permissions remain authoritative; this is not a cross-user network service.
+The standalone additionally exposes loopback HTTP through the selected access profile.
+Stdio keeps the existing Windows pipe transport; HTTP authentication is provided by the SDK.
 
 Use `mcp-compact` instead of `mcp` for `cy_tools_search`, `cy_tools_describe`, `cy_tools_call`,
 `cy_resources_read` and `cy_resources_grep`. Follow the returned manifest/chunk URIs until
@@ -78,7 +78,7 @@ Each host setting is independent: `CYGI_MCP_CACHE_TTL_MS` (default 30000),
 `CYGI_MCP_CHUNK_BYTES` (32768). Invalid/out-of-range values fail before serving.
 Discovery has the SDK's 30-second private TTL. Live tool calls are always executed; mutations
 are never cached. No subscriptions are needed for the fixed tool catalogue and immutable result
-snapshots. No HTTP/SSE notification support is claimed. Disk spooling is off because this
+snapshots. No change-feed subscriptions are configured. Disk spooling is off because this
 integration transfers shader/text summaries rather than capture buffers or GPU images.
 Set `CYGI_MCP_METRICS_FILE` to an explicitly chosen private JSONL path to enable SDK timings,
 byte counts and status metadata. It is off by default and excludes arguments, result contents,
@@ -113,3 +113,34 @@ C++20; the capture core/add-ons retain their separate build boundary. No prebuil
 `Tools/package_release.py` copies and validates the complete SDK/dependency licenses and
 provenance in the actual archive. Private histories, configuration and logs are never copied.
 The normal CyDoc generation includes the EN/FR command guide and preserves offline use.
+
+## Local HTTP access profiles
+
+The standalone's MCP panel enables/disables local HTTP, displays and copies its address, selects
+Free / Local controlled / Token only / Protected, and copies or rotates the session token.
+The default endpoint is `http://127.0.0.1:41823/mcp`. Free uses `LocalAccessProfile::free`,
+`LocalHttpServer::UnauthenticatedLoopback` and `Policy::allow_all()` for all 111 operations.
+Schema validation and business prerequisites remain active. HTTP workers enqueue work to the UI thread.
+Stopping or changing the server cancels pending work before releasing application state.
+
+Preferences are merged under `mcp`: `access_profile` (`free`, `local_controlled`, `token_only`,
+`protected`), `enabled`, `port` and `permission`. Explicit profiles are retained; missing profiles
+migrate to Free except legacy explicit permission choices, which retain controlled access.
+`profile_explicit=false` records an automatic migration rather than a user choice. Unrecognized
+profiles are preserved with HTTP disabled. Tokens are generated per application session and never
+written into preferences or returned by tools. Protected requires both a token and host permission;
+Token only requires the token but allows all registered operations. The existing stdio/CLI transport
+uses the profile's operation controls, while token authentication belongs to HTTP.
+
+Build from a local SDK checkout:
+
+```powershell
+cmake -S . -B build/Native-Release -DCMAKE_BUILD_TYPE=Release -DCYGI_CYMCPSDK_SOURCE_DIR=D:/_Project/CyMCPSDK
+cmake --build build/Native-Release --target CyGPUInspectorApp CyGPUInspectorMCP CyGPUInspectorLocalMcpTests
+ctest --test-dir build/Native-Release --output-on-failure
+python Tests/test_local_mcp_live.py --runtime build/local-mcp-live
+python Tests/test_automation_live.py --runtime build/automation-live
+```
+
+Run the local acceptance tests sequentially: they own the application's fixed companion pipe.
+They use isolated runtime copies and a synthetic provider, without paid AI accounts or GitHub workflows.

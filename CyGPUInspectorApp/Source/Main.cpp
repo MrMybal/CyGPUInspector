@@ -545,6 +545,7 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, LPWSTR, int)
 			application.SetAppearance(capture_theme, capture_density, capture_scale, false);
 
 		auto previous = std::chrono::steady_clock::now();
+        application.StartMcp();
 		const auto capture_start = previous;
 		int rendered_frames = 0;
 		bool running = true;

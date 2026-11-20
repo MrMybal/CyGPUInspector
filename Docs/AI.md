@@ -12,7 +12,7 @@ Provider work runs on workers; application operations execute through the standa
 ## The AI assistant panel
 
 Open **View > AI assistant**. The Chat, Options and Connection tabs show provider state, requests,
-approvals and the conversation. CyMCPSDK 0.7.0 supplies providers, streaming and conversation state.
+approvals and the conversation. CyMCPSDK 0.7.2 supplies providers, streaming and conversation state.
 
 ### Connection
 

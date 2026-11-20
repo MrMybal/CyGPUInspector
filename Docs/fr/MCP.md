@@ -2,10 +2,12 @@
 
 ## Forme
 
-`CyGPUInspectorMCP.exe` utilise CyMCPSDK 0.7.0 pour MCP sur stdio et transmet les opérations au
+`CyGPUInspectorMCP.exe` utilise CyMCPSDK 0.7.2 pour MCP sur stdio et transmet les opérations au
 standalone ouvert par son pipe nommé local. Le standalone possède l'état et les permissions ; les
 requêtes s'exécutent sur son thread d'interface. Le proxy peut conserver des snapshots bornés de gros
-résultats. Il ne s'accorde pas de permissions et n'expose pas de serveur HTTP.
+résultats. Il ne s'accorde pas de permissions. Le standalone expose aussi les mêmes opérations en HTTP
+local à `http://127.0.0.1:41823/mcp`. Free utilise le constructeur loopback sans jeton du SDK
+et `Policy::allow_all()`, en conservant la validation des schémas.
 
 Sans argument, ou avec `mcp`, il expose les 111 outils. `mcp-compact` expose cinq passerelles de
 découverte et d'exécution, avec ressources pour les gros résultats. Le catalogue est paginé : suivez
@@ -21,9 +23,26 @@ Voir les commandes et procédures de récupération du [guide d'automatisation](
 
 ## Niveaux de permission
 
-L'hôte démarre en lecture seule. Changez son niveau MCP externe dans l'interface ou lancez-le
-explicitement avec `--mcp-permission=read-only|debug-control|shader-modification`. Le proxy ne peut
-pas augmenter ce niveau. Ce réglage est indépendant des modes Auto/Demander/Complet de l'assistant.
+Le panneau MCP propose quatre profils :
+
+| Profil | Jeton HTTP | Opérations |
+| --- | --- | --- |
+| Free (défaut) | Aucun | Toutes les opérations, sans confirmation |
+| Local contrôlé | Aucun | Niveau de permission de l'hôte |
+| Jeton seul | Requis | Toutes les opérations, sans confirmation |
+| Protégé | Requis | Niveau de permission de l'hôte |
+
+Les profils contrôlés proposent Read Only, Debug Control et Shader Modification. Le client
+ne peut pas augmenter ses droits. Copiez le jeton de session dans le panneau pour les profils
+avec jeton : généré en mémoire, il change au redémarrage et n'est jamais conservé dans les
+préférences. Nouveau jeton révoque le précédent. Les jetons concernent HTTP ; le pipe stdio/CLI
+conserve son transport local et respecte les niveaux des profils contrôlés. Le tchat intégré
+garde ses modes Auto/Demander/Complet séparés.
+
+Sans choix explicite, les préférences migrent vers Free. Profil choisi, HTTP désactivé, port et
+réglages sans rapport sont conservés. Un niveau de permission explicitement enregistré dans
+l'ancien format migre vers Local contrôlé. Un profil explicite inconnu est conservé et désactive
+HTTP jusqu'à correction.
 
 | Niveau | Périmètre |
 |---|---|

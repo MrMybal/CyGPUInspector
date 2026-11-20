@@ -88,3 +88,10 @@ add_executable(CyGPUInspectorSdkTests CyMCPSDKIntegration.cpp)
 target_link_libraries(CyGPUInspectorSdkTests PRIVATE CyGPUInspectorOperations)
 set_target_properties(CyGPUInspectorSdkTests PROPERTIES RUNTIME_OUTPUT_DIRECTORY "${CYGI_OUTPUT_DIR}")
 add_test(NAME SdkIntegrationTests COMMAND CyGPUInspectorSdkTests)
+
+add_executable(CyGPUInspectorLocalMcpTests LocalMcpTests.cpp
+    ${CMAKE_SOURCE_DIR}/CyGPUInspectorApp/Source/Mcp/McpHttpHost.cpp)
+target_include_directories(CyGPUInspectorLocalMcpTests PRIVATE ${CMAKE_SOURCE_DIR}/CyGPUInspectorApp/Source)
+target_link_libraries(CyGPUInspectorLocalMcpTests PRIVATE CyGPUInspectorOperations CyMCP::MCP)
+set_target_properties(CyGPUInspectorLocalMcpTests PROPERTIES RUNTIME_OUTPUT_DIRECTORY "${CYGI_OUTPUT_DIR}")
+add_test(NAME LocalMcpTests COMMAND CyGPUInspectorLocalMcpTests)

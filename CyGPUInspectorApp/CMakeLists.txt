@@ -20,6 +20,7 @@ set(CYGI_APP_SOURCES
     Source/App/Application.hpp
     Source/App/Application.cpp
     Source/App/Automation.cpp
+    Source/App/McpPanel.cpp
     Source/App/Appearance.cpp
     Source/App/SharedViews.cpp
     Source/Help/HelpLauncher.cpp
@@ -59,6 +60,7 @@ set(CYGI_APP_SOURCES
     Source/Analysis/ShaderAnalysisService.cpp
     Source/Mcp/McpBridge.hpp
     Source/Mcp/McpBridge.cpp
+    Source/Mcp/McpHttpHost.cpp
     Source/Render/PreviewRenderer.hpp
     Source/Render/PreviewRenderer.cpp
     Source/Render/SharedTexture.hpp
@@ -102,7 +104,7 @@ target_include_directories(CyGPUInspectorApp PRIVATE ${CYGI_THIRDPARTY}/CyDoc)
 
 target_compile_definitions(CyGPUInspectorApp PRIVATE WIN32_LEAN_AND_MEAN UNICODE _UNICODE)
 
-target_link_libraries(CyGPUInspectorApp PRIVATE CyGPUInspectorOperations CyMCP::AI CyGPUInspectorCore CyGPUInspectorDecompiler CyGPUInspectorDatabase
+target_link_libraries(CyGPUInspectorApp PRIVATE CyGPUInspectorOperations CyMCP::AI CyMCP::MCP CyGPUInspectorCore CyGPUInspectorDecompiler CyGPUInspectorDatabase
     CyUI::Core CyUI::CodeEditor CyUI::Timeline CyUI::Plots CyUI::Images
     CyUI::Inspector CyUI::Diagnostics CyUI::DocumentViews d3d11 dxgi dxguid user32 gdi32 shell32 shlwapi advapi32 ole32 windowscodecs winhttp comdlg32)
 

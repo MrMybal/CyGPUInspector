@@ -98,6 +98,8 @@ namespace cygi
 
 	Application::~Application()
 	{
+        m_mcp_http.Stop();
+        m_mcp.Stop();
 		// What the profile learnt in this session is written before it is lost.
 		CloseGameProfile();
 		ReleaseBufferView();

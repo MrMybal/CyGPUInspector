@@ -5,7 +5,7 @@ description: Détails techniques : Connecter un fournisseur, poser une question 
 section: Référence technique
 order: 19
 parent: ai
-sourceRevision: 5f87fa7fa33b
+sourceRevision: c5ee71b34b31
 ---
 
 # IA {#ai}
@@ -22,7 +22,7 @@ Les appels au fournisseur tournent sur des workers ; les opérations passent par
 ## Le panneau Assistant IA {#the-ai-assistant-panel}
 
 Ouvrez **Affichage > Assistant IA**. Les onglets Tchat, Options et Connexion présentent le fournisseur,
-les requêtes, les approbations et la conversation. CyMCPSDK 0.7.0 fournit les connexions, le streaming
+les requêtes, les approbations et la conversation. CyMCPSDK 0.7.2 fournit les connexions, le streaming
 et l'état des conversations.
 
 ### Connexion {#connection}

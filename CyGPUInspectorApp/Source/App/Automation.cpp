@@ -109,6 +109,9 @@ bool Application::HandleAutomation(const Json &request, Json &response) {
     if (tool == "get_application_state")
       return finish(
           {{"version", kVersionString},
+           {"mcp", {{"profile", kMcpAccessOptions[static_cast<int>(m_mcp_access.profile)].id},
+                    {"http_enabled", m_mcp_access.enabled}, {"port", m_mcp_http.Port()},
+                    {"permission", static_cast<int>(m_mcp_access.permission)}}},
            {"themes", themes},
            {"languages", languages},
            {"automation_files",

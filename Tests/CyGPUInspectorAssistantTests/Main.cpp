@@ -529,9 +529,21 @@ namespace
         auto requests=api.Requests();bool has_results=false;for(const auto& wire:requests)if(wire.body.find("tool_call_id")!=std::string::npos)has_results=true;Check(has_results,"Tool-call and result messages survive subsequent turns");
         if(live){auto observed=live->call_tool("inspect_shader",{{"shader_id",7}});auto state=cymcp::parse_json(observed.at("content")[0].at("text").get<std::string>());Check(state["result"]["disabled"]==true,"Integrated SDK conversation modified the real application shader state");live->call_tool("enable_shader",{{"shader_id",7}});}
         provider->ResetHistory();restored->ResetHistory();
-        Cancellation stopped;api.Push({200,R"({"choices":[{"message":{"role":"assistant","content":"Late response"},"finish_reason":"stop"}]})","",300});
+        const auto before_cancel = api.Requests().size();
+        Cancellation stopped;api.Push({200,R"({"choices":[{"message":{"role":"assistant","content":"Late response"},"finish_reason":"stop"}]})","",1500});
         auto pending=std::async(std::launch::async,[&](){try{RunChat(*provider,request,host,stopped);return false;}catch(const Error&){return true;}});
-        std::this_thread::sleep_for(std::chrono::milliseconds(30));stopped.Cancel();Check(pending.get(),"SDK cancellation interrupts a pending streamed request");
+        // Wait until this POST has consumed its fixture, rather than cancelling before it starts
+        // and accidentally leaving a successful reply queued for the following HTTP-error test.
+        bool sent = false;
+        const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(8);
+        while (!sent && std::chrono::steady_clock::now() < deadline) {
+            const auto observed = api.Requests();
+            for (size_t index = before_cancel; index < observed.size(); ++index)
+                if (observed[index].head.rfind("POST ", 0) == 0) sent = true;
+            if (!sent) std::this_thread::sleep_for(std::chrono::milliseconds(5));
+        }
+        Check(sent,"SDK cancellation fixture reached the provider");
+        stopped.Cancel();Check(pending.get(),"SDK cancellation interrupts a pending streamed request");
         api.Push({401,"{}","",0});bool failed=false;try{RunChat(*provider,request,host,cancel);}catch(const Error&){failed=true;}Check(failed,"SDK provider error reaches the host");
     }
 

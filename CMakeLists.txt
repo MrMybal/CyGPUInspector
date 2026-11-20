@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.21)
-project(CyGPUInspector VERSION 0.5.0 LANGUAGES CXX)
+project(CyGPUInspector VERSION 0.5.1 LANGUAGES CXX)
 
 # ---------------------------------------------------------------------------
 # CyGPUInspector — GPU frame, shader and resource inspector powered by ReShade
@@ -48,13 +48,14 @@ endif()
 
 add_subdirectory(ThirdParty)
 
-# Build the pinned source snapshot; no machine-specific SDK path or prebuilt library.
+# A portable pinned snapshot is supplied; developers can build a local SDK checkout from source.
+set(CYGI_CYMCPSDK_SOURCE_DIR "${CMAKE_SOURCE_DIR}/ThirdParty/CyMCPSDK" CACHE PATH "CyMCPSDK source checkout")
 set(CYMCP_BUILD_LOCAL OFF CACHE BOOL "No bundled inference engine supervisor" FORCE)
 set(CYMCP_BUILD_EXAMPLES OFF CACHE BOOL "Host supplies its own commands" FORCE)
 set(CYMCP_BUILD_TESTS OFF CACHE BOOL "Host integration tests" FORCE)
 set(CYMCP_BUILD_CHAT_UI OFF CACHE BOOL "Host CyUI API predates the SDK chat renderer" FORCE)
 set(CYMCP_BUILD_CHAT_APP OFF CACHE BOOL "No SDK example in the application" FORCE)
-add_subdirectory(ThirdParty/CyMCPSDK EXCLUDE_FROM_ALL)
+add_subdirectory("${CYGI_CYMCPSDK_SOURCE_DIR}" "${CMAKE_BINARY_DIR}/CyMCPSDK" EXCLUDE_FROM_ALL)
 add_subdirectory(CyGPUInspectorCore)
 add_library(CyGPUInspectorOperations STATIC Integration/Operations.cpp)
 target_include_directories(CyGPUInspectorOperations PUBLIC Integration)

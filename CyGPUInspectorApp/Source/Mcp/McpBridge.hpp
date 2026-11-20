@@ -36,6 +36,10 @@ namespace cygi
 
 		McpPermission Permission() const { return m_permission.load(std::memory_order_relaxed); }
 		void SetPermission(McpPermission permission);
+        void SetUnrestricted(bool value) { m_unrestricted = value; }
+        void RecordHttpCall(const std::string& tool, bool success) {
+            ++m_calls; Append("HTTP " + tool + (success ? "" : " -> failed"));
+        }
 
 		// Called once per UI frame. `handle` receives the parsed request and returns the answer.
 		void Pump(const std::function<Json(const Json &request)> &handle);
@@ -55,6 +59,7 @@ namespace cygi
 
 		ControlPipeServer m_pipe;
 		std::atomic<McpPermission> m_permission{ McpPermission::read_only };
+        std::atomic_bool m_unrestricted{true};
 		std::deque<std::string> m_log;
 		uint64_t m_calls = 0;
 	};

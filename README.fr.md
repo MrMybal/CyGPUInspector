@@ -13,8 +13,8 @@
     </td>
     <td width="300" align="right" valign="top">
       <p><sub>Licence de l’application</sub><br><a href="LICENSE"><strong>AGPL-3.0-or-later</strong></a></p>
-      <p><sub>Version</sub><br><a href="VERSION.fr.md"><strong>0.5.0</strong></a><br><strong>ALPHA — EXPÉRIMENTAL</strong></p>
-      <p><a href="https://github.com/MrMybal/CyGPUInspector/releases/download/v0.5.0/CyGPUInspector-0.5.0-win64.zip"><strong>Télécharger</strong></a><br><sub>Windows x64 · portable</sub></p>
+      <p><sub>Version</sub><br><a href="VERSION.fr.md"><strong>0.5.1</strong></a><br><strong>ALPHA — EXPÉRIMENTAL</strong></p>
+      <p><a href="https://github.com/MrMybal/CyGPUInspector/releases/download/v0.5.1/CyGPUInspector-0.5.1-win64.zip"><strong>Télécharger</strong></a><br><sub>Windows x64 · portable</sub></p>
     </td>
   </tr>
 </table>
@@ -25,11 +25,11 @@ Un débogueur de frames GPU et un profileur pour les développeurs et les moddeu
 Inspectez shaders, ressources et temps GPU, reconstruisez du HLSL et comparez des frames enregistrées.
 **ReShade assure la capture dans le jeu** ; l’analyse s’effectue dans une application Windows séparée.
 
-> **ALPHA — EXPÉRIMENTAL · 0.5.0**
+> **ALPHA — EXPÉRIMENTAL · 0.5.1**
 >
 > Disponible pour les essais et les retours ; les fonctionnalités et la compatibilité peuvent
-> être incomplètes. Cette version ajoute CyMCPSDK et 111 opérations partagées pour le pilotage
-> par IA, CLI et MCP. Consultez les [notes de version et limitations connues](VERSION.fr.md).
+> être incomplètes. Cette version ajoute le MCP HTTP local avec le profil Free par défaut
+> et met CyMCPSDK à jour en 0.7.2. Consultez les [notes de version et limitations connues](VERSION.fr.md).
 
 [![CyGPUInspector affichant les passes GPU, les détails du shader et l’image en direct avec le thème Navy](Assets/screenshots/frame-inspection.png)](Assets/screenshots/frame-inspection.png)
 
@@ -70,9 +70,12 @@ compatible dans le jeu. Le HLSL reconstruit n’est pas le code source original.
   [guide Unreal](https://mrmybal.github.io/CyGPUInspector/manual/Documentation.html#/fr/unreal).
 - **Interroger un assistant IA** : Codex CLI, Claude Code CLI ou une API compatible OpenAI,
   locale ou distante, peut lire la frame avec les outils de l’application. Choisissez ses
-  permissions ; ses résultats restent des hypothèses. Les agents externes utilisent
-  `CyGPUInspectorMCP.exe` sur stdio ; le standalone applique un niveau MCP distinct,
-  en lecture seule par défaut.
+  permissions ; ses résultats restent des hypothèses. Les modes de l’assistant sont distincts
+  des profils d’accès MCP externes.
+- **Connecter un MCP local** : utilisez `http://127.0.0.1:41823/mcp` avec le profil **Free**
+  par défaut pour appeler les 111 opérations sans jeton ni confirmation supplémentaire. Les arguments
+  restent validés. Local contrôlé, Jeton seul et Protégé restent disponibles dans le panneau MCP,
+  ainsi que les parcours stdio/CLI.
 - **Lire le manuel complet** : [documentation en ligne](https://mrmybal.github.io/CyGPUInspector/manual/Documentation.html#/fr/welcome)
   avec recherche, captures, schémas et références des API publiques C/C++. **F1** ou
   **Aide > Guide utilisateur** ouvre le même lecteur CyDoc hors ligne. L’anglais est la langue
@@ -83,15 +86,15 @@ compatible dans le jeu. Le HLSL reconstruit n’est pas le code source original.
 
 ## Installation
 
-Le manuel 0.5.0 est livré avec l’application et disponible en
-[téléchargement HTML complet hors ligne](https://github.com/MrMybal/CyGPUInspector/releases/download/v0.5.0/CyGPUInspector-Documentation-0.5.0.zip).
+Le manuel 0.5.1 est livré avec l’application et disponible en
+[téléchargement HTML complet hors ligne](https://github.com/MrMybal/CyGPUInspector/releases/download/v0.5.1/CyGPUInspector-Documentation-0.5.1.zip).
 Le lien GitHub Pages ci-dessus sert encore le déploiement précédent, le déploiement étant manuel.
 
 L’application publiée est destinée à **Windows x64**. La capture en direct nécessite un jeu
 Direct3D 11/12 compatible et ReShade avec **prise en charge complète des add-ons**.
 Vulkan et OpenGL ne sont pas pris en charge.
 
-1. [Téléchargez CyGPUInspector 0.5.0](https://github.com/MrMybal/CyGPUInspector/releases/download/v0.5.0/CyGPUInspector-0.5.0-win64.zip)
+1. [Téléchargez CyGPUInspector 0.5.1](https://github.com/MrMybal/CyGPUInspector/releases/download/v0.5.1/CyGPUInspector-0.5.1-win64.zip)
    et extrayez **toute** l’archive dans un dossier accessible en écriture.
 2. Lancez `App/CyGPUInspectorApp.exe`. Gardez `Lang/`, `Documentation/` et les DLL des
    compilateurs à côté ; conservez les notices du dossier `LICENCES/` du paquet.
@@ -101,8 +104,11 @@ Vulkan et OpenGL ne sont pas pris en charge.
    de ReShade, lancez le jeu et connectez-vous depuis **Connexions**.
 
 Consultez le [guide d’installation](https://mrmybal.github.io/CyGPUInspector/manual/Documentation.html#/fr/installation)
-et les [notes de publication / somme de contrôle](https://github.com/MrMybal/CyGPUInspector/releases/tag/v0.5.0).
+et les [notes de publication / somme de contrôle](https://github.com/MrMybal/CyGPUInspector/releases/tag/v0.5.1).
 Préservez réglages, disposition, base des shaders, profils de jeux et captures lors d’une mise à jour.
+Sans profil MCP choisi explicitement, la configuration migre vers Free ; les choix existants sont conservés.
+Ouvrez **MCP** pour activer/désactiver HTTP local, copier son adresse effective ou choisir un profil.
+Les profils avec jeton utilisent un jeton de session en mémoire, à copier depuis ce panneau.
 
 L’application utilise l’API officielle des add-ons ReShade. Elle ne contourne ni anti-triche,
 ni protection, ni restriction sur ReShade. Les jeux qui refusent ReShade ne sont pas pris en charge.
@@ -173,7 +179,7 @@ CyGPUInspector utilise la **[GNU Affero General Public License v3 ou ultérieure
 | [SPIR-V headers](https://github.com/KhronosGroup/SPIRV-Headers), [glslang](https://github.com/KhronosGroup/glslang), [RenderDoc](https://github.com/baldurk/renderdoc) | [Khronos](LICENCES/SPIRV-Headers/LICENSE) · [BSD-3-Clause](LICENCES/glslang-SPIR-V-builder/LICENSE.txt) · [MIT](LICENCES/RenderDoc-bitcode-reader/LICENSE.txt) | Composants de dxil-spirv : en-têtes, générateur SPIR-V et lecteur de bitcode LLVM. |
 | [DirectX Shader Compiler](https://github.com/microsoft/DirectXShaderCompiler) | [Conditions de distribution](https://github.com/microsoft/DirectXShaderCompiler/blob/main/LICENSE.TXT) | dxcompiler.dll livré : LLVM/NCSA et MIT. dxil.dll : Microsoft Software License Terms distincts. Les textes complets accompagnent les DLL publiées. |
 | Windows `d3dcompiler_47.dll` | Microsoft Windows | Compilateur, désassembleur et réflexion DXBC du système. |
-| [CyMCPSDK 0.7.0](https://github.com/MrMybal/CyMCPSDK) | [MIT](LICENCES/CyMCPSDK/LICENSE.txt) · [notices](LICENCES/CyMCPSDK/THIRD_PARTY_NOTICES.md) | Registre natif, CLI, MCP et conversations fournisseurs. |
+| [CyMCPSDK 0.7.2](https://github.com/MrMybal/CyMCPSDK) | [MIT](LICENCES/CyMCPSDK/LICENSE.txt) · [notices](LICENCES/CyMCPSDK/THIRD_PARTY_NOTICES.md) | Registre natif, CLI, MCP et conversations fournisseurs. |
 | [CyDoc 0.1.0](https://github.com/MrMybal/CyDoc) | [MIT](LICENCES/CyDoc/LICENSE.txt) | Lecteur documentaire local ; module image uniquement. |
 | [marked](https://github.com/markedjs/marked), [PrismJS](https://github.com/PrismJS/prism), [esbuild](https://github.com/evanw/esbuild) | [MIT: marked](LICENCES/CyDoc/marked-LICENSE.md) · [PrismJS](LICENCES/CyDoc/prismjs-LICENSE) · [esbuild](LICENCES/CyDoc/esbuild-LICENSE.md) | Compilation Markdown, coloration et assemblage à la génération ; aucun service documentaire installé. |
 | [Playwright](https://github.com/microsoft/playwright) | [Apache-2.0](https://github.com/microsoft/playwright/blob/v1.56.1/LICENSE) | Vérification dans le navigateur pendant le développement ; non livré avec le lecteur. |

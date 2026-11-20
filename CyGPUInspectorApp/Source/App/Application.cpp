@@ -109,8 +109,8 @@ namespace cygi
 		m_preview_renderer_ready = m_preview_renderer.Initialize(device, context);
 		m_buffer_writer.Initialize(device, context);
 
-		// Read only by default, as the brief requires: an agent gets to look, not to touch.
-		m_mcp.Start();
+        // Start after command-line overrides have been parsed, never briefly expose a different profile.
+        LoadMcpPreferences();
 	}
 
 	void Application::RefreshSessions()
@@ -452,6 +452,15 @@ namespace cygi
 
 		// One MCP tool call is answered per pump, on this thread, with everything it needs at hand.
 		m_mcp.Pump([this](const Json &request) { return HandleMcpRequest(request); });
+        m_mcp_http.Pump([this](const auto& name, const auto& args, const auto&) {
+            if (!m_mcp.IsAllowed(name)) throw cymcp::Error("PermissionDenied", "Operation not allowed by the host MCP level");
+            Json request = Json::Object(); request["tool"] = Json(name);
+            Json::Parse(args.dump(), request["arguments"]);
+            auto result = cymcp::parse_json(HandleMcpRequest(request).Write(-1));
+            m_mcp.RecordHttpCall(name, result.value("ok", false));
+            if (!result.value("ok", false)) throw cymcp::Error("OperationFailed", result.value("error", "Operation failed"));
+            return result;
+        });
 		// The assistant's tools are answered the same way, by the same handler.
 		UpdateAssistant(delta_seconds);
 		ApplyStartupRequests();
@@ -3310,50 +3319,6 @@ namespace cygi
 
 		m_capture_message = "snapshot written to " + directory.string();
 		RefreshCaptures();
-	}
-
-	void Application::DrawMcpPanel()
-	{
-		if (!BeginPanel("MCP"))
-		{
-			ImGui::End();
-			return;
-		}
-
-		ImGui::Text(Tr("Server: %s"), m_mcp.IsRunning() ? "listening" : "stopped");
-		ImGui::SameLine();
-		ImGui::TextDisabled(Tr("(%s)"), kAppPipeName);
-		ImGui::Text(Tr("Proxy connected: %s"), m_mcp.IsClientConnected() ? "yes" : "no");
-		ImGui::Text(Tr("Tool calls: %llu"), static_cast<unsigned long long>(m_mcp.CallCount()));
-
-		cyui::sectionTitle("Permission");
-		static const char *const kLevels[] = { "Read Only", "Debug Control", "Shader Modification" };
-		int level = static_cast<int>(m_mcp.Permission());
-		ImGui::SetNextItemWidth(cyui::dp(220.0f));
-		if (ImGui::Combo("##permission", &level, kLevels, IM_ARRAYSIZE(kLevels)))
-			m_mcp.SetPermission(static_cast<McpPermission>(level));
-		ImGui::SameLine();
-		HelpMarker(Tr("Read Only lets an agent inspect, search, decompile and read timings. "
-		              "Debug Control adds disable, enable, highlight and capture. "
-		              "Shader Modification adds compile, replace and restore. "
-		              "This is decided here, never by the proxy, which runs in whatever process an "
-		              "agent launched it from."));
-
-		if (m_mcp.Permission() != McpPermission::read_only)
-			ImGui::TextColored(cyui::vec(cyui::palette().warning),
-				Tr("An agent can change what the game renders at this level."));
-
-		cyui::sectionTitle("How to connect an agent");
-		ImGui::TextWrapped(Tr("Point an MCP client at CyGPUInspectorMCP.exe, which is next to this "
-		                      "application. It speaks MCP on stdio and forwards every call here."));
-
-		cyui::sectionTitle("Activity");
-		if (ImGui::SmallButton(TrId("Clear")))
-			m_mcp.ClearLog();
-
-		DrawMcpLog();
-
-		ImGui::End();
 	}
 
 	void Application::DrawCapturesPanel()

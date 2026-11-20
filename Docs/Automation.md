@@ -24,7 +24,8 @@ script evaluator, terminal access or arbitrary preference JSON patching is expos
 
 ## Rights and recovery
 
-External MCP and CLI use the same host permission. Read Only permits metadata inspection;
+External MCP and CLI default to Free, allowing all registered operations without confirmation.
+Local controlled and Protected use the host permission level. Read Only permits metadata inspection;
 Debug Control permits navigation/settings and normal workspace operations. Shader Modification
 is required for HLSL, conversation contents, provider configuration and high-impact workflows.
 The built-in assistant retains Automatic / Ask / Full policies and its tool/operation budgets.

@@ -4,7 +4,7 @@ title: Use the built-in AI assistant
 description: Connect a provider, ask focused questions and choose assistant permissions.
 section: User guide
 order: 12
-revision: 905721df754f
+revision: 43b60e4c0ee1
 ---
 
 # Use the built-in AI assistant {#use-the-built-in-ai-assistant}
@@ -46,10 +46,10 @@ engine is bundled; existing local HTTP services remain supported.
 
 ### Two independent permission controls {#figure-0}
 
-The built-in assistant’s modes and the external MCP tool levels are separate settings. The standalone enforces both paths.
+The built-in assistant’s modes and external MCP access profiles are separate settings; controlled profiles additionally use the host permission level. The standalone enforces both paths.
 
 ```diagram
-{"type":"flow","title":"Two independent permission controls","nodes":[{"id":"assistant","label":"Assistant: Auto / Ask / Full","x":0,"y":0,"width":280},{"id":"host","label":"Standalone permission checks","x":320,"y":0,"width":280},{"id":"mcp","label":"MCP: Read / Debug / Modify","x":640,"y":0,"width":280},{"id":"provider","label":"CLI / API provider","x":0,"y":160,"width":280},{"id":"actions","label":"Permitted game / file actions","x":320,"y":160,"width":280}],"edges":[{"from":"assistant","to":"host"},{"from":"mcp","to":"host"},{"from":"assistant","to":"provider"},{"from":"host","to":"actions"}]}
+{"type":"flow","title":"Two independent permission controls","nodes":[{"id":"assistant","label":"Assistant: Auto / Ask / Full","x":0,"y":0,"width":280},{"id":"host","label":"Standalone permission checks","x":320,"y":0,"width":280},{"id":"mcp","label":"MCP access profiles","x":640,"y":0,"width":280},{"id":"provider","label":"CLI / API provider","x":0,"y":160,"width":280},{"id":"actions","label":"Permitted game / file actions","x":320,"y":160,"width":280}],"edges":[{"from":"assistant","to":"host"},{"from":"mcp","to":"host"},{"from":"assistant","to":"provider"},{"from":"host","to":"actions"}]}
 ```
 
 ### Shader editing workflow {#figure-1}

@@ -1,6 +1,6 @@
 {
-  "version": "0.7.0",
-  "revision": "791d4d7d7680213b282ec8529d248a10f8494d77",
+  "version": "0.7.2",
+  "revision": "e562c731a146d599e3404718ea8414bb5b96b66d",
   "repository": "https://github.com/MrMybal/CyMCPSDK",
   "modules": [
     "Core",

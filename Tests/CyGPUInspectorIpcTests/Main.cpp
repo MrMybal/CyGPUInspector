@@ -180,6 +180,8 @@ namespace
 			cygi::McpPermission::shader_modification, "replacing a shader needs Shader Modification");
 
 		cygi::McpBridge bridge;
+        Check(bridge.IsAllowed("replace_shader"), "Free allows registered mutations by default");
+        bridge.SetUnrestricted(false);
 		Check(bridge.Permission() == cygi::McpPermission::read_only, "the default level is Read Only");
 		Check(bridge.IsAllowed("get_frame_graph"), "reading is allowed by default");
 		Check(!bridge.IsAllowed("disable_shader"), "acting is refused by default");
